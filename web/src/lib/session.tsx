@@ -74,9 +74,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setState({ status: "anonymous", reason: "logged_out" });
         }
       },
+      // Optimistic: apply immediately, roll back if the server rejects it.
       setTheme: async (t) => {
-        const saved = await api.put<Preferences>("/auth/preferences", { theme: t });
-        setThemeState(saved.theme);
+        const previous = theme;
+        setThemeState(t);
+        try {
+          const saved = await api.put<Preferences>("/auth/preferences", { theme: t });
+          setThemeState(saved.theme);
+        } catch (err) {
+          setThemeState(previous);
+          throw err;
+        }
       },
       can: (p) => permissions.has(p),
     };
