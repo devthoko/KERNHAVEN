@@ -13,12 +13,12 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F00-01 | Core starts from validated config | Invalid config (unknown key, relative path, non-loopback listen, insecure data dir permissions) is rejected at startup with a precise error and non-zero exit | M1 | In progress |
-| AT-F00-02 | Schema migrations | Fresh DB is migrated to latest; restart is idempotent; a modified already-applied migration is detected and startup aborts; a failing migration leaves the DB at the previous version | M1 | In progress |
-| AT-F00-03 | Health and version endpoints | `/api/v1/health/live`, `/api/v1/health/ready` and `/api/v1/version` respond; readiness fails when the DB is unavailable | M1 | In progress |
-| AT-F00-04 | Hardened HTTP baseline | Security headers present; unknown routes 404, wrong methods 405, oversized bodies 413, handler panics 500 without internal details | M1 | In progress |
-| AT-F00-05 | Graceful shutdown | SIGTERM drains in-flight requests within the configured timeout and closes the DB cleanly | M1 | In progress |
-| AT-F00-06 | Hardened systemd unit | Unit passes `systemd-analyze verify`; exposure score ≤ 2.0 in `systemd-analyze security` | M1 | In progress |
+| AT-F00-01 | Core starts from validated config | Invalid config (unknown key, relative path, non-loopback listen, insecure data dir permissions) is rejected at startup with a precise error and non-zero exit | M1 | Done |
+| AT-F00-02 | Schema migrations | Fresh DB is migrated to latest; restart is idempotent; a modified already-applied migration is detected and startup aborts; a failing migration leaves the DB at the previous version | M1 | Done |
+| AT-F00-03 | Health and version endpoints | `/api/v1/health/live`, `/api/v1/health/ready` and `/api/v1/version` respond; readiness fails when the DB is unavailable | M1 | Done |
+| AT-F00-04 | Hardened HTTP baseline | Security headers present; unknown routes 404, wrong methods 405, oversized bodies 413, handler panics 500 without internal details | M1 | Done |
+| AT-F00-05 | Graceful shutdown | SIGTERM drains in-flight requests within the configured timeout and closes the DB cleanly | M1 | Done |
+| AT-F00-06 | Hardened systemd unit | Unit passes `systemd-analyze verify`; exposure score ≤ 2.0 in `systemd-analyze security` | M1 | Done |
 
 ## F01 — Modern, responsive web dashboard
 

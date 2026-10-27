@@ -1,6 +1,6 @@
 # M1 — Core Foundation
 
-Status: In progress
+Status: Done (2026-10-27)
 Depends on: M0
 Acceptance tests: AT-F00-01 … AT-F00-06 ([Feature Matrix](../product/FEATURE-MATRIX.md))
 
@@ -133,3 +133,16 @@ kill -TERM %1; wait
 systemd-analyze verify deploy/systemd/kernhaven-core.service
 systemd-analyze security --offline=true deploy/systemd/kernhaven-core.service
 ```
+
+## Verification evidence (2026-10-27)
+
+| Check | Environment | Result |
+|---|---|---|
+| `scripts/check.sh` (gofmt, vet, staticcheck v0.8.2, govulncheck v1.9.0, tests, amd64+arm64 builds, secret scan) | `khv01-dev`, Ubuntu 26.04, Go 1.27.3 | Passed; tests without `-race` (no C toolchain) |
+| Manual procedure above (ready 200 with all security headers, version, DELETE → 405 JSON, SIGTERM → exit 0) | `khv01-dev` | Passed |
+| `systemd-analyze verify` + `security`, exposure 0.9 | `khv01-dev` (systemd 259), CI (Ubuntu 24.04) | Passed |
+| CI run [40506636168](https://github.com/devthoko/KERNHAVEN/actions/runs/40506636168), commit `e1a73a9` | GitHub runners: race tests amd64 + arm64; Debian 13 container amd64 + arm64 as unprivileged user; lint/vuln; systemd | All 6 jobs passed |
+
+Evidence limits: Debian 13 coverage is a `debian:13` container userland on
+GitHub runners, not a Debian 13 VM; the unit is verified statically, not
+installed and started under systemd (needs the installer, M18, and blocker B-2).

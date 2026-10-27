@@ -47,8 +47,8 @@ graph TD
 
 | MS | Name | Depends on | Features (matrix) | Status |
 |---|---|---|---|---|
-| M0 | Specification, repository, CI | — | Docs, CI | Done when this commit set is pushed and CI is green |
-| M1 | Core foundation | M0 | AT-F00-01..06 | In progress — [design](M1-core-foundation.md) |
+| M0 | Specification, repository, CI | — | Docs, CI | Done |
+| M1 | Core foundation | M0 | AT-F00-01..06 | Done — [design and evidence](M1-core-foundation.md) |
 | M2 | Identity, sessions, RBAC, audit log | M1 | F08 (01–04, 06), F09-01, F10 (01–02) | Not started |
 | M3 | Persistent jobs and crash recovery | M1 | F18 (01, 02, 04) | Not started |
 | M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Not started |
