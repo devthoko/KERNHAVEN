@@ -75,9 +75,9 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F06-01 | Inventory | Disks, partitions, filesystems, usage and SMART health are shown | M9 | Implemented on `m9-storage`; CI pending |
-| AT-F06-02 | Mount management | Mount/unmount data disks to allow-listed mount roots; persistent via systemd mount units | M9 | Implemented on `m9-storage`; CI pending |
-| AT-F06-03 | Format | Format a non-system disk (ext4, xfs, btrfs) with typed confirmation; system disk is never offered | M9 | Implemented on `m9-storage`; CI pending |
+| AT-F06-01 | Inventory | Disks, partitions, filesystems, usage and SMART health are shown | M9 | Done (CI 40601258272; merge pending owner review) |
+| AT-F06-02 | Mount management | Mount/unmount data disks to allow-listed mount roots; persistent via systemd mount units | M9 | Done (CI 40601258272; merge pending owner review) |
+| AT-F06-03 | Format | Format a non-system disk (ext4, xfs, btrfs) with typed confirmation; system disk is never offered | M9 | Done (CI 40601258272; merge pending owner review) |
 | AT-F06-04 | Usage alerts | Threshold alerts for capacity and SMART failures | M15 | Not started |
 
 ## F07 — Web-based file manager

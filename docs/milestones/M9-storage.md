@@ -1,6 +1,6 @@
 # M9 — Storage and Disk Management
 
-Status: Implemented, CI pending
+Status: Implemented (CI 40601258272); merge pending owner review
 Depends on: M4, M5
 Acceptance tests: AT-F06-01 … AT-F06-03 (AT-F06-04 alerts follow in M15)
 Threats addressed: TH-32 (formatting or unmounting the system disk), TH-31
@@ -168,5 +168,5 @@ as root"; the storage page then says so instead of offering actions.
 | Core through a real server in the storage role (`TestStorageInventory`, `TestStorageFormat`, `TestStorageMounts`), contract (75 operations), RBAC | `khv01-dev` | Passed (3 consecutive runs) |
 | Mutation check: disabling system-disk detection makes 5 tests fail | `khv01-dev` | Passed |
 | Live: Core + storage service (without root) on this server — `sda` with `/` classified as system disk, usage shown, SMART "not installed", no actions offered; storage page at 375 px without horizontal overflow | `khv01-dev` | Passed |
-| CI job `storage`: real unit as root under systemd, loop device: system disk refused, ext4/xfs/btrfs formatted, mounted via systemd, written, busy unmount refused, unmounted | GitHub Actions | Pending |
-| CI full suite incl. browser E2E (storage page with the runner's disks, viewer without access) | GitHub Actions | Pending |
+| CI job `storage`: real unit as root under systemd, loop device: system disk refused, ext4/xfs/btrfs formatted, mounted via systemd, written, busy unmount refused, unmounted | GitHub Actions | Passed (run 40601258272) |
+| CI full suite incl. browser E2E (storage page with the runner's disks, viewer without access) | GitHub Actions | Passed (run 40601258272) |
