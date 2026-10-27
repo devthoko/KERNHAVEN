@@ -7,7 +7,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [["list"]],
+  // The github reporter turns failures into public check annotations.
+  reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
   use: {
     baseURL: process.env.KH_BASE_URL ?? "http://localhost:18471",
     trace: "retain-on-failure",

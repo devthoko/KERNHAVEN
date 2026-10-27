@@ -35,5 +35,12 @@ if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exi
 
 status=0
 (cd web && KH_BASE_URL="http://localhost:$PORT" KH_SETUP_TOKEN="$TOKEN" npx playwright test) || status=$?
-if [ $status -ne 0 ]; then echo "--- core log"; tail -50 "$WORK/core.log"; fi
+if [ $status -ne 0 ]; then
+  echo "--- core log"; tail -50 "$WORK/core.log"
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    # Annotations are readable without repository admin rights.
+    msg=$(tail -15 "$WORK/core.log" | sed "s/%/%25/g" | awk 1 ORS="%0A")
+    echo "::error title=kernhaven-core log (tail)::$msg"
+  fi
+fi
 exit $status
