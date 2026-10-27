@@ -141,11 +141,14 @@ func startChild(t *testing.T, dir string, failLast bool) *exec.Cmd {
 	return cmd
 }
 
+// waitFile waits until path contains at least one complete marker line. Waiting
+// for mere existence races with the write: a kill between create and write
+// would leave an empty marker.
 func waitFile(t *testing.T, path string) {
 	t.Helper()
 	deadline := time.Now().Add(15 * time.Second)
 	for {
-		if _, err := os.Stat(path); err == nil {
+		if b, err := os.ReadFile(path); err == nil && strings.Contains(string(b), "\n") {
 			return
 		}
 		if time.Now().After(deadline) {
