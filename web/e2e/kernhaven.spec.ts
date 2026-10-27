@@ -99,7 +99,7 @@ test("AT-F08-06: owner creates a viewer through the UI", async () => {
   await dialog.getByLabel("Initial password").fill(VIEWER.password);
   await dialog.getByRole("button", { name: "Create user" }).click();
   await expect(page.getByText(`User ${VIEWER.username} created.`)).toBeVisible();
-  await expect(page.getByRole("cell", { name: new RegExp(VIEWER.username) })).toBeVisible();
+  await expect(page.getByRole("row", { name: new RegExp(`\\b${VIEWER.username}\\b`) })).toHaveCount(1);
 
   // Server-side validation errors are shown in the dialog.
   await page.getByRole("button", { name: "New user" }).click();
