@@ -12,6 +12,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.KH_BASE_URL ?? "http://localhost:18471",
     trace: "retain-on-failure",
+    // No animations: axe measures final colors, not mid-transition ones.
+    contextOptions: { reducedMotion: "reduce" },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });
