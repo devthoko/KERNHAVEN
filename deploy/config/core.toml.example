@@ -8,6 +8,9 @@ listen = "127.0.0.1:8470"
 shutdown_timeout = "15s"
 # Maximum request body size in bytes (1 KiB..64 MiB).
 max_body_bytes = 1048576
+# Browser-facing origin used for CSRF checks and the Secure cookie flag.
+# Must be https, except http://localhost for local development.
+public_origin = "https://kernhaven.home.arpa"
 
 [storage]
 # Absolute path, owned by the service user, mode 0700.
@@ -16,3 +19,8 @@ data_dir = "/var/lib/kernhaven"
 [log]
 # debug | info | warn | error
 level = "info"
+
+[auth]
+session_idle_timeout = "30m"      # 5m..24h
+session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout
+setup_token_ttl = "24h"           # 10m..72h

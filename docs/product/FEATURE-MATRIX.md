@@ -94,18 +94,18 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F08-01 | First-run owner setup | Owner account created via one-time setup token printed to the journal; token single-use and expiring | M2 | Not started |
-| AT-F08-02 | Password auth | Argon2id hashing; breached/weak password rejection; rate limiting and lockout with backoff | M2 | Not started |
-| AT-F08-03 | Sessions | Server-side sessions, secure/HttpOnly/SameSite cookies, idle and absolute timeouts, rotation on privilege change | M2 | Not started |
-| AT-F08-04 | CSRF | All state-changing requests require a valid CSRF token and same-origin check | M2 | Not started |
+| AT-F08-01 | First-run owner setup | Owner account created via one-time setup token printed to the journal; token single-use and expiring | M2 | In progress (implemented, tests pass locally; CI pending) |
+| AT-F08-02 | Password auth | Argon2id hashing; breached/weak password rejection; rate limiting and lockout with backoff | M2 | In progress (implemented, tests pass locally; CI pending) |
+| AT-F08-03 | Sessions | Server-side sessions, secure/HttpOnly/SameSite cookies, idle and absolute timeouts, rotation on privilege change | M2 | In progress (implemented, tests pass locally; CI pending) |
+| AT-F08-04 | CSRF | All state-changing requests require a valid CSRF token and same-origin check | M2 | In progress (implemented, tests pass locally; CI pending) |
 | AT-F08-05 | Session management UI | Users see and revoke their sessions; Owners revoke any session | M5 | Not started |
-| AT-F08-06 | User lifecycle | Create, disable, delete users; Owner cannot delete the last Owner | M2 | Not started |
+| AT-F08-06 | User lifecycle | Create, disable, delete users; Owner cannot delete the last Owner | M2 | In progress (implemented, tests pass locally; CI pending) |
 
 ## F09 — Passkeys, MFA and role-based access control
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F09-01 | RBAC | Every API route declares a permission; a test enumerates all routes and fails if any route lacks one | M2 | Not started |
+| AT-F09-01 | RBAC | Every API route declares a permission; a test enumerates all routes and fails if any route lacks one | M2 | In progress (implemented, tests pass locally; CI pending) |
 | AT-F09-02 | Passkeys | WebAuthn registration and login; passkey-only accounts supported | M11 | Not started |
 | AT-F09-03 | TOTP | TOTP enrolment with recovery codes; replay of a used code is rejected | M11 | Not started |
 | AT-F09-04 | Step-up auth | Destructive and security-relevant actions require recent re-authentication | M11 | Not started |
@@ -115,8 +115,8 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F10-01 | Audit log | Every authentication event and state change is recorded with actor, action, target, result and request ID | M2 | Not started |
-| AT-F10-02 | Tamper evidence | Audit records are hash-chained; verification detects modified or deleted records | M2 | Not started |
+| AT-F10-01 | Audit log | Every authentication event and state change is recorded with actor, action, target, result and request ID | M2 | In progress (implemented, tests pass locally; CI pending) |
+| AT-F10-02 | Tamper evidence | Audit records are hash-chained; verification detects modified or deleted records | M2 | In progress (implemented, tests pass locally; CI pending) |
 | AT-F10-03 | Audit UI | Filter, search and export (JSON Lines) | M17 | Not started |
 | AT-F10-04 | Security dashboard | Shows MFA coverage, exposed apps, policy exceptions, outdated images, failed logins, certificate expiry | M17 | Not started |
 

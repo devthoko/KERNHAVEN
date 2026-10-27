@@ -20,3 +20,5 @@ ADR that supersedes the old one.
 | [0012](0012-versioned-rest-api-openapi.md) | Versioned REST API with OpenAPI contract | Accepted |
 | [0013](0013-signed-releases.md) | Signed and verifiable releases | Proposed |
 | [0014](0014-ci-supply-chain-pinning.md) | CI actions pinned by commit SHA | Accepted |
+| [0015](0015-argon2id-password-hashing.md) | Argon2id password hashing via golang.org/x/crypto | Accepted |
+| [0016](0016-hash-chained-audit-log.md) | Hash-chained audit log in SQLite | Accepted |

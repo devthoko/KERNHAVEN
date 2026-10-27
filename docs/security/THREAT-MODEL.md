@@ -53,16 +53,16 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Open |
-| TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2 | Open |
-| TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Open |
+| TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Partially mitigated (M2: Argon2id, IP rate limit, lockout; MFA in M11) |
+| TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2 | Mitigated (AT-F08-03) |
+| TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Mitigated (AT-F08-04) |
 | TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Open |
 | TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation | M1 | Mitigated (AT-F00-01) |
-| TH-06 | D | Slowloris / large bodies / request floods | Server timeouts, header/body limits, rate limits | M1/M2 | Partially mitigated (M1: timeouts, body limit) |
+| TH-06 | D | Slowloris / large bodies / request floods | Server timeouts, header/body limits, rate limits | M1/M2 | Partially mitigated (M1: timeouts, body limit; M2: auth rate limits) |
 | TH-07 | I | Error responses leak internals (stack traces, SQL) | Uniform error model; panics recovered and logged with request ID only | M1 | Mitigated (AT-F00-04) |
-| TH-08 | S | Host header / proxy header spoofing (`X-Forwarded-For`) | Trust forwarded headers only from configured proxy (loopback Caddy) | M2 | Open |
-| TH-09 | E | Missing authorization on a new route | Deny-by-default router; route permission registry with enumeration test | M2 | Open |
-| TH-10 | S | First-run setup takeover (someone else creates the owner) | One-time setup token printed to journal, expiring, single-use | M2 | Open |
+| TH-08 | S | Host header / proxy header spoofing (`X-Forwarded-For`) | Trust forwarded headers only from configured proxy (loopback Caddy) | M2 | Mitigated (forwarded header trusted only from loopback proxy; ClientIP tests) |
+| TH-09 | E | Missing authorization on a new route | Deny-by-default router; route permission registry with enumeration test | M2 | Mitigated (AT-F09-01: access required at registration, contract + RBAC matrix tests) |
+| TH-10 | S | First-run setup takeover (someone else creates the owner) | One-time setup token printed to journal, expiring, single-use | M2 | Mitigated (AT-F08-01) |
 
 ### TB-3 — Core ↔ Agent
 
@@ -101,7 +101,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 |---|---|---|---|---|---|
 | TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
 | TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Open |
-| TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Open |
+| TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Partially mitigated (M2: hash chain + append-only triggers; tail truncation needs M17 export) |
 | TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync) |
 | TH-54 | I | Data directory readable by other local users (T8) | Startup refuses data dir with group/other permissions | M1 | Mitigated (AT-F00-01) |
 
@@ -117,3 +117,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | Date | Milestone | Change |
 |---|---|---|
 | 2026-10-27 | M0/M1 | Initial model; TH-05, TH-07, TH-54 mitigated by M1 |
+| 2026-10-27 | M2 | TH-02, TH-03, TH-08, TH-09, TH-10 mitigated; TH-01, TH-06, TH-52 partially |
