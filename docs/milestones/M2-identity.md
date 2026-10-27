@@ -173,7 +173,7 @@ setup_token_ttl = "24h"           # 10m..72h
 | `internal/core/app` integration tests: contract, OpenAPI sync, RBAC matrix (every route × anonymous + 4 roles), setup, login, lockout, rate limit, timeouts, CSRF, user rules, session revocation, audit trail | `khv01-dev` | 21/21 passed |
 | Smoke test with the real binary: setup token from log → setup 201 with HttpOnly cookie → create user without CSRF 403 / with CSRF 201 → audit verify ok → anonymous `/version` 401 → SIGTERM exit 0 | `khv01-dev` | Passed |
 | govulncheck | `khv01-dev` | No reachable vulnerabilities; GO-2026-5932 (`x/crypto/openpgp`, not imported) noted in ADR-0015 |
-| CI (race detector, arm64, Debian 13) | GitHub Actions | **Pending** — branch not pushed yet |
+| CI run [40510127374](https://github.com/devthoko/KERNHAVEN/actions/runs/40510127374), commit `f5c3b6a`: race tests amd64 + arm64, Debian 13 amd64 + arm64, lint/vuln, systemd | GitHub Actions | All 6 jobs passed |
 
 The last-owner rule is enforced in `checkManage`, but through the API it is
 currently shadowed by self-protection (an owner acting on another enabled owner
