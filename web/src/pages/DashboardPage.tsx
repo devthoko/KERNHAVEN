@@ -135,7 +135,7 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard" description="Current state of this Kernhaven instance." />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PlatformCard />
         <SessionCard />
         {can("jobs.read") && <JobsCard />}

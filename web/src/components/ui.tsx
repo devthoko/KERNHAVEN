@@ -166,10 +166,14 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
   );
 }
 
-/** Table renders a horizontally scrollable table so narrow screens never overflow the page. */
+/**
+ * Table renders a horizontally scrollable table so narrow screens never
+ * overflow the page. The wrapper is positioned so that absolutely positioned
+ * descendants (sr-only labels) are clipped by it instead of widening the page.
+ */
 export function Table({ caption, head, children }: { caption: string; head: ReactNode; children: ReactNode }) {
   return (
-    <div className="-mx-4 overflow-x-auto sm:mx-0">
+    <div className="relative -mx-4 overflow-x-auto sm:mx-0">
       <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
         <caption className="sr-only">{caption}</caption>
         <thead className="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">{head}</thead>

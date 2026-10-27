@@ -60,7 +60,7 @@ export function JobDetailPage({ id }: { id: string }) {
       {error && <Alert>{error}</Alert>}
       {actionError && <Alert>{actionError}</Alert>}
       {job.needs_attention && <Alert kind="warning">Rollback failed. Manual attention is required: {job.error}</Alert>}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card title="Status" className="lg:col-span-1">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-600 dark:text-slate-400">State</dt>

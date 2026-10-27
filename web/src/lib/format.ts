@@ -12,7 +12,8 @@ const units: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
   ["second", 1],
 ];
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+// English like the rest of the UI; absolute dates use the browser locale.
+const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 export function formatRelative(iso: string | undefined, now = Date.now()): string {
   if (!iso) return "—";

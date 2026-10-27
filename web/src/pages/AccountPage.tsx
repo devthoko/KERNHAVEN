@@ -138,7 +138,7 @@ export function AccountPage() {
   return (
     <>
       <PageHeader title="Account" description={`${session.user.username} · ${roleLabel(session.user.role)}`} />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PasswordCard />
         <AppearanceCard />
         <div className="lg:col-span-2">
