@@ -6,6 +6,10 @@ cd "$(dirname "$0")/.."
 STATICCHECK_VERSION=v0.8.2
 GOVULNCHECK_VERSION=v1.9.0
 
+echo "== no source files hidden by .gitignore"
+hidden=$(git ls-files --others --ignored --exclude-standard -- "*.go" "*.md" "*.sql" "*.ts" "*.tsx" ":!:web/node_modules" || true)
+if [ -n "$hidden" ]; then echo "ignored by .gitignore, CI would not see them:"; echo "$hidden"; exit 1; fi
+
 echo "== gofmt"
 unformatted=$(gofmt -l .)
 if [ -n "$unformatted" ]; then echo "$unformatted"; exit 1; fi

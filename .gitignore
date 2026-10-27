@@ -9,6 +9,10 @@ id_*
 *_deploy
 *creds*
 *secret*
+# Source code and docs about secret handling (contain no secrets)
+!/internal/platform/secretbox/
+!/internal/platform/secretbox/*.go
+!/docs/adr/0019-secret-encryption.md
 
 # Build output
 /bin/
