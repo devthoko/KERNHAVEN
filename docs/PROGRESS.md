@@ -17,7 +17,7 @@ network, backup or installer functionality.
 | M1 | Core foundation | Done | [M1 evidence](milestones/M1-core-foundation.md#verification-evidence-2026-10-27), CI run 40506636168 |
 | M2 | Identity, sessions, RBAC, audit | Implemented, CI green (run 40510127374); owner review pending | [M2 evidence](milestones/M2-identity.md#verification-evidence-2026-10-27-branch-m2-identity) |
 | M3 | Persistent jobs, crash recovery | Implemented, CI green (run 40511595535); owner review pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
-| M5 | Web dashboard shell | Implemented on branch `m5-dashboard` (based on M3); CI pending | [M5 design](milestones/M5-dashboard.md) |
+| M5 | Web dashboard shell | Implemented, CI green incl. browser E2E (run 40519204275); owner review pending | [M5 design](milestones/M5-dashboard.md) |
 | M4, M6–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers

@@ -104,4 +104,17 @@ events (AT-F01-05) arrive with container management in M6.
 | Go: `webui` handler tests (CSP, caching, SPA fallback, 404 for missing assets, 503 without build), router fallback never serves `/api/`, preferences API, UI/API CSP split | `khv01-dev` | Passed |
 | Binary smoke test: `/users` → HTML with strict CSP and `no-store`; hashed JS `immutable`; `/api/v1/nope` → JSON 404 | `khv01-dev` | Passed |
 | Built `index.html` contains no inline script or style | `khv01-dev` | Verified |
-| Playwright + axe E2E (8 tests) | GitHub Actions | Pending (cannot run on `khv01-dev`: Chromium system libraries missing, B-5) |
+| Playwright + axe E2E, 8 tests (setup by keyboard, user management, jobs, audit + verify, session revoke, 360/768/1440 px layout, theme persistence, viewer restrictions; axe on every page; no CSP violations) | GitHub Actions run [40519204275](https://github.com/devthoko/KERNHAVEN/actions/runs/40519204275), commit `fadc2ee` | All 9 CI jobs passed |
+
+### Defects found by the end-to-end suite and fixed
+
+| Defect | Fix |
+|---|---|
+| Users page 115 px wider than a 360 px screen: `sr-only` header labels are absolutely positioned and escaped the table scroll container | Table wrapper is `position: relative` (`048bbc7`) |
+| Account page 792 px wide at 360 px: card grids used an auto-sized column that grew to the sessions table | Grids use `minmax(0, 1fr)` columns (`048bbc7`); verified in a browser on all six views at 360/768/1440 px |
+| Theme radio did not change until the server answered, so clicks looked ignored | Optimistic update with rollback on error (`fadc2ee`) |
+| Relative times mixed the browser language into the English UI ("in 12 Stunden at the latest") | Relative times formatted in English (`048bbc7`) |
+
+Test-suite defects (not product defects) fixed on the way: the suite exceeded
+the login rate limit of 10 attempts per minute and address (the M2 control
+worked as designed) and used an ambiguous selector.
