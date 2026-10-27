@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Kernhaven Core API
+  version: 1.0.0-dev
+  description: |
+    Versioned REST API of kernhaven-core (ADR-0012). Every response carries the
+    security headers listed in docs/milestones/M1-core-foundation.md and an
+    `X-Request-ID` header.
+servers:
+  - url: /api/v1
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      summary: Process liveness
+      security: []
+      responses:
+        "200":
+          description: Process is running
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Readiness including database availability
+      security: []
+      responses:
+        "200":
+          description: Ready to serve
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+        "503":
+          description: A dependency is unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+  /version:
+    get:
+      operationId: getVersion
+      summary: Build information
+      security: []
+      responses:
+        "200":
+          description: Build information
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Version" }
+components:
+  schemas:
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, unavailable] }
+    Version:
+      type: object
+      required: [version, commit, build_date, go_version]
+      properties:
+        version: { type: string }
+        commit: { type: string }
+        build_date: { type: string }
+        go_version: { type: string }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [not_found, method_not_allowed, body_too_large, invalid_json, internal_error]
+            message: { type: string }
+            request_id: { type: string }
+  responses:
+    NotFound:
+      description: Unknown route
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MethodNotAllowed:
+      description: Method not allowed; see the Allow header
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

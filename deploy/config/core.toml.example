@@ -1,0 +1,18 @@
+# Kernhaven Core configuration — /etc/kernhaven/core.toml
+# Unknown keys are rejected at startup.
+
+[server]
+# Must be a loopback address; external access goes through Caddy (ADR-0010).
+listen = "127.0.0.1:8470"
+# Time to drain in-flight requests on shutdown (1s..120s).
+shutdown_timeout = "15s"
+# Maximum request body size in bytes (1 KiB..64 MiB).
+max_body_bytes = 1048576
+
+[storage]
+# Absolute path, owned by the service user, mode 0700.
+data_dir = "/var/lib/kernhaven"
+
+[log]
+# debug | info | warn | error
+level = "info"
