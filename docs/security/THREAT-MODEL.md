@@ -1,0 +1,119 @@
+# Kernhaven Threat Model
+
+Status: Draft v0.1 (M0). Method: STRIDE per trust boundary, reviewed at every
+milestone gate. Verification target: OWASP ASVS 5.0 Level 2.
+
+## 1. Assets
+
+| ID | Asset | Why it matters |
+|---|---|---|
+| A1 | Host integrity (root) | Full compromise of the server and everything on it |
+| A2 | User credentials, sessions, passkeys, TOTP secrets | Account takeover |
+| A3 | App data volumes and user files | Confidentiality and loss of personal data |
+| A4 | Secrets (app secrets, backup keys, Core grant-signing key) | Escalation, backup decryption |
+| A5 | Backups | Last line of recovery; also a data exfiltration target |
+| A6 | Audit log | Detection and forensics |
+| A7 | Release and catalog signing keys / supply chain | Mass compromise of installations |
+| A8 | Availability of apps and platform | Homelab services the household depends on |
+
+## 2. Actors
+
+| ID | Actor | Capability assumed |
+|---|---|---|
+| T1 | Internet attacker | Reaches Caddy if the user exposes ports; no credentials |
+| T2 | LAN attacker | Same as T1 plus LAN-only routes, mDNS, ARP-level tricks |
+| T3 | Low-privilege authenticated user (Viewer/Operator) | Valid session, tries to escalate |
+| T4 | Malicious or compromised app container | Code execution inside one container |
+| T5 | Malicious catalog / Compose file / image | Content the user imports |
+| T6 | Compromised Core process | Arbitrary code as the `kernhaven` user |
+| T7 | Supply-chain attacker | Tampers with dependencies, CI, release or catalog channel |
+| T8 | Local unprivileged host user | Shell on the host without root |
+
+Out of scope: an attacker who already has root on the host; physical attacks
+beyond theft of a powered-off disk (covered by backup encryption only).
+
+## 3. Trust boundaries
+
+See [Architecture §1](../architecture/ARCHITECTURE.md#1-processes-and-trust-boundaries).
+
+- **TB-1** Network ↔ Caddy
+- **TB-2** Caddy ↔ Core (loopback HTTP)
+- **TB-3** Core ↔ Agent (unix socket, signed grants)
+- **TB-4** Agent ↔ host resources (Docker, systemd, disks, files)
+- **TB-5** Containers ↔ host and each other
+- **TB-6** External sources (catalogs, registries, ACME, backup targets, notification endpoints) ↔ Core/agent
+
+## 4. Threats and mitigations
+
+Each threat has an owner milestone and verifying tests. Status: **Open**
+(mitigation not implemented), **Mitigated** (implemented and tested),
+**Accepted** (documented residual risk).
+
+### TB-1/TB-2 — Network, Caddy and Core HTTP
+
+| ID | STRIDE | Threat | Mitigation | MS | Status |
+|---|---|---|---|---|---|
+| TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Open |
+| TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2 | Open |
+| TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Open |
+| TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Open |
+| TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation | M1 | Mitigated (AT-F00-01) |
+| TH-06 | D | Slowloris / large bodies / request floods | Server timeouts, header/body limits, rate limits | M1/M2 | Partially mitigated (M1: timeouts, body limit) |
+| TH-07 | I | Error responses leak internals (stack traces, SQL) | Uniform error model; panics recovered and logged with request ID only | M1 | Mitigated (AT-F00-04) |
+| TH-08 | S | Host header / proxy header spoofing (`X-Forwarded-For`) | Trust forwarded headers only from configured proxy (loopback Caddy) | M2 | Open |
+| TH-09 | E | Missing authorization on a new route | Deny-by-default router; route permission registry with enumeration test | M2 | Open |
+| TH-10 | S | First-run setup takeover (someone else creates the owner) | One-time setup token printed to journal, expiring, single-use | M2 | Open |
+
+### TB-3 — Core ↔ Agent
+
+| ID | STRIDE | Threat | Mitigation | MS | Status |
+|---|---|---|---|---|---|
+| TH-20 | E | Compromised Core (T6) runs arbitrary host commands | No generic exec operation; typed allow-listed operations only | M4 | Open |
+| TH-21 | E | Compromised Core requests privileged containers or host mounts | Agent-side container policy; exceptions require Owner-signed approval with a key not held by Core at rest | M4/M6 | Open |
+| TH-22 | S | Local user (T8) connects to the agent socket | Socket mode 0660 owned by agent group with only `kernhaven` member; `SO_PEERCRED` check | M4 | Open |
+| TH-23 | T/R | Replay of a captured grant | Grants bound to operation+target, short expiry, nonce cache | M4 | Open |
+| TH-24 | D | Malformed requests crash the agent | Strict decoding, size limits, fuzzing in CI | M4 | Open |
+
+### TB-4/TB-5 — Host resources and containers
+
+| ID | STRIDE | Threat | Mitigation | MS | Status |
+|---|---|---|---|---|---|
+| TH-30 | E | Container escape via privileged mode, host namespaces, dangerous capabilities or `docker.sock` mount | Policy engine denies by default; explicit, audited exceptions | M6/M7 | Open |
+| TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Open |
+| TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Open |
+| TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Open |
+| TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Open |
+| TH-35 | T | Kernhaven modifies firewall or SSH and locks the user out | Out of scope by policy; agent has no such operations | — | Mitigated by design |
+
+### TB-6 — External content and supply chain
+
+| ID | STRIDE | Threat | Mitigation | MS | Status |
+|---|---|---|---|---|---|
+| TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Open |
+| TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Open |
+| TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Open |
+| TH-43 | T | Tampered release or upgrade (T7) | Signed releases, pinned public key, refuse unsigned | M18 | Open |
+| TH-44 | T | Compromised CI action or dependency | Actions pinned by SHA, `govulncheck`, minimal dependencies, `go.sum` verification | M0 | Mitigated (ADR-0014) |
+
+### Data protection
+
+| ID | STRIDE | Threat | Mitigation | MS | Status |
+|---|---|---|---|---|---|
+| TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
+| TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Open |
+| TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Open |
+| TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync) |
+| TH-54 | I | Data directory readable by other local users (T8) | Startup refuses data dir with group/other permissions | M1 | Mitigated (AT-F00-01) |
+
+## 5. Accepted risks (current)
+
+| ID | Risk | Rationale |
+|---|---|---|
+| AR-01 | The agent's Docker access is root-equivalent | Inherent to managing Docker; contained by ADR-0003 controls and agent minimalism |
+| AR-02 | A compromised Core can request any allow-listed agent operation within policy | Policy-enforcing agent limits impact; destructive operations additionally need step-up-bound grants (M11) |
+
+## 6. Review log
+
+| Date | Milestone | Change |
+|---|---|---|
+| 2026-10-27 | M0/M1 | Initial model; TH-05, TH-07, TH-54 mitigated by M1 |
