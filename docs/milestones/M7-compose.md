@@ -105,8 +105,15 @@ down, delete, import, validate: `containers.manage`. Exceptions:
 | Core through a real agent server: validation with line numbers and per-service policy; owner-only exceptions (admin may carry, not add); secrets write-only and absent from `kernhaven.db` and its WAL; secret rendered into the container; deploy, update, failing deployment rolled back to the previous revision; revisions immutable (trigger); down keeps volumes; delete refused while deployed; URL import blocks loopback/private/link-local/CGNAT/http/userinfo, enforces size and redirect rules | `khv01-dev` | Passed (3 consecutive runs) |
 | Contract: 58 operations, routes ↔ OpenAPI ↔ enforced permissions; RBAC matrix | `khv01-dev` | Passed |
 | **Live on real rootless Docker 29.9.2** with the real `kernhaven-core` and `kernhaven-agent` binaries: create + deploy revision 1 (healthcheck, `depends_on: service_healthy`), update to revision 2, revision 3 with an exiting service fails in verification and **rolls back to revision 2** (both services running, app healthy), down removes containers and network and keeps the volume | `khv01-dev` | Passed |
-| CI full suite incl. browser E2E on the runner Docker (editor errors with line numbers, create + deploy with variable, new revision, failing revision rolled back, take down) | GitHub Actions | Pending |
+| CI full suite incl. browser E2E on the runner Docker (editor errors with line numbers, create + deploy with variable, new revision, failing revision rolled back, take down) | GitHub Actions | Passed (run 40565761279, commit after the .gitignore fix) |
 
 Found while testing: a test fake (`memDocker.Start`) had not received the
 "exits immediately" behaviour because `gofmt` had reformatted the function;
 the product code was correct.
+
+The first full CI run (40564118825) failed in every Go job: the
+`*secret*` safety pattern in `.gitignore` had also matched
+`internal/platform/secretbox` and ADR-0019, so they were never
+committed while the local tree was complete. Fixed with exact
+exceptions; `scripts/check.sh` now fails when source or doc files are
+ignored, and the fix was verified from a clean clone before pushing.

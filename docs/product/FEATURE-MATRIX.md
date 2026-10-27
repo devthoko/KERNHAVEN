@@ -46,12 +46,12 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F03-01 | Import | Import from file upload, paste and URL (HTTPS only, size-limited) | M7 | Implemented on `m7-compose`; CI pending |
-| AT-F03-02 | Validation | Schema validation against the Compose specification with line-accurate errors | M7 | Implemented on `m7-compose`; CI pending |
-| AT-F03-03 | Policy check | Container policy evaluation before deploy; violations block deploy and are explained | M7 | Implemented on `m7-compose`; CI pending |
-| AT-F03-04 | Editor | In-browser editor with validation feedback and versioned history | M7 | Implemented on `m7-compose`; CI pending |
-| AT-F03-05 | Deploy and redeploy | Deploy, update and tear down a stack; partial failure rolls back to the previous revision | M7 | Implemented on `m7-compose`; CI pending |
-| AT-F03-06 | Secrets | Compose secrets/env values stored encrypted, never shown again after entry | M7 | Implemented on `m7-compose`; CI pending |
+| AT-F03-01 | Import | Import from file upload, paste and URL (HTTPS only, size-limited) | M7 | Done (CI 40565761279; merge pending owner review) |
+| AT-F03-02 | Validation | Schema validation against the Compose specification with line-accurate errors | M7 | Done (CI 40565761279; merge pending owner review) |
+| AT-F03-03 | Policy check | Container policy evaluation before deploy; violations block deploy and are explained | M7 | Done (CI 40565761279; merge pending owner review) |
+| AT-F03-04 | Editor | In-browser editor with validation feedback and versioned history | M7 | Done (CI 40565761279; merge pending owner review) |
+| AT-F03-05 | Deploy and redeploy | Deploy, update and tear down a stack; partial failure rolls back to the previous revision | M7 | Done (CI 40565761279; merge pending owner review) |
+| AT-F03-06 | Secrets | Compose secrets/env values stored encrypted, never shown again after entry | M7 | Done (CI 40565761279; merge pending owner review) |
 
 ## F04 — Functional application store
 
