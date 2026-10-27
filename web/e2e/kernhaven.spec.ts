@@ -197,12 +197,12 @@ test("AT-F02-06: volumes and networks", async () => {
   await page.goto("/volumes");
   await page.getByLabel("New volume name").fill("e2e-vol");
   await page.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(page.getByRole("cell", { name: /e2e-vol/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /e2e-vol/ })).toHaveCount(1);
   await expectAccessible(page, "volumes");
   await page.getByRole("button", { name: "Remove volume e2e-vol" }).click();
   await page.getByLabel('Type "e2e-vol" to confirm').fill("e2e-vol");
   await page.getByRole("button", { name: "Remove volume and its data" }).click();
-  await expect(page.getByRole("cell", { name: /e2e-vol/ })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: /e2e-vol/ })).toHaveCount(0);
 
   await page.goto("/networks");
   await page.getByLabel("New network name").fill("e2e-net");

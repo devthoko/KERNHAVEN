@@ -67,7 +67,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: test with race detector
-        run: go test -race -count=1 ./...
+        run: scripts/go-test-ci.sh -race -count=1 ./...
       - name: build
         run: CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-core ./cmd/kernhaven-core
       - name: smoke test binary
@@ -100,7 +100,7 @@ jobs:
         run: |
           useradd --create-home tester
           chown -R tester "$GITHUB_WORKSPACE"
-          su tester -c "export PATH=$(dirname "$(command -v go)"):\$PATH HOME=/home/tester; cd '$GITHUB_WORKSPACE' && git config --global --add safe.directory '$GITHUB_WORKSPACE' && go test -count=1 ./..."
+          su tester -c "export PATH=$(dirname "$(command -v go)"):\$PATH HOME=/home/tester; cd '$GITHUB_WORKSPACE' && git config --global --add safe.directory '$GITHUB_WORKSPACE' && scripts/go-test-ci.sh -count=1 ./..."
 
   systemd:
     name: systemd unit hardening
@@ -204,7 +204,7 @@ jobs:
       - name: agent integration tests (AT-M4-06)
         env:
           KH_DOCKER_SOCKET: /var/run/docker.sock
-        run: go test -count=1 -race -tags integration -v ./internal/agent/ ./internal/agent/docker/
+        run: scripts/go-test-ci.sh -count=1 -race -tags integration -v ./internal/agent/ ./internal/agent/docker/
 
   fuzz:
     name: fuzz agent protocol (60 s each)
