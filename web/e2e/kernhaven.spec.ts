@@ -201,7 +201,7 @@ test("AT-F02-06: volumes and networks", async () => {
   await expectAccessible(page, "volumes");
   await page.getByRole("button", { name: "Remove volume e2e-vol" }).click();
   await page.getByLabel('Type "e2e-vol" to confirm').fill("e2e-vol");
-  await page.getByRole("button", { name: "Remove volume and its data" }).click();
+  await page.getByRole("button", { name: "Remove volume and its data", exact: true }).click();
   await expect(page.getByRole("row", { name: /e2e-vol/ })).toHaveCount(0);
 
   await page.goto("/networks");
@@ -212,7 +212,7 @@ test("AT-F02-06: volumes and networks", async () => {
   await expectAccessible(page, "networks");
   await page.getByRole("button", { name: "Remove network e2e-net" }).click();
   await page.getByLabel('Type "e2e-net" to confirm').fill("e2e-net");
-  await page.getByRole("button", { name: "Remove network" }).click();
+  await page.getByRole("button", { name: "Remove network", exact: true }).click();
   await expect(page.getByRole("row", { name: /e2e-net/ })).toHaveCount(0);
 });
 
