@@ -17,7 +17,7 @@ backup and installer functionality do not exist yet.
 | M2 | Identity, sessions, RBAC, audit | Implemented, CI green (run 40510127374); owner review pending | [M2 evidence](milestones/M2-identity.md#verification-evidence-2026-10-27-branch-m2-identity) |
 | M3 | Persistent jobs, crash recovery | Implemented, CI green (run 40511595535); owner review pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
 | M5 | Web dashboard shell | Implemented, CI green incl. browser E2E (run 40519204275); owner review pending | [M5 design](milestones/M5-dashboard.md) |
-| M4 | Host agent and privilege boundary | Implemented on branch `m4-agent` (based on M5); CI pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
+| M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
 | M6–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers

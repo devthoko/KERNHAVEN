@@ -135,4 +135,10 @@ level = "info"
 | Fuzzing: `FuzzVerify` 30 s (≈427k execs), `FuzzHandleOp` 45 s (≈299k execs), no crashes | `khv01-dev` | Passed (one harness bug fixed: unescaped control characters in the test URL) |
 | Live: real `kernhaven-core` + `kernhaven-agent` binaries, setup via API, `GET /api/v1/system/agent` → agent and rootless Docker available; socket 0660, grant key 0600; agent log records actor and request ID | `khv01-dev` | Passed |
 | systemd: `kernhaven-agent.service` verify + exposure 0.7 | `khv01-dev` | Passed |
-| CI incl. integration on rootful Docker (amd64, arm64) and 60 s fuzzing | GitHub Actions | Pending |
+| CI run [40528475951](https://github.com/devthoko/KERNHAVEN/actions/runs/40528475951), commit `821cb5c`: race tests amd64 + arm64, Debian 13 amd64 + arm64, integration on rootful Docker amd64 + arm64, 60 s fuzzing per fuzzer, e2e, web, lint/vuln, systemd (both units) | GitHub Actions | All 11 jobs passed |
+
+The first CI run (40526476108) failed in the race-detector jobs: test fakes and
+log buffers in the agent tests were written by server goroutines and read by
+the test without synchronization. Production code was not affected; the tests
+were fixed in `821cb5c`. An ambiguous end-to-end selector was fixed in the
+same commit.
