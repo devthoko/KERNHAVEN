@@ -95,6 +95,25 @@ down, delete, import, validate: `containers.manage`. Exceptions:
 | AT-F03-05 | Deploy, update to a new revision, teardown; failing deployment (exiting service) rolls back to the previous revision; process kill during deploy recovers (job journal) |
 | AT-F03-06 | Secret values encrypted at rest (no plaintext in the DB file), never returned by the API, used in rendered containers |
 
+## Known limitations
+
+- Only the documented Compose subset is accepted; `build`, `env_file`,
+  `secrets`, `configs`, `extends`, `profiles`, several networks per service
+  and port ranges are rejected with an explanation.
+- Updates replace containers (old revision stopped, new one started): there
+  is a short downtime and no rolling or blue/green deployment.
+- A rollback restores the previous revision's containers and networks, not
+  data. Writes a failing revision made to volumes stay; volumes are never
+  removed by a rollback.
+- Secret variables are encrypted at rest and never returned by the API, but
+  they are passed to containers as environment variables. Anyone with Docker
+  access on the host (`docker inspect`) or inside the container can read them.
+- `secrets.key` lies next to the database. Encryption protects a leaked
+  database file or backup, not a compromised host; backups (M16) must handle
+  the key separately, and losing it makes stored variables unreadable.
+- Deployment with separate system users and rootful Docker is verified only
+  as far as CI runners allow; full verification needs the Debian 13 VMs (B-2).
+
 ## Verification evidence (2026-10-27, branch `m7-compose`)
 
 | Check | Environment | Result |
