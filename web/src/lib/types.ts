@@ -16,7 +16,10 @@ export type Permission =
   | "containers.read"
   | "containers.operate"
   | "containers.manage"
-  | "policy.exceptions";
+  | "policy.exceptions"
+  | "apps.read"
+  | "apps.manage"
+  | "catalog.manage";
 
 export interface User {
   id: number;
@@ -250,6 +253,7 @@ export interface Stack {
   deployed_revision: number;
   status: "new" | "deploying" | "deployed" | "failed" | "stopping" | "stopped";
   status_message?: string;
+  managed_by: "" | "app";
   created_at: string;
   updated_at: string;
 }
@@ -297,4 +301,139 @@ export interface StackDetail {
   variables: StackVariable[];
   services?: StackServiceState[];
   services_error?: string;
+}
+
+// ---- M8: app store ----
+
+export interface CatalogSource {
+  id: number;
+  name: string;
+  url: string;
+  public_key: string;
+  key_id: string;
+  serial: number;
+  catalog_name: string;
+  expires_at: string | null;
+  synced_at: string | null;
+  last_error: string;
+  app_count: number;
+}
+
+export interface CatalogListing {
+  source_id: number;
+  source_name: string;
+  app_id: string;
+  name: string;
+  version: string;
+  summary: string;
+  categories: string[];
+  installed: string[];
+}
+
+export interface AppField {
+  name: string;
+  label: string;
+  description?: string;
+  type: "text" | "password" | "number" | "boolean" | "select";
+  default?: string;
+  required?: boolean;
+  options?: string[];
+  min?: number;
+  max?: number;
+  generate?: "password" | "hex32";
+}
+
+export interface CatalogException {
+  service: string;
+  rule: string;
+  reason: string;
+}
+
+export interface CatalogApp {
+  id: string;
+  name: string;
+  version: string;
+  summary: string;
+  description?: string;
+  categories: string[];
+  homepage?: string;
+  fields: AppField[];
+  web?: { service: string; port: number };
+  exceptions: CatalogException[];
+}
+
+export interface ServiceDisclosure {
+  service: string;
+  image: string;
+  image_pinned: boolean;
+  user: string;
+  ports: string[];
+  bind_mounts: string[];
+  volumes: string[];
+  capabilities: string[];
+  devices: string[];
+  privileged: boolean;
+  host_network: boolean;
+  violations: Finding[];
+  warnings: Finding[];
+  exceptions: CatalogException[];
+}
+
+export interface Disclosure {
+  services: ServiceDisclosure[];
+  installable: boolean;
+  needs_approval: boolean;
+  problems: string[];
+}
+
+export interface CatalogAppDetail {
+  source: CatalogSource;
+  app: CatalogApp;
+  disclosure: Disclosure;
+  installed: string[];
+  expired: boolean;
+}
+
+export interface InstalledApp {
+  name: string;
+  app_id: string;
+  app_name: string;
+  source_id: number | null;
+  source_name: string;
+  version: string;
+  latest_version: string;
+  update_available: boolean;
+  status: Stack["status"];
+  status_message: string;
+  deployed_revision: number;
+  web_port: number;
+  created_at: string;
+}
+
+export interface AppVersion {
+  revision: number;
+  version: string;
+  comment: string;
+  deployed: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface UpdatePreview {
+  from: string;
+  to: string;
+  images: { service: string; from: string; to: string }[];
+  new_fields: AppField[];
+  new_exceptions: CatalogException[];
+  disclosure: Disclosure;
+}
+
+export interface InstalledAppDetail extends InstalledApp {
+  versions: AppVersion[];
+  fields: AppField[];
+  config: StackVariable[];
+  update: UpdatePreview | null;
+  homepage: string;
+  summary: string;
+  web: { service: string; port: number } | null;
 }

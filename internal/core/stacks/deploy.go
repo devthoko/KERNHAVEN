@@ -2,6 +2,9 @@ package stacks
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +14,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/compose"
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
+	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
 )
@@ -19,12 +23,16 @@ type deployPayload struct {
 	StackID  int64  `json:"stack_id"`
 	Revision int    `json:"revision"`
 	Actor    string `json:"actor"`
+	// Snapshot copies the stack's volumes before the new revision starts (M8).
+	Snapshot bool `json:"snapshot,omitempty"`
 }
 
 type downPayload struct {
 	StackID       int64  `json:"stack_id"`
 	RemoveVolumes bool   `json:"remove_volumes"`
 	Actor         string `json:"actor"`
+	// DeleteStack deletes the stack record at the end (app removal, M8).
+	DeleteStack bool `json:"delete_stack,omitempty"`
 }
 
 // call runs an agent operation for a job. Errors that cannot succeed on retry
@@ -123,7 +131,8 @@ func (s *Service) planDeploy(raw json.RawMessage) ([]jobs.Step, error) {
 	fail := func(ctx context.Context, msg string) {
 		_ = s.st.setStatus(context.WithoutCancel(ctx), p.StackID, "failed", msg, nil)
 	}
-	return []jobs.Step{
+	// Steps 0-3 keep their indexes: later steps read their outputs by index.
+	steps := []jobs.Step{
 		{
 			Name: "validate revision and policy",
 			Run: func(ctx context.Context, sc *jobs.StepContext) error {
@@ -302,6 +311,11 @@ func (s *Service) planDeploy(raw json.RawMessage) ([]jobs.Step, error) {
 				return s.startServices(ctx, sc, p.Actor, st, rev, proj)
 			},
 		},
+	}
+	if p.Snapshot {
+		steps = append(steps, s.snapshotStep(p))
+	}
+	return append(steps, []jobs.Step{
 		{
 			Name: "create and start services",
 			Run: func(ctx context.Context, sc *jobs.StepContext) error {
@@ -365,7 +379,7 @@ func (s *Service) planDeploy(raw json.RawMessage) ([]jobs.Step, error) {
 				return s.st.setStatus(ctx, p.StackID, "deployed", "", &n)
 			},
 		},
-	}, nil
+	}...), nil
 }
 
 // checkServices returns services that are not ready yet, or an error for a
@@ -467,9 +481,137 @@ func (s *Service) planDown(raw json.RawMessage) ([]jobs.Step, error) {
 			return nil
 		}})
 	}
+	if p.DeleteStack {
+		return append(steps, jobs.Step{Name: "delete stack record", Run: func(ctx context.Context, sc *jobs.StepContext) error {
+			st, err := s.st.byID(ctx, s.st.db, p.StackID)
+			if errors.Is(err, ErrNotFound) {
+				return nil // already deleted by an earlier attempt
+			}
+			if err != nil {
+				return err
+			}
+			return s.withTx(ctx, func(tx *sql.Tx) error {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM stacks WHERE id = ?`, st.ID); err != nil {
+					return err
+				}
+				_, err := audit.Append(ctx, tx, s.st.now(), audit.Event{Actor: p.Actor, Action: "stack.delete", Target: "stack:" + st.Name,
+					Result: audit.Success, Details: map[string]string{"job": fmt.Sprint(sc.JobID), "volumes_removed": fmt.Sprint(p.RemoveVolumes)}})
+				return err
+			})
+		}}), nil
+	}
 	steps = append(steps, jobs.Step{Name: "record", Run: func(ctx context.Context, sc *jobs.StepContext) error {
 		zero := 0
 		return s.st.setStatus(ctx, p.StackID, "stopped", "", &zero)
 	}})
 	return steps, nil
+}
+
+// snapshotName is the volume holding the pre-update copy of vol.
+func snapshotName(vol string) string {
+	const suffix = ".snapshot"
+	if len(vol)+len(suffix) <= 63 {
+		return vol + suffix
+	}
+	sum := sha256.Sum256([]byte(vol))
+	return vol[:40] + "." + hex.EncodeToString(sum[:4]) + suffix
+}
+
+type snapshotPair struct {
+	Volume   string `json:"volume"`
+	Snapshot string `json:"snapshot"`
+}
+
+// snapshotStep copies every volume of the stack before the new revision
+// starts; its compensation restores them (AT-F05-02, ADR-0021). It runs after
+// the previous containers were removed, so the data does not change while it
+// is copied.
+func (s *Service) snapshotStep(p deployPayload) jobs.Step {
+	return jobs.Step{
+		Name: "snapshot volumes",
+		Run: func(ctx context.Context, sc *jobs.StepContext) error {
+			st, err := s.st.byID(ctx, s.st.db, p.StackID)
+			if err != nil {
+				return jobs.Permanent(err)
+			}
+			var vols []agentproto.VolumeSummary
+			if err := s.call(ctx, sc, p.Actor, agentproto.OpVolumesList, nil, &vols); err != nil {
+				return err
+			}
+			pairs := []snapshotPair{}
+			for _, v := range vols {
+				if v.Labels[labelStack] != st.Name || v.Labels[labelSnapshotOf] != "" {
+					continue
+				}
+				pair := snapshotPair{Volume: v.Name, Snapshot: snapshotName(v.Name)}
+				if err := s.copyVolume(ctx, sc, p.Actor, st.Name, pair.Volume, pair.Snapshot); err != nil {
+					return err
+				}
+				sc.Logf("copied %s to %s", pair.Volume, pair.Snapshot)
+				pairs = append(pairs, pair)
+			}
+			sc.Logf("%d volumes saved", len(pairs))
+			return sc.SetOutput("snapshots", pairs)
+		},
+		Compensate: func(ctx context.Context, sc *jobs.StepContext) error {
+			st, err := s.st.byID(ctx, s.st.db, p.StackID)
+			if err != nil {
+				return err
+			}
+			var pairs []snapshotPair
+			if _, err := sc.Output(4, "snapshots", &pairs); err != nil {
+				return err
+			}
+			// Containers of the failed revision may still be running.
+			list, err := s.listContainers(ctx, sc, p.Actor, st.Name)
+			if err != nil {
+				return err
+			}
+			for _, c := range list {
+				if err := s.removeContainer(ctx, sc, p.Actor, c.ID); err != nil {
+					return err
+				}
+			}
+			for _, pair := range pairs {
+				if err := s.copyVolume(ctx, sc, p.Actor, st.Name, pair.Snapshot, pair.Volume); err != nil {
+					return err
+				}
+				sc.Logf("restored %s from %s", pair.Volume, pair.Snapshot)
+			}
+			return nil
+		},
+	}
+}
+
+// copyVolume replaces dst with a copy of src through the agent's helper
+// container and waits until it has finished.
+func (s *Service) copyVolume(ctx context.Context, sc *jobs.StepContext, actor, stack, src, dst string) error {
+	var res agentproto.VolumeCopyResult
+	if err := s.call(ctx, sc, actor, agentproto.OpVolumesCopy, agentproto.VolumeCopy{Source: src, Target: dst, Stack: stack}, &res); err != nil {
+		return fmt.Errorf("copy %s to %s: %w", src, dst, err)
+	}
+	deadline := time.Now().Add(s.CopyTimeout)
+	for {
+		var d agentproto.ContainerDetail
+		if err := s.call(ctx, sc, actor, agentproto.OpContainersInspect, agentproto.ContainerRef{ID: res.Helper}, &d); err != nil {
+			return fmt.Errorf("copy %s to %s: %w", src, dst, err)
+		}
+		if !d.Running && (d.Status == "exited" || d.Status == "dead") {
+			if err := s.removeContainer(ctx, sc, actor, res.Helper); err != nil {
+				return err
+			}
+			if d.ExitCode != 0 {
+				return jobs.Permanent(fmt.Errorf("copying %s to %s failed with exit code %d (disk full?)", src, dst, d.ExitCode))
+			}
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return jobs.Permanent(fmt.Errorf("copying %s to %s did not finish within %s", src, dst, s.CopyTimeout))
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(s.pollInterval):
+		}
+	}
 }

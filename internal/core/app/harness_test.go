@@ -51,6 +51,8 @@ type harness struct {
 	clock   *clock
 	logs    *bytes.Buffer
 	ipSeq   atomic.Int64
+	cfg     config.Config
+	opts    Options
 }
 
 func newHarness(t *testing.T) *harness {
@@ -60,6 +62,12 @@ func newHarness(t *testing.T) *harness {
 
 // newHarnessWith lets a test adjust the configuration before the Core is built.
 func newHarnessWith(t *testing.T, adjust func(*config.Config)) *harness {
+	t.Helper()
+	return newHarnessFull(t, adjust, nil)
+}
+
+// newHarnessFull also lets a test adjust the Core options.
+func newHarnessFull(t *testing.T, adjust func(*config.Config), adjustOpts func(*Options)) *harness {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "data")
 	if err := os.Mkdir(dir, 0o700); err != nil {
@@ -83,17 +91,21 @@ func newHarnessWith(t *testing.T, adjust func(*config.Config)) *harness {
 	}
 	clk := &clock{t: time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)}
 	var logs bytes.Buffer
-	a, err := New(db, cfg, slog.New(slog.NewJSONHandler(&logs, nil)), Options{
+	opts := Options{
 		Now:  clk.Now,
 		Hash: identity.HashParams{Memory: 64, Time: 1, Threads: 1},
 		Runner: jobs.RunnerOptions{Workers: 2, Lease: 300 * time.Millisecond, Heartbeat: 20 * time.Millisecond,
 			PollInterval: 10 * time.Millisecond, BackoffBase: 10 * time.Millisecond, BackoffMax: 50 * time.Millisecond},
 		UI: fstest.MapFS{"index.html": {Data: []byte(`<!doctype html><div id="root"></div>`)}},
-	})
+	}
+	if adjustOpts != nil {
+		adjustOpts(&opts)
+	}
+	a, err := New(db, cfg, slog.New(slog.NewJSONHandler(&logs, nil)), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &harness{t: t, app: a, db: db, clock: clk, logs: &logs, dataDir: dir}
+	return &harness{t: t, app: a, db: db, clock: clk, logs: &logs, dataDir: dir, cfg: cfg, opts: opts}
 }
 
 // client simulates one browser: it keeps the session cookie and CSRF token

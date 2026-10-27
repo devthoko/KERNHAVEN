@@ -7,6 +7,8 @@ import { Button } from "./ui";
 
 const nav: { to: string; label: string; permission?: Permission }[] = [
   { to: "/", label: "Dashboard" },
+  { to: "/apps", label: "Apps", permission: "apps.read" },
+  { to: "/apps/store", label: "App store", permission: "apps.read" },
   { to: "/stacks", label: "Stacks", permission: "containers.read" },
   { to: "/containers", label: "Containers", permission: "containers.read" },
   { to: "/images", label: "Images", permission: "containers.read" },
@@ -21,12 +23,15 @@ const nav: { to: string; label: string; permission?: Permission }[] = [
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { path } = useRouter();
   const { can } = useSession();
+  const matches = (to: string) => (to === "/" ? path === "/" : path === to || path.startsWith(`${to}/`));
+  // Only the most specific entry is current (/apps/store is not also /apps).
+  const current = nav.filter((n) => matches(n.to)).sort((a, b) => b.to.length - a.to.length)[0]?.to;
   return (
     <ul className="space-y-1">
       {nav
         .filter((n) => !n.permission || can(n.permission))
         .map((n) => {
-          const active = n.to === "/" ? path === "/" : path === n.to || path.startsWith(`${n.to}/`);
+          const active = n.to === current;
           return (
             <li key={n.to}>
               <Link

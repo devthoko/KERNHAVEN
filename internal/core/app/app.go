@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
+	"github.com/devthoko/KERNHAVEN/internal/core/apps"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/containers"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
@@ -32,6 +33,7 @@ type App struct {
 	Jobs     *jobs.Service
 	Agent    *agentclient.Client // nil when no agent is configured
 	Stacks   *stacks.Service
+	Apps     *apps.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -90,6 +92,8 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}
 	stackSvc := stacks.New(db, box, agent, auditLog, jobSvc, runner.Wake, stacks.Options{BindRoots: cfg.Containers.AllowedBindRoots, Fetcher: opts.Fetcher, Now: now})
 	stackSvc.Register(rt)
+	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
+	appSvc.Register(rt, ids)
 	ui := opts.UI
 	if ui == nil {
 		ui = webui.Dist()
@@ -104,6 +108,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Jobs:     jobSvc,
 		Agent:    agent,
 		Stacks:   stackSvc,
+		Apps:     appSvc,
 		Runner:   runner,
 		now:      now,
 	}

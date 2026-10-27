@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,11 +32,18 @@ type memDocker struct {
 	specs      map[string]agentproto.ContainerSpec
 	networks   map[string]map[string]string
 	volLabels  map[string]map[string]string
+	// data is the content of each volume (M8 snapshot tests).
+	data      map[string]string
+	exitCodes map[string]int
+	// block makes Create wait for images containing "block" until closed.
+	block   chan struct{}
+	waiting atomic.Int32 // Create calls waiting on block
 }
 
 func newMemDocker() *memDocker {
 	return &memDocker{containers: map[string]agentproto.ContainerSummary{}, labels: map[string]map[string]string{}, volumes: map[string]bool{},
-		specs: map[string]agentproto.ContainerSpec{}, networks: map[string]map[string]string{}, volLabels: map[string]map[string]string{}}
+		specs: map[string]agentproto.ContainerSpec{}, networks: map[string]map[string]string{}, volLabels: map[string]map[string]string{},
+		data: map[string]string{}, exitCodes: map[string]int{}}
 }
 
 func (m *memDocker) Info(context.Context) (agentproto.DockerInfo, error) {
@@ -61,6 +69,9 @@ func (m *memDocker) Inspect(_ context.Context, id string) (agentproto.ContainerD
 	exit := 0
 	if c.State == "exited" {
 		exit = 1
+	}
+	if code, ok := m.exitCodes[id]; ok {
+		exit = code
 	}
 	return agentproto.ContainerDetail{ID: c.ID, Name: id, Status: c.State, Running: c.State == "running", ExitCode: exit, Labels: c.Labels}, nil
 }
@@ -90,9 +101,37 @@ func (m *memDocker) setState(id, state string) (bool, error) {
 }
 
 // Start runs a container; images containing "exits" stop immediately.
+// Volume-copy helpers copy the data and exit with 0; images containing
+// "migrate" overwrite the data of their volumes, like a schema migration.
 func (m *memDocker) Start(_ context.Context, id string) (bool, error) {
 	m.mu.Lock()
-	exits := strings.Contains(m.containers[m.key(id)].Image, "exits")
+	name := m.key(id)
+	c := m.containers[name]
+	spec := m.specs[name]
+	if c.Labels[agent.LabelHelper] == "volume-copy" {
+		var from, to string
+		for _, mt := range spec.Mounts {
+			if mt.Target == "/from" {
+				from = mt.Source
+			} else if mt.Target == "/to" {
+				to = mt.Source
+			}
+		}
+		m.data[to] = m.data[from]
+		m.exitCodes[name] = 0
+		c.State = "exited"
+		m.containers[name] = c
+		m.mu.Unlock()
+		return true, nil
+	}
+	if strings.Contains(c.Image, "migrate") {
+		for _, mt := range spec.Mounts {
+			if mt.Type == "volume" {
+				m.data[mt.Source] = "migrated by " + c.Image
+			}
+		}
+	}
+	exits := strings.Contains(c.Image, "exits")
 	m.mu.Unlock()
 	if exits {
 		return m.setState(id, "exited")
@@ -111,9 +150,22 @@ func (m *memDocker) Pause(_ context.Context, id string) (bool, error) {
 func (m *memDocker) Unpause(_ context.Context, id string) (bool, error) {
 	return m.setState(id, "running")
 }
-func (m *memDocker) Create(_ context.Context, s agentproto.ContainerSpec, labels map[string]string) (agentproto.CreateResult, error) {
+func (m *memDocker) Create(ctx context.Context, s agentproto.ContainerSpec, labels map[string]string) (agentproto.CreateResult, error) {
+	m.mu.Lock()
+	block := m.block
+	m.mu.Unlock()
+	if block != nil && strings.Contains(s.Image, "block") {
+		m.waiting.Add(1)
+		defer m.waiting.Add(-1)
+		select {
+		case <-block:
+		case <-ctx.Done():
+			return agentproto.CreateResult{}, ctx.Err()
+		}
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	delete(m.exitCodes, s.Name)
 	if _, dup := m.containers[s.Name]; dup {
 		return agentproto.CreateResult{}, docker.ErrConflict
 	}
@@ -175,6 +227,7 @@ func (m *memDocker) RemoveVolume(_ context.Context, name string) error {
 		return docker.ErrConflict
 	}
 	delete(m.volumes, name)
+	delete(m.data, name)
 	return nil
 }
 func (m *memDocker) ListNetworks(context.Context) ([]agentproto.NetworkSummary, error) {
@@ -202,8 +255,14 @@ func (m *memDocker) RemoveNetwork(_ context.Context, name string) error {
 // withAgent returns a harness whose Core talks to a real agent server backed by memDocker.
 func withAgent(t *testing.T) (*harness, *memDocker) {
 	t.Helper()
+	return withAgentOpts(t, nil)
+}
+
+// withAgentOpts also adjusts the Core options.
+func withAgentOpts(t *testing.T, adjust func(*Options)) (*harness, *memDocker) {
+	t.Helper()
 	sock := filepath.Join(t.TempDir(), "agent.sock")
-	h := newHarnessWith(t, func(c *config.Config) { c.Agent.Socket = sock })
+	h := newHarnessFull(t, func(c *config.Config) { c.Agent.Socket = sock }, adjust)
 	pub, err := agentproto.ReadPublicKey(filepath.Join(h.dataDir, "agent-grant.pub"))
 	if err != nil {
 		t.Fatal(err)

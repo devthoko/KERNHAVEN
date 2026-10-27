@@ -19,6 +19,8 @@ var (
 	ErrNotFound = errors.New("stack not found")
 	ErrExists   = errors.New("a stack with this name already exists")
 	ErrDeployed = errors.New("the stack is deployed; take it down first")
+	// ErrManaged protects the stacks of installed apps from direct changes.
+	ErrManaged = errors.New("this stack belongs to an installed app; change it on the app's page")
 )
 
 // Stack is the API view of a stack.
@@ -29,6 +31,7 @@ type Stack struct {
 	DeployedRevision int       `json:"deployed_revision"`
 	Status           string    `json:"status"`
 	StatusMessage    string    `json:"status_message,omitempty"`
+	ManagedBy        string    `json:"managed_by"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -68,12 +71,12 @@ type store struct {
 
 func (st *store) nowMS() int64 { return st.now().UnixMilli() }
 
-const stackCols = `id, name, latest_revision, deployed_revision, status, status_message, created_ms, updated_ms`
+const stackCols = `id, name, latest_revision, deployed_revision, status, status_message, managed_by, created_ms, updated_ms`
 
 func scanStack(row interface{ Scan(...any) error }) (Stack, error) {
 	var s Stack
 	var c, u int64
-	err := row.Scan(&s.ID, &s.Name, &s.LatestRevision, &s.DeployedRevision, &s.Status, &s.StatusMessage, &c, &u)
+	err := row.Scan(&s.ID, &s.Name, &s.LatestRevision, &s.DeployedRevision, &s.Status, &s.StatusMessage, &s.ManagedBy, &c, &u)
 	s.CreatedAt, s.UpdatedAt = time.UnixMilli(c).UTC(), time.UnixMilli(u).UTC()
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrNotFound

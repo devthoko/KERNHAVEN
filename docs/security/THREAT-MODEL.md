@@ -89,8 +89,8 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Open |
-| TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Partially mitigated (M6: pulls record the resolved digest, UI warns about unpinned images; update diffing in M8) |
+| TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Mitigated (M8, ADR-0020: Ed25519-signed catalogs, one trust key per source set by an owner, rollback and freeze protection, strict parsing; every app is evaluated by the container policy and its privileges are shown before install; exceptions need an owner) |
+| TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Partially mitigated (M6: pulls record the resolved digest, UI warns about unpinned images; M8: the update page lists changed images and flags unpinned ones; catalogs are not required to pin digests) |
 | TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Mitigated for Compose URL import (M7: HTTPS only, dialer refuses non-public addresses after DNS resolution and on redirects, size and time limits); webhooks in M15 |
 | TH-43 | T | Tampered release or upgrade (T7) | Signed releases, pinned public key, refuse unsigned | M18 | Open |
 | TH-44 | T | Compromised CI action or dependency | Actions pinned by SHA, `govulncheck`, minimal dependencies, `go.sum` verification | M0 | Mitigated (ADR-0014) |
@@ -100,7 +100,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
 | TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
-| TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Mitigated for stack variables (M7, ADR-0019: AES-256-GCM at rest, secrets write-only); app secrets in M8 |
+| TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Mitigated for stack variables and app secrets (M7/M8, ADR-0019: AES-256-GCM at rest, write-only, generated app secrets never leave the server) |
 | TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Partially mitigated (M2: hash chain + append-only triggers; tail truncation needs M17 export) |
 | TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync; M3: journaled jobs with SIGKILL recovery tests; VM power-loss test blocked by B-2) |
 | TH-54 | I | Data directory readable by other local users (T8) | Startup refuses data dir with group/other permissions | M1 | Mitigated (AT-F00-01) |
@@ -122,3 +122,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-27 | M4 | TH-20, TH-22, TH-23, TH-24, TH-34 mitigated |
 | 2026-10-27 | M6 | TH-30 mitigated for single containers; TH-21, TH-31, TH-33, TH-41 partially |
 | 2026-10-27 | M7 | TH-42 (Compose URL import), TH-51 (stack variables), TH-33 (stacks) mitigated |
+| 2026-10-27 | M8 | TH-40 mitigated (signed catalogs); TH-41 update diff; TH-51 app secrets; new agent operation volumes.copy (ADR-0021) |

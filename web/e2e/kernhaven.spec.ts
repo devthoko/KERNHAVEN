@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { generateKeyPairSync, sign as cryptoSign } from "node:crypto";
 
 // One ordered journey through a fresh instance (setup → owner → viewer).
 // The owner signs in once and the session is reused: the login rate limit
@@ -303,6 +304,123 @@ test("AT-F03-05: take the stack down", async () => {
   await expect(page.getByRole("heading", { name: "Stacks", exact: true })).toBeVisible();
 });
 
+// ---- M8: app store ----
+
+const catalogKeys = generateKeyPairSync("ed25519");
+const trustKey = catalogKeys.publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("base64");
+
+function e2eApp(version: string, message: string) {
+  return {
+    id: "e2e-notes",
+    name: "E2E Notes",
+    version,
+    summary: "A test app for the browser tests",
+    categories: ["Testing"],
+    compose: `services:
+  app:
+    image: alpine:3
+    user: "65534"
+    mem_limit: 64m
+    command: ["sh", "-c", "echo ${message} \${TITLE}; sleep 600"]
+    ports: ["127.0.0.1:\${PORT}:8080"]
+    environment:
+      TOKEN: \${TOKEN}
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 1s
+      retries: 3
+    volumes: [data:/data]
+volumes:
+  data:
+`,
+    fields: [
+      { name: "TITLE", label: "Title", type: "text", default: "notes" },
+      { name: "PORT", label: "Port", type: "number", default: "18090", min: 1024, required: true },
+      { name: "TOKEN", label: "Token", type: "password", generate: "hex32", required: true },
+    ],
+    web: { service: "app", port: 8080 },
+    exceptions: [],
+  };
+}
+
+function signedCatalog(serial: number, version: string, message: string): Buffer {
+  const payload = Buffer.from(JSON.stringify({ name: "E2E catalog", serial, expires: new Date(Date.now() + 30 * 86400_000).toISOString(), apps: [e2eApp(version, message)] }));
+  const signature = cryptoSign(null, Buffer.concat([Buffer.from("kernhaven-catalog/v1\n"), payload]), catalogKeys.privateKey);
+  return Buffer.from(JSON.stringify({ format: "kernhaven-catalog/v1", key_id: "", payload: payload.toString("base64"), signature: signature.toString("base64") }));
+}
+
+async function uploadCatalog(p: Page, data: Buffer) {
+  await p.goto("/apps/sources");
+  await p.getByLabel("Upload catalog").setInputFiles({ name: "catalog.json", mimeType: "application/json", buffer: data });
+  await expect(p.getByText("Catalog for E2E catalog verified and accepted.")).toBeVisible();
+}
+
+test("AT-F04-01, AT-F04-03: the owner adds a source and uploads a signed catalog", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/apps/store");
+  await expect(page.getByText("No apps found.")).toBeVisible();
+  await page.getByRole("button", { name: "Manage sources" }).click();
+  await page.getByRole("button", { name: "Add source" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add catalog source" });
+  await dialog.getByLabel("Name").fill("E2E catalog");
+  await dialog.getByLabel("Trust key").fill(trustKey);
+  await dialog.getByRole("button", { name: "Add source" }).click();
+  await expect(page.getByText("Source added.")).toBeVisible();
+  // A tampered catalog is rejected and the reason is shown.
+  const tampered = signedCatalog(1, "1.0", "v1").toString().replace(/"signature":"./, '"signature":"A');
+  await page.getByLabel("Upload catalog").setInputFiles({ name: "bad.json", mimeType: "application/json", buffer: Buffer.from(tampered) });
+  await expect(page.getByText(/Last catalog rejected: the catalog signature is not valid/)).toBeVisible();
+  await uploadCatalog(page, signedCatalog(1, "1.0", "v1"));
+  await expect(page.getByText(/serial 1 · 1 apps/)).toBeVisible();
+  await expectAccessible(page, "catalog sources");
+});
+
+test("AT-F04-02, AT-F04-04, AT-F05-01: browse, review the disclosure and install", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/apps/store");
+  await page.getByLabel("Search apps").fill("e2e");
+  await page.getByRole("button", { name: "Testing" }).click();
+  await page.getByRole("link", { name: "E2E Notes" }).click();
+  await expect(page.getByRole("heading", { name: "What this app can do" })).toBeVisible();
+  await expect(page.getByText("127.0.0.1:18090 → 8080/tcp")).toBeVisible();
+  await expect(page.getByText("image not pinned")).toBeVisible();
+  await expectAccessible(page, "store app");
+  await page.getByLabel("Name").fill("e2e-app");
+  await page.getByLabel("Title").fill("hello");
+  await page.getByRole("button", { name: "Install" }).click();
+  await expect(page.getByRole("heading", { name: "e2e-app" })).toBeVisible();
+  await expect(page.getByText("deployed", { exact: true })).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByRole("link", { name: "Open E2E Notes" })).toBeVisible();
+  await expect(page.getByText("secret", { exact: true })).toBeVisible();
+  await expectAccessible(page, "installed app");
+});
+
+test("AT-F05-02: update with a snapshot of the data", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await uploadCatalog(page, signedCatalog(2, "2.0", "v2"));
+  await page.goto("/apps/e2e-app");
+  await expect(page.getByRole("heading", { name: "Update available: 1.0 → 2.0" })).toBeVisible();
+  await page.getByRole("button", { name: "Review update" }).click();
+  await page.getByRole("button", { name: "Update to 2.0" }).click();
+  await expect(page.getByText(/Updating to 2.0/)).toBeVisible();
+  await expect(page.getByText(/E2E Notes 2\.0 · from E2E catalog/)).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByRole("table", { name: "Versions" }).getByRole("row")).toHaveCount(3);
+});
+
+test("AT-F05-03: remove the app and its data after re-entering the password", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.getByRole("button", { name: "Remove" }).click();
+  const dialog = page.getByRole("dialog", { name: "Remove e2e-app?" });
+  await dialog.getByLabel(/Delete the data permanently/).check();
+  await dialog.getByLabel("Your password").fill("not my password at all");
+  await dialog.getByRole("button", { name: "Remove app and data" }).click();
+  await expect(dialog.getByText("the password is not correct")).toBeVisible();
+  await dialog.getByLabel("Your password").fill(OWNER.password);
+  await dialog.getByRole("button", { name: "Remove app and data" }).click();
+  await expect(page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
+  await expect(page.getByText("No apps installed yet.")).toBeVisible({ timeout: 120_000 });
+});
+
 test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser }) => {
   const other = await freshLogin(browser, OWNER);
   await page.goto("/account");
@@ -319,7 +437,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -367,5 +485,9 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await viewer.goto("/containers");
   await expect(viewer.getByRole("heading", { name: "Containers", exact: true })).toBeVisible();
   await expect(viewer.getByRole("button", { name: "New container" })).toHaveCount(0);
+  // M8: viewers browse the store but cannot install or manage sources.
+  await viewer.goto("/apps/sources");
+  await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "Add source" })).toHaveCount(0);
   await viewer.context().close();
 });

@@ -10,6 +10,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
+	"github.com/devthoko/KERNHAVEN/internal/policy"
 )
 
 // DefaultConfigPath is the agent configuration file.
@@ -24,7 +25,9 @@ type Config struct {
 	// AllowedBindRoots are host directories containers may bind-mount
 	// without a policy exception (M6). Empty means none.
 	AllowedBindRoots []string `toml:"allowed_bind_roots"`
-	Log              struct {
+	// HelperImage is the image for volume copies before app updates (ADR-0021).
+	HelperImage string `toml:"helper_image"`
+	Log         struct {
 		Level string `toml:"level"`
 	} `toml:"log"`
 
@@ -36,7 +39,7 @@ func (c Config) PublicKey() ed25519.PublicKey { return c.publicKey }
 
 // LoadConfig reads and validates the agent configuration strictly.
 func LoadConfig(path string) (Config, error) {
-	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub"}
+	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub", HelperImage: DefaultHelperImage}
 	cfg.Log.Level = "info"
 	md, err := toml.DecodeFile(path, &cfg)
 	if err != nil {
@@ -59,6 +62,9 @@ func LoadConfig(path string) (Config, error) {
 		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
 			errs = append(errs, fmt.Errorf("allowed_bind_roots: %q must be an absolute, clean directory other than /", r))
 		}
+	}
+	if !policy.ValidImageReference(cfg.HelperImage) {
+		errs = append(errs, fmt.Errorf("helper_image: %q is not a valid image reference", cfg.HelperImage))
 	}
 	if len(cfg.AllowedUIDs) == 0 {
 		errs = append(errs, errors.New("allowed_uids: at least one UID (the Core service user) is required"))

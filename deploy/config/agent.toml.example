@@ -16,5 +16,9 @@ grant_public_key = "/etc/kernhaven/agent-grant.pub"
 # Docker Engine socket.
 docker_socket = "/run/docker.sock"
 
+# Image for volume copies before app updates (ADR-0021). The default is
+# busybox 1.37.0 pinned by digest; air-gapped hosts point this to a local image.
+# helper_image = "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
+
 [log]
 level = "info"   # debug | info | warn | error

@@ -103,6 +103,8 @@ func stopTimeout(s int) (time.Duration, error) {
 // Options configure the agent's own policy evaluation.
 type Options struct {
 	AllowedBindRoots []string
+	// HelperImage runs volume copies (ADR-0021); empty means DefaultHelperImage.
+	HelperImage string
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
@@ -157,6 +159,7 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 	for name, h := range manageOperations(d, o) {
 		ops[name] = h
 	}
+	ops[agentproto.OpVolumesCopy] = volumeCopy(d, o)
 	return ops
 }
 

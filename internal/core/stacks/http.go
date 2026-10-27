@@ -41,7 +41,7 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httpserver.WriteError(w, r, http.StatusUnprocessableEntity, "validation_failed", ve.Message)
 	case errors.Is(err, ErrNotFound):
 		httpserver.WriteError(w, r, http.StatusNotFound, "not_found", "not found")
-	case errors.Is(err, ErrExists), errors.Is(err, ErrDeployed):
+	case errors.Is(err, ErrExists), errors.Is(err, ErrDeployed), errors.Is(err, ErrManaged):
 		httpserver.WriteError(w, r, http.StatusConflict, "conflict", err.Error())
 	case errors.Is(err, jobs.ErrDuplicate):
 		httpserver.WriteError(w, r, http.StatusConflict, "conflict", "a deployment or teardown of this stack is already queued or running")
@@ -90,7 +90,7 @@ func (s *Service) Register(rt *httpserver.Router) {
 		if st, err := s.st.byName(r.Context(), s.st.db, in.Name); err == nil {
 			stackID = st.ID
 		}
-		vars, err := s.mergedVars(r.Context(), stackID, in.Variables)
+		vars, err := s.mergedVars(r.Context(), s.st.db, stackID, in.Variables)
 		if err != nil {
 			writeErr(w, r, err)
 			return

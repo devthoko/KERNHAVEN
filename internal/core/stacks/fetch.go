@@ -86,32 +86,38 @@ func NewFetcher(allow func(net.IP) bool, rootCAs *http.Transport) *Fetcher {
 
 // Fetch downloads a Compose file from an https URL (max compose.MaxSize).
 func (f *Fetcher) Fetch(ctx context.Context, raw string) (string, error) {
+	b, err := f.FetchLimit(ctx, raw, "application/yaml, text/yaml, text/plain", compose.MaxSize)
+	return string(b), err
+}
+
+// FetchLimit downloads at most max bytes from a public https URL.
+func (f *Fetcher) FetchLimit(ctx context.Context, raw, accept string, max int) ([]byte, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
-		return "", ErrBlocked
+		return nil, ErrBlocked
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	req.Header.Set("Accept", "application/yaml, text/yaml, text/plain")
+	req.Header.Set("Accept", accept)
 	resp, err := f.client.Do(req)
 	if err != nil {
 		if errors.Is(err, ErrBlocked) {
-			return "", ErrBlocked
+			return nil, ErrBlocked
 		}
-		return "", fmt.Errorf("download failed: %w", err)
+		return nil, fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, compose.MaxSize+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(max)+1))
 	if err != nil {
-		return "", fmt.Errorf("download failed: %w", err)
+		return nil, fmt.Errorf("download failed: %w", err)
 	}
-	if len(body) > compose.MaxSize {
-		return "", fmt.Errorf("the file is larger than %d KiB", compose.MaxSize>>10)
+	if len(body) > max {
+		return nil, fmt.Errorf("the file is larger than %d KiB", max>>10)
 	}
-	return string(body), nil
+	return body, nil
 }

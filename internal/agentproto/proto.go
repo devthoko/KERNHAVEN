@@ -43,6 +43,7 @@ const (
 	OpNetworksList      = "networks.list"
 	OpNetworksCreate    = "networks.create"
 	OpNetworksRemove    = "networks.remove"
+	OpVolumesCopy       = "volumes.copy"
 )
 
 // Grant limits.

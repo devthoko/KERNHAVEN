@@ -283,3 +283,17 @@ type NetworkSummary struct {
 	Labels     map[string]string `json:"labels"`
 	BuiltIn    bool              `json:"built_in"`
 }
+
+// VolumeCopy replaces the content of Target with a copy of Source (M8). Both
+// volumes must belong to Stack; Target is created if it does not exist.
+type VolumeCopy struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Stack  string `json:"stack"`
+}
+
+// VolumeCopyResult names the helper container doing the copy. The caller
+// waits until it has exited and removes it.
+type VolumeCopyResult struct {
+	Helper string `json:"helper"`
+}

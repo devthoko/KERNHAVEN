@@ -183,9 +183,9 @@ func TestOperationAllowList(t *testing.T) {
 	want := []string{"agent.info", "containers.create", "containers.inspect", "containers.list", "containers.logs", "containers.pause",
 		"containers.remove", "containers.restart", "containers.start", "containers.stop", "containers.unpause", "docker.info",
 		"images.list", "images.prune", "images.pull", "images.remove", "networks.create", "networks.list", "networks.remove",
-		"volumes.create", "volumes.list", "volumes.remove"}
+		"volumes.copy", "volumes.create", "volumes.list", "volumes.remove"}
 	if got := OperationNames(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6 design)", got, want)
+		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6/M8 design)", got, want)
 	}
 }
 

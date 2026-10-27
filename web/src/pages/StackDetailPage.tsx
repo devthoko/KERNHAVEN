@@ -55,7 +55,9 @@ export function StackDetailPage({ name }: { name: string }) {
   if (loading && !data) return <Spinner />;
   if (!data) return <Alert>{error ?? "Stack not found."}</Alert>;
   const st = data.stack;
-  const manage = can("containers.manage");
+  // Stacks of installed apps change only through the app pages (M8).
+  const managed = st.managed_by === "app";
+  const manage = can("containers.manage") && !managed;
 
   return (
     <>
@@ -99,6 +101,17 @@ export function StackDetailPage({ name }: { name: string }) {
                 Follow job #{notice.job}
               </Link>
             )}
+          </Alert>
+        </div>
+      )}
+      {managed && (
+        <div className="mb-4">
+          <Alert kind="info">
+            This stack belongs to an installed app.{" "}
+            <Link to={`/apps/${st.name}`} className="underline">
+              Manage it on the app page
+            </Link>
+            .
           </Alert>
         </div>
       )}

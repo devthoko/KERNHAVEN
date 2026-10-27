@@ -573,6 +573,125 @@ paths:
       responses:
         "202": { description: Job queued }
         "409": { $ref: "#/components/responses/Error" }
+  /catalog/sources:
+    get:
+      operationId: listCatalogSources
+      x-permission: apps.read
+      responses:
+        "200": { description: Sources, content: { application/json: { schema: { type: object, properties: { sources: { type: array, items: { $ref: "#/components/schemas/CatalogSource" } } } } } } }
+    post:
+      operationId: addCatalogSource
+      x-permission: catalog.manage
+      description: Adds a catalog source with its Ed25519 trust key (ADR-0020). The URL is optional; without it, signed catalogs are uploaded. The source is synced separately.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSourceInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /catalog/sources/{id}:
+    delete:
+      operationId: removeCatalogSource
+      x-permission: catalog.manage
+      description: Removes the source and its catalog. Installed apps stay but no longer receive updates.
+      parameters: [{ $ref: "#/components/parameters/SourceID" }]
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
+  /catalog/sources/{id}/sync:
+    post:
+      operationId: syncCatalogSource
+      x-permission: catalog.manage
+      description: Downloads the catalog from the source's public HTTPS URL and accepts it only if the signature verifies against the source's key, the serial does not go backwards and it has not expired. A rejected catalog changes nothing; the reason is recorded on the source.
+      parameters: [{ $ref: "#/components/parameters/SourceID" }]
+      responses:
+        "200": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
+        "422": { description: Rejected catalog (code catalog_rejected), blocked URL or source without URL, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /catalog/sources/{id}/upload:
+    post:
+      operationId: uploadCatalog
+      x-permission: catalog.manage
+      description: Accepts a signed catalog envelope as the request body, with the same checks as a sync. The server's max_body_bytes limits the size.
+      parameters: [{ $ref: "#/components/parameters/SourceID" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogEnvelope" } } } }
+      responses:
+        "200": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /catalog/apps:
+    get:
+      operationId: browseCatalog
+      x-permission: apps.read
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Matching apps and all categories
+          content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/CatalogListing" } }, categories: { type: array, items: { type: string } } } } } }
+  /catalog/apps/{id}/{app}:
+    get:
+      operationId: getCatalogApp
+      x-permission: apps.read
+      description: The catalog entry with its configuration form and the policy disclosure Kernhaven computed from the Compose file.
+      parameters:
+        - { $ref: "#/components/parameters/SourceID" }
+        - { name: app, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" } }
+      responses:
+        "200": { description: App, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogAppDetail" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /apps:
+    get:
+      operationId: listApps
+      x-permission: apps.read
+      responses:
+        "200": { description: Installed apps, content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/App" } } } } } } }
+    post:
+      operationId: installApp
+      x-permission: apps.manage
+      description: Creates the app's managed stack from the catalog entry and queues its deployment. Apps that need policy exceptions require policy.exceptions and approve_exceptions.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InstallAppInput" } } } }
+      responses:
+        "202": { $ref: "#/components/responses/AppJob" }
+        "403": { description: Exceptions need an owner's explicit approval (code approval_required), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /apps/{name}:
+    get:
+      operationId: getApp
+      x-permission: apps.read
+      description: Installed app with version history, configuration (secret values omitted) and the available update with image changes, new fields and new exceptions.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      responses:
+        "200": { description: App, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /apps/{name}/update:
+    post:
+      operationId: updateApp
+      x-permission: apps.manage
+      description: Deploys the catalog's version as a new revision with a pre-update volume snapshot; a failed deployment restores the volumes and the previous revision.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateAppInput" } } } }
+      responses:
+        "202": { $ref: "#/components/responses/AppJob" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { description: Already up to date or another operation is running, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /apps/{name}/remove:
+    post:
+      operationId: removeApp
+      x-permission: apps.manage
+      description: Removes the app's containers and networks. With delete_data the volumes are removed as well, which requires the user's current password.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, additionalProperties: false, properties: { delete_data: { type: boolean }, password: { type: string } } } } }
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "403": { description: Wrong password (code reauthentication_failed), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -580,6 +699,11 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    SourceID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
     StackName:
       name: name
       in: path
@@ -596,6 +720,112 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    CatalogSource:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        public_key: { type: string, description: base64 Ed25519 public key }
+        key_id: { type: string }
+        serial: { type: integer }
+        catalog_name: { type: string }
+        expires_at: { type: [string, "null"], format: date-time }
+        synced_at: { type: [string, "null"], format: date-time }
+        last_error: { type: string }
+        app_count: { type: integer }
+    CatalogSourceInput:
+      type: object
+      required: [name, public_key]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 64 }
+        url: { type: string, description: optional https URL }
+        public_key: { type: string }
+    CatalogEnvelope:
+      type: object
+      required: [format, payload, signature]
+      properties:
+        format: { type: string, const: kernhaven-catalog/v1 }
+        key_id: { type: string }
+        payload: { type: string, description: base64 of the catalog JSON }
+        signature: { type: string, description: "base64 Ed25519 signature over 'kernhaven-catalog/v1\\n' + payload bytes" }
+    CatalogListing:
+      type: object
+      properties:
+        source_id: { type: integer }
+        source_name: { type: string }
+        app_id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        summary: { type: string }
+        categories: { type: array, items: { type: string } }
+        installed: { type: array, items: { type: string } }
+    CatalogAppDetail:
+      type: object
+      properties:
+        source: { $ref: "#/components/schemas/CatalogSource" }
+        app: { type: object, description: The verified catalog entry (fields, compose, web, exceptions) }
+        disclosure: { $ref: "#/components/schemas/AppDisclosure" }
+        installed: { type: array, items: { type: string } }
+        expired: { type: boolean }
+    AppDisclosure:
+      type: object
+      properties:
+        installable: { type: boolean }
+        needs_approval: { type: boolean }
+        problems: { type: array, items: { type: string } }
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              service: { type: string }
+              image: { type: string }
+              image_pinned: { type: boolean }
+              user: { type: string }
+              ports: { type: array, items: { type: string } }
+              bind_mounts: { type: array, items: { type: string } }
+              volumes: { type: array, items: { type: string } }
+              capabilities: { type: array, items: { type: string } }
+              devices: { type: array, items: { type: string } }
+              privileged: { type: boolean }
+              host_network: { type: boolean }
+              violations: { type: array, items: { type: object } }
+              warnings: { type: array, items: { type: object } }
+              exceptions: { type: array, items: { type: object } }
+    App:
+      type: object
+      properties:
+        name: { type: string }
+        app_id: { type: string }
+        app_name: { type: string }
+        source_id: { type: [integer, "null"] }
+        source_name: { type: string }
+        version: { type: string, description: version of the deployed revision }
+        latest_version: { type: string }
+        update_available: { type: boolean }
+        status: { type: string }
+        status_message: { type: string }
+        deployed_revision: { type: integer }
+        web_port: { type: integer }
+        created_at: { type: string, format: date-time }
+    InstallAppInput:
+      type: object
+      required: [source_id, app_id]
+      additionalProperties: false
+      properties:
+        source_id: { type: integer }
+        app_id: { type: string }
+        name: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: defaults to app_id }
+        values: { type: object, additionalProperties: { type: string } }
+        approve_exceptions: { type: boolean }
+    UpdateAppInput:
+      type: object
+      additionalProperties: false
+      properties:
+        values: { type: object, additionalProperties: { type: string }, description: values for new fields; stored values are kept }
+        approve_exceptions: { type: boolean }
     Status:
       type: object
       required: [status]
@@ -751,6 +981,7 @@ components:
         deployed_revision: { type: integer }
         status: { type: string, enum: [new, deploying, deployed, failed, stopping, stopped] }
         status_message: { type: string }
+        managed_by: { type: string, enum: ["", app], description: "app = belongs to an installed app; changed only through the app endpoints" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     VariableInput:
@@ -824,6 +1055,9 @@ components:
             message: { type: string }
             request_id: { type: string }
   responses:
+    AppJob:
+      description: Queued
+      content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, job_id: { type: integer } } } } }
     Action:
       description: Action result
       content: { application/json: { schema: { type: object, properties: { id: { type: string }, changed: { type: boolean } } } } }
