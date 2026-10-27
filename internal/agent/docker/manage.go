@@ -81,6 +81,12 @@ func (c *Client) Create(ctx context.Context, s agentproto.ContainerSpec, labels 
 			"SecurityOpt": s.SecurityOpt, "ReadonlyRootfs": s.ReadOnlyRootfs, "Memory": s.MemoryBytes, "NanoCpus": s.NanoCPUs,
 		},
 	}
+	if h := s.Healthcheck; h != nil {
+		body["Healthcheck"] = map[string]any{
+			"Test": h.Test, "Interval": h.IntervalMS * 1e6, "Timeout": h.TimeoutMS * 1e6,
+			"StartPeriod": h.StartPeriodMS * 1e6, "Retries": h.Retries,
+		}
+	}
 	var out struct {
 		ID       string   `json:"Id"`
 		Warnings []string `json:"Warnings"`

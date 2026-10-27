@@ -6,9 +6,9 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 and M6 are implemented on
-`m4-agent` and `m6-containers` (stacked). Compose, app store, storage, file
-manager, network/TLS, backup and installer functionality do not exist yet.
+green CI on stacked branches awaiting owner review; M4, M6 and M7 are implemented on
+stacked branches up to `m7-compose`. App store, storage, file manager,
+network/TLS, backup and installer functionality do not exist yet.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
@@ -19,7 +19,8 @@ manager, network/TLS, backup and installer functionality do not exist yet.
 | M5 | Web dashboard shell | Implemented, CI green incl. browser E2E (run 40519204275); owner review pending | [M5 design](milestones/M5-dashboard.md) |
 | M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
 | M6 | Container management (F02-01..06) | Implemented, full CI green incl. browser E2E on real Docker (run 40559956035); owner review pending | [M6 evidence](milestones/M6-containers.md#verification-evidence-2026-10-27-branch-m6-containers) |
-| M6b, M7–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M7 | Compose stacks (F03) | Implemented on branch `m7-compose` (stacked on M6); CI pending | [M7 evidence](milestones/M7-compose.md#verification-evidence-2026-10-27-branch-m7-compose) |
+| M6b, M8–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -35,7 +36,7 @@ manager, network/TLS, backup and installer functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews `m6-containers` (contains M2–M6). Next: M7 Compose import, validation and deployment, or M6b streaming.
+3. Owner reviews `m7-compose` (contains M2–M7). Next: M8 app store and app lifecycle (builds on stacks), or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

@@ -12,6 +12,9 @@ cleanup() {
     DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-web >/dev/null 2>&1 || true
     DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-vol >/dev/null 2>&1 || true
     DOCKER_HOST="unix://$DOCKER_SOCK" docker network rm e2e-net >/dev/null 2>&1 || true
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-stack-app e2e-stack-worker >/dev/null 2>&1 || true
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-stack_data >/dev/null 2>&1 || true
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker network rm e2e-stack_default >/dev/null 2>&1 || true
   fi
   if [ -n "${CORE_PID:-}" ]; then kill -TERM "$CORE_PID" 2>/dev/null || true; wait "$CORE_PID" 2>/dev/null || true; fi
   if [ "${KH_E2E_KEEP:-}" = "1" ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi

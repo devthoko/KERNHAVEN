@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
@@ -17,7 +18,31 @@ const (
 	LabelManaged    = "io.kernhaven.managed"
 	LabelCreatedBy  = "io.kernhaven.created_by"
 	LabelExceptions = "io.kernhaven.policy.exceptions"
+	LabelStack      = "io.kernhaven.stack"
+	LabelService    = "io.kernhaven.stack.service"
+	LabelRevision   = "io.kernhaven.stack.revision"
 )
+
+var stackNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
+var serviceRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,29}$`)
+
+// stackLabels validates a stack reference and returns its reserved labels.
+func stackLabels(s *agentproto.StackRef) (map[string]string, error) {
+	if s == nil {
+		return nil, nil
+	}
+	if !stackNameRe.MatchString(s.Name) || (s.Service != "" && !serviceRe.MatchString(s.Service)) || s.Revision < 0 {
+		return nil, invalid("invalid stack reference")
+	}
+	l := map[string]string{LabelStack: s.Name}
+	if s.Service != "" {
+		l[LabelService] = s.Service
+	}
+	if s.Revision > 0 {
+		l[LabelRevision] = strconv.Itoa(s.Revision)
+	}
+	return l, nil
+}
 
 type actorKey struct{}
 
@@ -61,7 +86,13 @@ func manageOperations(d Docker, o Options) map[string]handler {
 			if err != nil {
 				return nil, err
 			}
-			labels := map[string]string{}
+			labels, err := stackLabels(p.Stack)
+			if err != nil {
+				return nil, err
+			}
+			if labels == nil {
+				labels = map[string]string{}
+			}
 			if len(dec.Applied) > 0 {
 				labels[LabelExceptions] = strings.Join(dec.Applied, ",")
 			}
@@ -146,7 +177,11 @@ func manageOperations(d Docker, o Options) map[string]handler {
 			if err := validLabels(p.Labels); err != nil {
 				return nil, err
 			}
-			return agentproto.NamedObject{Name: p.Name}, d.CreateVolume(ctx, p.Name, managedLabels(ctx, p.Labels))
+			sl, err := stackLabels(p.Stack)
+			if err != nil {
+				return nil, err
+			}
+			return agentproto.NamedObject{Name: p.Name}, d.CreateVolume(ctx, p.Name, managedLabels(ctx, merge(p.Labels, sl)))
 		}),
 		agentproto.OpVolumesRemove: typed(func(ctx context.Context, p agentproto.NamedObject) (any, error) {
 			if !policy.ValidName(p.Name) && !imageIDRe.MatchString(p.Name) {
@@ -168,7 +203,11 @@ func manageOperations(d Docker, o Options) map[string]handler {
 			if err := validLabels(p.Labels); err != nil {
 				return nil, err
 			}
-			id, err := d.CreateNetwork(ctx, p.Name, p.Internal, managedLabels(ctx, p.Labels))
+			sl, err := stackLabels(p.Stack)
+			if err != nil {
+				return nil, err
+			}
+			id, err := d.CreateNetwork(ctx, p.Name, p.Internal, managedLabels(ctx, merge(p.Labels, sl)))
 			return agentproto.NetworkSummary{ID: id, Name: p.Name, Driver: "bridge", Internal: p.Internal}, err
 		}),
 		agentproto.OpNetworksRemove: typed(func(ctx context.Context, p agentproto.NamedObject) (any, error) {
@@ -178,4 +217,15 @@ func manageOperations(d Docker, o Options) map[string]handler {
 			return agentproto.ActionResult{ID: p.Name, Changed: true}, d.RemoveNetwork(ctx, p.Name)
 		}),
 	}
+}
+
+func merge(a, b map[string]string) map[string]string {
+	out := map[string]string{}
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		out[k] = v
+	}
+	return out
 }

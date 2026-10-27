@@ -81,7 +81,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-30 | E | Container escape via privileged mode, host namespaces, dangerous capabilities or `docker.sock` mount | Policy engine denies by default; explicit, audited exceptions | M6/M7 | Mitigated for single containers (M6, AT-F02-04: deny-by-default policy in Core and agent; Docker socket and system paths never exemptible); Compose in M7 |
 | TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Partially mitigated (M6: bind sources resolved with EvalSymlinks in the agent and checked against allowed roots and protected paths; file manager in M10) |
 | TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Open |
-| TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Partially mitigated (Core loopback-only, agent unix socket; internal networks available; per-stack isolation with Compose in M7) |
+| TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Mitigated for stacks (M7: every stack gets its own default network; services join only declared networks; one network per service) |
 | TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Mitigated for M4 operations (no process execution; Docker API calls only with validated, path-escaped references) |
 | TH-35 | T | Kernhaven modifies firewall or SSH and locks the user out | Out of scope by policy; agent has no such operations | — | Mitigated by design |
 
@@ -91,7 +91,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 |---|---|---|---|---|---|
 | TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Open |
 | TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Partially mitigated (M6: pulls record the resolved digest, UI warns about unpinned images; update diffing in M8) |
-| TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Open |
+| TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Mitigated for Compose URL import (M7: HTTPS only, dialer refuses non-public addresses after DNS resolution and on redirects, size and time limits); webhooks in M15 |
 | TH-43 | T | Tampered release or upgrade (T7) | Signed releases, pinned public key, refuse unsigned | M18 | Open |
 | TH-44 | T | Compromised CI action or dependency | Actions pinned by SHA, `govulncheck`, minimal dependencies, `go.sum` verification | M0 | Mitigated (ADR-0014) |
 
@@ -100,7 +100,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
 | TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
-| TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Open |
+| TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Mitigated for stack variables (M7, ADR-0019: AES-256-GCM at rest, secrets write-only); app secrets in M8 |
 | TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Partially mitigated (M2: hash chain + append-only triggers; tail truncation needs M17 export) |
 | TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync; M3: journaled jobs with SIGKILL recovery tests; VM power-loss test blocked by B-2) |
 | TH-54 | I | Data directory readable by other local users (T8) | Startup refuses data dir with group/other permissions | M1 | Mitigated (AT-F00-01) |
@@ -121,3 +121,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-27 | M3–M5 | TH-04 partially (CSP), TH-53 partially (journaled jobs) |
 | 2026-10-27 | M4 | TH-20, TH-22, TH-23, TH-24, TH-34 mitigated |
 | 2026-10-27 | M6 | TH-30 mitigated for single containers; TH-21, TH-31, TH-33, TH-41 partially |
+| 2026-10-27 | M7 | TH-42 (Compose URL import), TH-51 (stack variables), TH-33 (stacks) mitigated |

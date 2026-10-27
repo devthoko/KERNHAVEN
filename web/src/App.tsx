@@ -11,6 +11,8 @@ import { ContainersPage } from "./pages/ContainersPage";
 import { CreateContainerPage } from "./pages/CreateContainerPage";
 import { ImagesPage } from "./pages/ImagesPage";
 import { NetworksPage, VolumesPage } from "./pages/VolumesNetworksPage";
+import { StackDetailPage } from "./pages/StackDetailPage";
+import { NewStackPage, StacksPage } from "./pages/StacksPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
 import { JobsPage } from "./pages/JobsPage";
@@ -31,6 +33,9 @@ const routes: RouteDef[] = [
   { pattern: "/containers", title: "Containers", permission: "containers.read", render: () => <ContainersPage /> },
   { pattern: "/containers/new", title: "New container", permission: "containers.manage", render: () => <CreateContainerPage /> },
   { pattern: "/containers/:id", title: "Container", permission: "containers.read", render: (p) => <ContainerDetailPage id={p.id ?? ""} /> },
+  { pattern: "/stacks", title: "Stacks", permission: "containers.read", render: () => <StacksPage /> },
+  { pattern: "/stacks/new", title: "New stack", permission: "containers.manage", render: () => <NewStackPage /> },
+  { pattern: "/stacks/:name", title: "Stack", permission: "containers.read", render: (p) => <StackDetailPage name={p.name ?? ""} /> },
   { pattern: "/images", title: "Images", permission: "containers.read", render: () => <ImagesPage /> },
   { pattern: "/volumes", title: "Volumes", permission: "containers.read", render: () => <VolumesPage /> },
   { pattern: "/networks", title: "Networks", permission: "containers.read", render: () => <NetworksPage /> },

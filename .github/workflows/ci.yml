@@ -6,7 +6,8 @@
 #   amd64 with the race detector, web build and tests, systemd units).
 # - full: pull requests, pushes to main, nightly and manual runs add arm64,
 #   Debian 13, real-Docker integration, browser end-to-end tests and fuzzing.
-#   Nothing is merged to main without a green full run.
+#   Nothing is merged to main without a green full run. A commit message
+#   containing [full-ci] requests the full suite on a feature branch.
 name: ci
 
 on:
@@ -63,7 +64,7 @@ jobs:
       fail-fast: false
       matrix:
         # arm64 only in the full suite
-        include: ${{ fromJSON((github.event_name != 'push' || github.ref == 'refs/heads/main') && '[{"arch":"amd64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-24.04"}]') }}
+        include: ${{ fromJSON((github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')) && '[{"arch":"amd64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-24.04"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,7 +82,7 @@ jobs:
 
   test-debian:
     name: test on debian 13 (${{ matrix.arch }})
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -159,7 +160,7 @@ jobs:
 
   e2e:
     name: end-to-end browser tests (Playwright + axe)
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -191,7 +192,7 @@ jobs:
 
   integration:
     name: integration with real Docker (${{ matrix.arch }})
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -217,7 +218,7 @@ jobs:
 
   fuzz:
     name: fuzz agent protocol (60 s each)
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

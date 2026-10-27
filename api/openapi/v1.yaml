@@ -467,6 +467,112 @@ paths:
       x-permission: containers.manage
       parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
       responses: { "204": { description: Removed }, "409": { $ref: "#/components/responses/Error" } }
+  /stacks:
+    get:
+      operationId: listStacks
+      x-permission: containers.read
+      responses:
+        "200": { description: Stacks, content: { application/json: { schema: { type: object, properties: { stacks: { type: array, items: { $ref: "#/components/schemas/Stack" } } } } } } }
+    post:
+      operationId: createStack
+      x-permission: containers.manage
+      description: Creates a stack with revision 1. The Compose file must be valid and every policy violation covered by an exception (exceptions need policy.exceptions).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevisionInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Stack" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { description: Invalid Compose file or uncovered policy violations (body includes the evaluation) }
+  /stacks/validate:
+    post:
+      operationId: validateStack
+      x-permission: containers.manage
+      description: Parses and evaluates a Compose file with line-accurate errors and per-service policy findings. Changes nothing.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevisionInput" } } } }
+      responses:
+        "200": { description: Evaluation, content: { application/json: { schema: { $ref: "#/components/schemas/StackEvaluation" } } } }
+  /stacks/import-url:
+    post:
+      operationId: importStackFromURL
+      x-permission: containers.manage
+      description: Downloads a Compose file from a public HTTPS URL (max 256 KiB) for review. Internal addresses are refused. Nothing is stored.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string } } } } } }
+      responses:
+        "200": { description: Content, content: { application/json: { schema: { type: object, properties: { compose: { type: string } } } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /stacks/{name}:
+    get:
+      operationId: getStack
+      x-permission: containers.read
+      description: Stack, latest revision, variables (secret values omitted) and service runtime state.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      responses:
+        "200": { description: Stack detail, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteStack
+      x-permission: containers.manage
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      responses:
+        "204": { description: Deleted }
+        "409": { description: Stack is deployed }
+  /stacks/{name}/revisions:
+    get:
+      operationId: listStackRevisions
+      x-permission: containers.read
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      responses:
+        "200": { description: Revisions, newest first, content: { application/json: { schema: { type: object } } } }
+    post:
+      operationId: createStackRevision
+      x-permission: containers.manage
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevisionInput" } } } }
+      responses:
+        "201": { description: Revision created }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { description: Invalid or not deployable }
+  /stacks/{name}/revisions/{number}:
+    get:
+      operationId: getStackRevision
+      x-permission: containers.read
+      parameters:
+        - { $ref: "#/components/parameters/StackName" }
+        - { name: number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Revision with Compose content }
+        "404": { $ref: "#/components/responses/Error" }
+  /stacks/{name}/variables:
+    put:
+      operationId: setStackVariables
+      x-permission: containers.manage
+      description: Replaces all variables. A secret sent without a value keeps its stored value. Values are encrypted at rest; secrets are never returned.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { variables: { type: array, items: { $ref: "#/components/schemas/VariableInput" } } } } } } }
+      responses:
+        "204": { description: Saved }
+        "422": { $ref: "#/components/responses/Error" }
+  /stacks/{name}/deploy:
+    post:
+      operationId: deployStack
+      x-permission: containers.manage
+      description: Starts a stacks.deploy job. A failed deployment rolls back to the previously deployed revision.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { revision: { type: integer, description: "0 or omitted = latest" } } } } } }
+      responses:
+        "202": { description: Job queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /stacks/{name}/down:
+    post:
+      operationId: stackDown
+      x-permission: containers.manage
+      description: Starts a stacks.down job that removes the stack's containers and networks; volumes only with remove_volumes.
+      parameters: [{ $ref: "#/components/parameters/StackName" }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { remove_volumes: { type: boolean } } } } } }
+      responses:
+        "202": { description: Job queued }
+        "409": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -474,6 +580,11 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    StackName:
+      name: name
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" }
     ContainerID:
       name: id
       in: path
@@ -631,6 +742,41 @@ components:
         field: { type: string }
         message: { type: string }
         exemptible: { type: boolean }
+    Stack:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        latest_revision: { type: integer }
+        deployed_revision: { type: integer }
+        status: { type: string, enum: [new, deploying, deployed, failed, stopping, stopped] }
+        status_message: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    VariableInput:
+      type: object
+      required: [name, secret]
+      properties:
+        name: { type: string, pattern: "^[A-Za-z_][A-Za-z0-9_]{0,63}$" }
+        value: { type: string, maxLength: 16384 }
+        secret: { type: boolean }
+    RevisionInput:
+      type: object
+      required: [compose]
+      additionalProperties: false
+      properties:
+        name: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" }
+        compose: { type: string, maxLength: 262144 }
+        comment: { type: string, maxLength: 500 }
+        variables: { type: array, items: { $ref: "#/components/schemas/VariableInput" } }
+        exceptions: { type: array, items: { type: object, properties: { service: { type: string }, rule: { type: string }, reason: { type: string } } } }
+    StackEvaluation:
+      type: object
+      properties:
+        valid: { type: boolean }
+        deployable: { type: boolean }
+        errors: { type: array, items: { type: object, properties: { line: { type: integer }, column: { type: integer }, path: { type: string }, message: { type: string } } } }
+        services: { type: array, items: { type: object, properties: { service: { type: string }, container: { type: string }, image: { type: string }, violations: { type: array, items: { $ref: "#/components/schemas/PolicyFinding" } }, warnings: { type: array, items: { $ref: "#/components/schemas/PolicyFinding" } } } } }
     Job:
       type: object
       properties:

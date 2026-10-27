@@ -55,7 +55,7 @@ graph TD
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Implemented on branch `m5-dashboard` (based on `m3-jobs`), CI green, owner review pending — [design](M5-dashboard.md) |
 | M6 | Container management | M4, M5 | F02, F01-05 | Implemented on branch `m6-containers` (F02-01..06), CI green, owner review pending — [design](M6-containers.md) |
 | M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Not started |
-| M7 | Compose import, validation, deploy | M6 | F03 | Not started |
+| M7 | Compose import, validation, deploy | M6 | F03 | Implemented on branch `m7-compose` (based on `m6-containers`), CI pending — [design](M7-compose.md) |
 | M8 | App store and app lifecycle | M7 | F04, F05 | Not started |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Not started |
 | M10 | File manager | M9 | F07 | Not started |

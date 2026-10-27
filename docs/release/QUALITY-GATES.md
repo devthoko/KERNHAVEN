@@ -12,6 +12,8 @@ with the race detector on amd64, web typecheck/tests/build/audit, systemd units.
 **Full** on pull requests, pushes to `main`, nightly and on manual runs: in
 addition arm64, Debian 13, real-Docker integration, browser end-to-end tests
 and fuzzing. A change may only be merged to `main` with a green full run.
+A commit message containing `[full-ci]` requests the full suite on a feature
+branch (used to record milestone evidence).
 
 
 - [ ] `gofmt` clean, `go vet` clean, `staticcheck` clean

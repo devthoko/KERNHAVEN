@@ -221,6 +221,14 @@ func Validate(s agentproto.ContainerSpec) error {
 	if s.NanoCPUs < 0 {
 		bad("nano_cpus", "must not be negative")
 	}
+	if h := s.Healthcheck; h != nil {
+		if len(h.Test) == 0 || len(h.Test) > 64 || (h.Test[0] != "CMD" && h.Test[0] != "CMD-SHELL" && h.Test[0] != "NONE") {
+			bad("healthcheck", "test must start with CMD, CMD-SHELL or NONE")
+		}
+		if h.IntervalMS < 0 || h.TimeoutMS < 0 || h.StartPeriodMS < 0 || h.Retries < 0 || h.Retries > 100 {
+			bad("healthcheck", "durations and retries must not be negative (retries at most 100)")
+		}
+	}
 	return errors.Join(errs...)
 }
 

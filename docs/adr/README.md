@@ -23,3 +23,5 @@ ADR that supersedes the old one.
 | [0015](0015-argon2id-password-hashing.md) | Argon2id password hashing via golang.org/x/crypto | Accepted |
 | [0016](0016-hash-chained-audit-log.md) | Hash-chained audit log in SQLite | Accepted |
 | [0017](0017-minimal-docker-client.md) | Minimal Docker Engine API client instead of the Docker SDK | Accepted |
+| [0018](0018-compose-subset-yaml-v3.md) | Own Compose parser on gopkg.in/yaml.v3 for a supported subset | Accepted |
+| [0019](0019-secret-encryption.md) | AES-256-GCM encryption for stack variables | Accepted |

@@ -240,3 +240,61 @@ export interface NetworkSummary {
   labels: Record<string, string>;
   built_in: boolean;
 }
+
+// ---- M7: stacks ----
+
+export interface Stack {
+  id: number;
+  name: string;
+  latest_revision: number;
+  deployed_revision: number;
+  status: "new" | "deploying" | "deployed" | "failed" | "stopping" | "stopped";
+  status_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StackException {
+  service: string;
+  rule: string;
+  reason: string;
+  approved_by?: string;
+}
+
+export interface StackRevision {
+  number: number;
+  compose?: string;
+  comment: string;
+  exceptions: StackException[];
+  created_by: string;
+  created_at: string;
+}
+
+export interface StackVariable {
+  name: string;
+  value?: string;
+  secret: boolean;
+}
+
+export interface StackServiceState {
+  service: string;
+  container: string;
+  state: string;
+  status: string;
+  revision: string;
+}
+
+export interface StackEvaluation {
+  valid: boolean;
+  deployable: boolean;
+  errors: { line: number; column: number; path: string; message: string }[];
+  services: { service: string; container: string; image: string; violations: Finding[]; warnings: Finding[] }[];
+}
+
+export interface StackDetail {
+  stack: Stack;
+  latest: StackRevision;
+  variables: StackVariable[];
+  services?: StackServiceState[];
+  services_error?: string;
+}

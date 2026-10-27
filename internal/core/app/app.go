@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
@@ -14,10 +15,12 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/containers"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 	"github.com/devthoko/KERNHAVEN/internal/core/webui"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/health"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
+	"github.com/devthoko/KERNHAVEN/internal/platform/secretbox"
 )
 
 // App is the assembled Core.
@@ -28,6 +31,7 @@ type App struct {
 	Audit    *audit.Log
 	Jobs     *jobs.Service
 	Agent    *agentclient.Client // nil when no agent is configured
+	Stacks   *stacks.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -40,6 +44,8 @@ type Options struct {
 	Runner jobs.RunnerOptions
 	// UI overrides the embedded web interface (tests).
 	UI fs.FS
+	// Fetcher overrides the Compose URL fetcher (tests).
+	Fetcher *stacks.Fetcher
 }
 
 // New builds the Core from an open database and validated config.
@@ -78,6 +84,12 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}
 	agentclient.RegisterRoutes(rt, agent)
 	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
+	box, err := secretbox.Open(filepath.Join(cfg.Storage.DataDir, secretbox.KeyFile))
+	if err != nil {
+		return nil, fmt.Errorf("secrets key: %w", err)
+	}
+	stackSvc := stacks.New(db, box, agent, auditLog, jobSvc, runner.Wake, stacks.Options{BindRoots: cfg.Containers.AllowedBindRoots, Fetcher: opts.Fetcher, Now: now})
+	stackSvc.Register(rt)
 	ui := opts.UI
 	if ui == nil {
 		ui = webui.Dist()
@@ -91,6 +103,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Audit:    auditLog,
 		Jobs:     jobSvc,
 		Agent:    agent,
+		Stacks:   stackSvc,
 		Runner:   runner,
 		now:      now,
 	}

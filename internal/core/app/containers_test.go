@@ -28,10 +28,14 @@ type memDocker struct {
 	labels     map[string]map[string]string
 	volumes    map[string]bool
 	conflict   bool
+	specs      map[string]agentproto.ContainerSpec
+	networks   map[string]map[string]string
+	volLabels  map[string]map[string]string
 }
 
 func newMemDocker() *memDocker {
-	return &memDocker{containers: map[string]agentproto.ContainerSummary{}, labels: map[string]map[string]string{}, volumes: map[string]bool{}}
+	return &memDocker{containers: map[string]agentproto.ContainerSummary{}, labels: map[string]map[string]string{}, volumes: map[string]bool{},
+		specs: map[string]agentproto.ContainerSpec{}, networks: map[string]map[string]string{}, volLabels: map[string]map[string]string{}}
 }
 
 func (m *memDocker) Info(context.Context) (agentproto.DockerInfo, error) {
@@ -49,11 +53,16 @@ func (m *memDocker) ListContainers(context.Context, bool) ([]agentproto.Containe
 func (m *memDocker) Inspect(_ context.Context, id string) (agentproto.ContainerDetail, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	id = m.key(id)
 	c, ok := m.containers[id]
 	if !ok {
 		return agentproto.ContainerDetail{}, docker.ErrNotFound
 	}
-	return agentproto.ContainerDetail{ID: c.ID, Name: id, Status: c.State, Running: c.State == "running"}, nil
+	exit := 0
+	if c.State == "exited" {
+		exit = 1
+	}
+	return agentproto.ContainerDetail{ID: c.ID, Name: id, Status: c.State, Running: c.State == "running", ExitCode: exit, Labels: c.Labels}, nil
 }
 
 // key resolves a container name or ID (like Docker). Callers hold m.mu.
@@ -79,7 +88,15 @@ func (m *memDocker) setState(id, state string) (bool, error) {
 	m.containers[id] = c
 	return changed, nil
 }
+
+// Start runs a container; images containing "exits" stop immediately.
 func (m *memDocker) Start(_ context.Context, id string) (bool, error) {
+	m.mu.Lock()
+	exits := strings.Contains(m.containers[m.key(id)].Image, "exits")
+	m.mu.Unlock()
+	if exits {
+		return m.setState(id, "exited")
+	}
 	return m.setState(id, "running")
 }
 func (m *memDocker) Stop(_ context.Context, id string, _ time.Duration) (bool, error) {
@@ -101,12 +118,14 @@ func (m *memDocker) Create(_ context.Context, s agentproto.ContainerSpec, labels
 		return agentproto.CreateResult{}, docker.ErrConflict
 	}
 	m.containers[s.Name] = agentproto.ContainerSummary{ID: "id-" + s.Name, Names: []string{s.Name}, Image: s.Image, State: "created", Labels: labels}
+	m.specs[s.Name] = s
 	m.labels[s.Name] = labels
 	return agentproto.CreateResult{ID: "id-" + s.Name, Warnings: []string{}}, nil
 }
 func (m *memDocker) Remove(_ context.Context, id string, force, _ bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	id = m.key(id)
 	c, ok := m.containers[id]
 	if !ok {
 		return docker.ErrNotFound
@@ -134,12 +153,19 @@ func (m *memDocker) PruneImages(context.Context) (agentproto.PruneResult, error)
 	return agentproto.PruneResult{}, nil
 }
 func (m *memDocker) ListVolumes(context.Context) ([]agentproto.VolumeSummary, error) {
-	return []agentproto.VolumeSummary{}, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := []agentproto.VolumeSummary{}
+	for n := range m.volumes {
+		out = append(out, agentproto.VolumeSummary{Name: n, Labels: m.volLabels[n]})
+	}
+	return out, nil
 }
-func (m *memDocker) CreateVolume(_ context.Context, name string, _ map[string]string) error {
+func (m *memDocker) CreateVolume(_ context.Context, name string, labels map[string]string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.volumes[name] = true
+	m.volLabels[name] = labels
 	return nil
 }
 func (m *memDocker) RemoveVolume(_ context.Context, name string) error {
@@ -152,12 +178,26 @@ func (m *memDocker) RemoveVolume(_ context.Context, name string) error {
 	return nil
 }
 func (m *memDocker) ListNetworks(context.Context) ([]agentproto.NetworkSummary, error) {
-	return []agentproto.NetworkSummary{}, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := []agentproto.NetworkSummary{}
+	for n, l := range m.networks {
+		out = append(out, agentproto.NetworkSummary{ID: "net-" + n, Name: n, Labels: l})
+	}
+	return out, nil
 }
-func (m *memDocker) CreateNetwork(context.Context, string, bool, map[string]string) (string, error) {
-	return "net", nil
+func (m *memDocker) CreateNetwork(_ context.Context, name string, _ bool, labels map[string]string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.networks[name] = labels
+	return "net-" + name, nil
 }
-func (m *memDocker) RemoveNetwork(context.Context, string) error { return nil }
+func (m *memDocker) RemoveNetwork(_ context.Context, name string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.networks, name)
+	return nil
+}
 
 // withAgent returns a harness whose Core talks to a real agent server backed by memDocker.
 func withAgent(t *testing.T) (*harness, *memDocker) {

@@ -151,6 +151,24 @@ type ContainerSpec struct {
 	ReadOnlyRootfs bool              `json:"read_only_rootfs,omitempty"`
 	MemoryBytes    int64             `json:"memory_bytes,omitempty"`
 	NanoCPUs       int64             `json:"nano_cpus,omitempty"`
+	Healthcheck    *Healthcheck      `json:"healthcheck,omitempty"`
+}
+
+// Healthcheck configures a container health check (M7).
+type Healthcheck struct {
+	Test          []string `json:"test"` // ["CMD", ...], ["CMD-SHELL", "..."] or ["NONE"]
+	IntervalMS    int64    `json:"interval_ms,omitempty"`
+	TimeoutMS     int64    `json:"timeout_ms,omitempty"`
+	StartPeriodMS int64    `json:"start_period_ms,omitempty"`
+	Retries       int      `json:"retries,omitempty"`
+}
+
+// StackRef marks an object as part of a stack; the agent turns it into
+// reserved labels.
+type StackRef struct {
+	Name     string `json:"name"`
+	Service  string `json:"service,omitempty"`
+	Revision int    `json:"revision,omitempty"`
 }
 
 // CreateContainer creates (and optionally starts) a container. Exceptions
@@ -159,6 +177,7 @@ type CreateContainer struct {
 	Spec       ContainerSpec `json:"spec"`
 	Exceptions []string      `json:"exceptions,omitempty"`
 	Start      bool          `json:"start,omitempty"`
+	Stack      *StackRef     `json:"stack,omitempty"`
 }
 
 // CreateResult reports a created container.
@@ -233,6 +252,7 @@ type NamedObject struct {
 type VolumeCreate struct {
 	Name   string            `json:"name"`
 	Labels map[string]string `json:"labels,omitempty"`
+	Stack  *StackRef         `json:"stack,omitempty"`
 }
 
 // VolumeSummary is one entry of volumes.list.
@@ -249,6 +269,7 @@ type NetworkCreate struct {
 	Name     string            `json:"name"`
 	Internal bool              `json:"internal,omitempty"`
 	Labels   map[string]string `json:"labels,omitempty"`
+	Stack    *StackRef         `json:"stack,omitempty"`
 }
 
 // NetworkSummary is one entry of networks.list.

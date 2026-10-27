@@ -228,6 +228,81 @@ test("AT-F02-02: remove a container with typed confirmation", async () => {
   await expect(page.getByRole("link", { name: "e2e-web" })).toHaveCount(0);
 });
 
+const stackCompose = (cmd: string) => `services:
+  app:
+    image: alpine:3
+    user: "65534"
+    mem_limit: 64m
+    command: ["sh", "-c", "${cmd}"]
+    volumes: [data:/data]
+  worker:
+    image: alpine:3
+    user: "65534"
+    mem_limit: 32m
+    command: ["sleep", "600"]
+    depends_on: [app]
+volumes:
+  data:
+`;
+
+async function waitStackStatus(p: Page, status: string) {
+  await expect(p.getByText(status, { exact: true }).first()).toBeVisible({ timeout: 120_000 });
+}
+
+test("AT-F03-01, AT-F03-02: the stack editor reports errors with line numbers", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/stacks/new");
+  await page.getByLabel("Stack name").fill("e2e-stack");
+  await page.getByLabel("compose.yaml").fill("services:\n  app:\n    image: alpine:3\n    build: .\n");
+  await expect(page.getByRole("button", { name: /Line 4: services.app.build/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create and deploy" })).toBeDisabled();
+  await expectAccessible(page, "new stack (error)");
+});
+
+test("AT-F03-05, AT-F03-06: create and deploy a stack with a variable", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.getByLabel("compose.yaml").fill(stackCompose("echo app-$${GREETING}; sleep 600".replace("$$", "$")));
+  await page.getByRole("button", { name: "Add variable" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("GREETING");
+  await page.getByLabel("Value", { exact: true }).fill("hello");
+  await expect(page.getByText("Valid and allowed by the container policy.")).toBeVisible();
+  await page.getByRole("button", { name: "Create and deploy" }).click();
+  await expect(page.getByRole("heading", { name: "e2e-stack" })).toBeVisible();
+  await waitStackStatus(page, "deployed");
+  await expect(page.getByRole("table", { name: "Services" }).getByText("running")).toHaveCount(2, { timeout: 30_000 });
+  await expectAccessible(page, "stack detail");
+});
+
+test("AT-F03-04, AT-F03-05: a new revision is deployed and a failing one rolls back", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  // Revision 2
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("compose.yaml").fill(stackCompose("echo app-v2; sleep 600"));
+  await page.getByLabel("Change note").fill("second revision");
+  await expect(page.getByText("Valid and allowed by the container policy.")).toBeVisible();
+  await page.getByRole("button", { name: "Save and deploy" }).click();
+  await expect(page.getByText(/deployed revision 2/)).toBeVisible({ timeout: 120_000 });
+
+  // Revision 3: the app exits at once, so the deployment fails and rolls back to 2.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("compose.yaml").fill(stackCompose("exit 3"));
+  await page.getByLabel("Change note").fill("broken");
+  await expect(page.getByText("Valid and allowed by the container policy.")).toBeVisible();
+  await page.getByRole("button", { name: "Save and deploy" }).click();
+  await expect(page.getByText(/deployment of revision 3 failed; rolled back to revision 2/)).toBeVisible({ timeout: 150_000 });
+  await expect(page.getByText(/deployed revision 2/)).toBeVisible();
+  await expect(page.getByRole("table", { name: "Services" }).getByText("running")).toHaveCount(2, { timeout: 30_000 });
+});
+
+test("AT-F03-05: take the stack down", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.getByRole("button", { name: "Take down" }).click();
+  await page.getByRole("dialog", { name: "Take down this stack?" }).getByRole("button", { name: "Take down" }).click();
+  await waitStackStatus(page, "stopped");
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("heading", { name: "Stacks", exact: true })).toBeVisible();
+});
+
 test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser }) => {
   const other = await freshLogin(browser, OWNER);
   await page.goto("/account");
@@ -244,7 +319,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
