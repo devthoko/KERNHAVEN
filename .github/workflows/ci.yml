@@ -3,8 +3,9 @@
 name: ci
 
 on:
+  # All branches, so feature branches are verified before review.
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
 
 permissions:
