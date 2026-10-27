@@ -5,8 +5,9 @@ sessions. It states only verified facts; see the linked evidence.
 
 ## Overall status
 
-**Kernhaven 1.0 is not complete.** 2 of 20 milestones are done (M0, M1); M2 is
-implemented on branch `m2-identity` and awaits CI and review. No user-facing
+**Kernhaven 1.0 is not complete.** 2 of 20 milestones are done (M0, M1). M2 is implemented with green CI on
+branch `m2-identity` and awaits owner review; M3 is implemented on branch
+`m3-jobs` (based on M2). No user-facing
 product exists yet: there is no web UI, no host agent, no Docker, storage,
 network, backup or installer functionality.
 
@@ -15,7 +16,7 @@ network, backup or installer functionality.
 | M0 | Spec, repo, CI | Done | `main` @ `f0d2c71` |
 | M1 | Core foundation | Done | [M1 evidence](milestones/M1-core-foundation.md#verification-evidence-2026-10-27), CI run 40506636168 |
 | M2 | Identity, sessions, RBAC, audit | Implemented, CI green (run 40510127374); owner review pending | [M2 evidence](milestones/M2-identity.md#verification-evidence-2026-10-27-branch-m2-identity) |
-| M3 | Persistent jobs, crash recovery | Next | — |
+| M3 | Persistent jobs, crash recovery | Implemented on branch `m3-jobs`; CI pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
 | M4–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
@@ -31,10 +32,9 @@ network, backup or installer functionality.
 ## Next steps (in order)
 
 1. Owner reviews and merges `m2-identity` (CI green).
-2. M3: persistent job queue with step journal and crash recovery (no host
    privileges needed; can proceed without B-1/B-2).
 3. M5: web dashboard shell (install Node.js in `~/.local`).
-4. M4 onward requires B-1, then B-2 for release evidence.
+3. M4 onward requires B-1, then B-2 for release evidence.
 
 ## Development environment
 

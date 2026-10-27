@@ -9,6 +9,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
+	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/health"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
@@ -20,12 +21,17 @@ type App struct {
 	Router   *httpserver.Router
 	Identity *identity.Service
 	Audit    *audit.Log
+	Jobs     *jobs.Service
+	Runner   *jobs.Runner
+
+	now func() time.Time
 }
 
 // Options allow tests to control time and hashing cost.
 type Options struct {
-	Now  func() time.Time
-	Hash identity.HashParams
+	Now    func() time.Time
+	Hash   identity.HashParams
+	Runner jobs.RunnerOptions
 }
 
 // New builds the Core from an open database and validated config.
@@ -42,15 +48,28 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		return nil, err
 	}
 
+	now := opts.Now
+	if now == nil {
+		now = time.Now
+	}
+	jobSvc := jobs.New(db, now)
+	runner := jobs.NewRunner(jobSvc, log, opts.Runner)
+
 	rt := httpserver.NewRouter(ids.Guard)
 	health.Register(rt, db, log)
 	ids.Register(rt)
 	audit.Register(rt, auditLog)
+	jobs.RegisterRoutes(rt, jobSvc, auditLog, runner.Wake)
 
-	return &App{
+	a := &App{
 		Handler:  httpserver.Middleware(log, cfg.Server.MaxBodyBytes, rt),
 		Router:   rt,
 		Identity: ids,
 		Audit:    auditLog,
-	}, nil
+		Jobs:     jobSvc,
+		Runner:   runner,
+		now:      now,
+	}
+	a.registerMaintenance()
+	return a, nil
 }

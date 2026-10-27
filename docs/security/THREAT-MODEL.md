@@ -102,7 +102,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
 | TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Open |
 | TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Partially mitigated (M2: hash chain + append-only triggers; tail truncation needs M17 export) |
-| TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync) |
+| TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync; M3: journaled jobs with SIGKILL recovery tests; VM power-loss test blocked by B-2) |
 | TH-54 | I | Data directory readable by other local users (T8) | Startup refuses data dir with group/other permissions | M1 | Mitigated (AT-F00-01) |
 
 ## 5. Accepted risks (current)

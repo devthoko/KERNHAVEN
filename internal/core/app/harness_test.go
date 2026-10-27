@@ -19,6 +19,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
+	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/store"
 )
@@ -72,6 +73,8 @@ func newHarness(t *testing.T) *harness {
 	a, err := New(db, cfg, slog.New(slog.NewJSONHandler(&logs, nil)), Options{
 		Now:  clk.Now,
 		Hash: identity.HashParams{Memory: 64, Time: 1, Threads: 1},
+		Runner: jobs.RunnerOptions{Workers: 2, Lease: 300 * time.Millisecond, Heartbeat: 20 * time.Millisecond,
+			PollInterval: 10 * time.Millisecond, BackoffBase: 10 * time.Millisecond, BackoffMax: 50 * time.Millisecond},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -219,4 +222,36 @@ func (h *harness) loginAs(username string) *client {
 	c := h.newClient()
 	c.login(username, strongPassword).expect(http.StatusOK)
 	return c
+}
+
+// startJobs runs the job runner for the duration of the test.
+func (h *harness) startJobs() {
+	h.t.Helper()
+	if err := h.app.Runner.Recover(context.Background()); err != nil {
+		h.t.Fatal(err)
+	}
+	h.app.Runner.Start()
+	h.t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		h.app.Runner.Stop(ctx)
+	})
+}
+
+func (h *harness) waitJob(id int64, want jobs.State) jobs.Job {
+	h.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		j, err := h.app.Jobs.Get(context.Background(), id)
+		if err != nil {
+			h.t.Fatal(err)
+		}
+		if j.State == want {
+			return j
+		}
+		if j.State.Terminal() || time.Now().After(deadline) {
+			h.t.Fatalf("job %d: %s (%s), want %s", id, j.State, j.Error, want)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }

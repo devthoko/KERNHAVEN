@@ -50,7 +50,7 @@ graph TD
 | M0 | Specification, repository, CI | — | Docs, CI | Done |
 | M1 | Core foundation | M0 | AT-F00-01..06 | Done — [design and evidence](M1-core-foundation.md) |
 | M2 | Identity, sessions, RBAC, audit log | M1 | F08 (01–04, 06), F09-01, F10 (01–02) | Implemented on branch `m2-identity`, CI green, owner review pending — [design](M2-identity.md) |
-| M3 | Persistent jobs and crash recovery | M1 | F18 (01, 02, 04) | Not started |
+| M3 | Persistent jobs and crash recovery | M1 | F18 (01, 02, 04) | Implemented on branch `m3-jobs` (based on `m2-identity`), CI pending — [design](M3-jobs.md) |
 | M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Not started |
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Not started |
 | M6 | Container management | M4, M5 | F02, F01-05 | Not started |

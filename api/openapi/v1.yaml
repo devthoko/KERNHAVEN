@@ -265,6 +265,39 @@ paths:
                   records: { type: integer }
                   broken_at: { type: integer }
                   reason: { type: string }
+  /jobs:
+    get:
+      operationId: listJobs
+      x-permission: jobs.read
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [queued, running, compensating, succeeded, failed, cancelled] } }
+        - { name: kind, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Jobs, newest first
+          content:
+            application/json:
+              schema: { type: object, properties: { jobs: { type: array, items: { $ref: "#/components/schemas/Job" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      x-permission: jobs.read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Job with step journal and logs, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /jobs/{id}/cancel:
+    post:
+      operationId: cancelJob
+      x-permission: jobs.manage
+      description: Requests cancellation. Completed steps are rolled back where the job kind supports it. Audited.
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "202": { description: Cancellation requested }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -341,6 +374,41 @@ components:
         details: { type: object, additionalProperties: { type: string } }
         prev_hash: { type: string }
         hash: { type: string }
+    Job:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        state: { type: string, enum: [queued, running, compensating, succeeded, failed, cancelled] }
+        attempts: { type: integer }
+        max_attempts: { type: integer }
+        created_by: { type: integer }
+        cancel_requested: { type: boolean }
+        needs_attention: { type: boolean }
+        error: { type: string }
+        steps_done: { type: integer }
+        steps_total: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              name: { type: string }
+              state: { type: string, enum: [pending, done, compensated] }
+              completed_at: { type: string, format: date-time }
+        logs:
+          type: array
+          items:
+            type: object
+            properties:
+              time: { type: string, format: date-time }
+              level: { type: string, enum: [info, warn, error] }
+              message: { type: string }
     Error:
       type: object
       required: [error]

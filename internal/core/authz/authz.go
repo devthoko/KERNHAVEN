@@ -22,13 +22,15 @@ const (
 	UsersManage    Permission = "users.manage"
 	SessionsManage Permission = "sessions.manage"
 	AuditRead      Permission = "audit.read"
+	JobsRead       Permission = "jobs.read"
+	JobsManage     Permission = "jobs.manage"
 )
 
 var rolePermissions = map[Role][]Permission{
-	Owner:    {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead},
-	Admin:    {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead},
-	Operator: {SelfManage, SystemRead},
-	Viewer:   {SelfManage, SystemRead},
+	Owner:    {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead, JobsRead, JobsManage},
+	Admin:    {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead, JobsRead, JobsManage},
+	Operator: {SelfManage, SystemRead, JobsRead, JobsManage},
+	Viewer:   {SelfManage, SystemRead, JobsRead},
 }
 
 // Roles lists all roles from most to least privileged.

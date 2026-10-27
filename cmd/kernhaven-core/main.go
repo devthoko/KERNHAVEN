@@ -102,7 +102,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		log.Warn("first-run setup required: open the web UI and enter the setup token",
 			"setup_token", setupToken, "valid_for", cfg.Auth.SetupTokenTTL.Duration.String())
 	}
-	go purgeSessions(ctx, core, log)
+	if err := core.Runner.Recover(ctx); err != nil {
+		log.Error("job recovery failed", "error", err.Error())
+		return exitDatabase
+	}
+	core.Runner.Start()
+	defer func() {
+		// Runs after the HTTP server has drained and before the DB closes.
+		sctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout.Duration)
+		defer cancel()
+		core.Runner.Stop(sctx)
+	}()
+	go scheduleMaintenance(ctx, core, log)
 
 	ln, err := net.Listen("tcp", cfg.Server.Listen)
 	if err != nil {
@@ -122,16 +133,16 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-// purgeSessions removes expired sessions hourly until ctx is cancelled.
-func purgeSessions(ctx context.Context, core *app.App, log *slog.Logger) {
+// scheduleMaintenance enqueues the maintenance jobs at startup and hourly
+// until ctx is cancelled.
+func scheduleMaintenance(ctx context.Context, core *app.App, log *slog.Logger) {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
 	for {
-		if n, err := core.Identity.PurgeExpiredSessions(ctx); err != nil && ctx.Err() == nil {
-			log.Warn("session purge failed", "error", err.Error())
-		} else if n > 0 {
-			log.Info("expired sessions purged", "count", n)
+		if err := core.EnqueueMaintenance(ctx); err != nil && ctx.Err() == nil {
+			log.Warn("scheduling maintenance jobs failed", "error", err.Error())
 		}
+		core.Runner.Wake()
 		select {
 		case <-ctx.Done():
 			return
