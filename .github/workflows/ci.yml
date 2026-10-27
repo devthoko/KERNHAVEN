@@ -122,3 +122,55 @@ jobs:
       - name: systemd-analyze security (AT-F00-06, threshold 2.0)
         run: |
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
+
+  web:
+    name: web UI (typecheck, unit tests, build, audit)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: install (lockfile only, no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: dependency audit
+        run: npm audit --audit-level=high
+      - name: forbid dangerouslySetInnerHTML (TH-04)
+        run: "! grep -rn dangerouslySetInnerHTML src"
+
+  e2e:
+    name: end-to-end browser tests (Playwright + axe)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: install web dependencies
+        working-directory: web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: install Chromium for Playwright
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: run end-to-end tests
+        run: scripts/e2e.sh
+      - name: upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7

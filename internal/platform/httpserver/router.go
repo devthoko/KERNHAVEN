@@ -45,10 +45,16 @@ type Route struct {
 // Router is a method-aware router that answers unmatched requests with the
 // uniform JSON error body (404 or 405).
 type Router struct {
-	mux    *http.ServeMux
-	guard  Guard
-	routes []Route
+	mux      *http.ServeMux
+	guard    Guard
+	routes   []Route
+	fallback http.Handler
 }
+
+// SetFallback serves GET and HEAD requests that match no route and are not
+// under /api/ (the web UI with client-side routing). It must only serve
+// static, public content.
+func (rt *Router) SetFallback(h http.Handler) { rt.fallback = h }
 
 // NewRouter returns an empty router. guard protects non-public routes; it may
 // be nil only if every route is public.
@@ -100,8 +106,15 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
+	if rt.fallback != nil && (r.Method == http.MethodGet || r.Method == http.MethodHead) && !IsAPIPath(r.URL.Path) {
+		rt.fallback.ServeHTTP(w, r)
+		return
+	}
 	WriteError(w, r, http.StatusNotFound, "not_found", "not found")
 }
+
+// IsAPIPath reports whether p belongs to the JSON API namespace.
+func IsAPIPath(p string) bool { return p == "/api" || strings.HasPrefix(p, "/api/") }
 
 type discardWriter struct {
 	header http.Header

@@ -7,7 +7,8 @@ servers in the homelab: containers, Compose stacks, an app store, storage,
 files, reverse proxy, TLS, monitoring, encrypted backups and safe upgrades —
 without giving the web application root on your host.
 
-> **Status: early development (milestone M1).** Nothing here is usable yet.
+> **Status: early development.** Identity, jobs and the web shell exist;
+> container, storage, network and backup features do not yet.
 > Version 1.0 will only be released when every gate in
 > [docs/release/QUALITY-GATES.md](docs/release/QUALITY-GATES.md) passes.
 
@@ -25,12 +26,16 @@ without giving the web application root on your host.
 
 ## Development
 
-Requirements: Go 1.27+, Linux.
+Requirements: Go 1.27+, Node.js 24 LTS, Linux.
 
 ```bash
-scripts/check.sh                 # formatting, vet, staticcheck, govulncheck, tests, builds
-go build -o bin/kernhaven-core ./cmd/kernhaven-core
+scripts/check.sh   # Go and web checks, tests, builds, audits
+scripts/build.sh   # web UI + kernhaven-core for linux/amd64 and linux/arm64 into bin/
+scripts/e2e.sh     # browser tests against a fresh instance (needs Playwright Chromium)
 ```
+
+For UI development run the Core on 127.0.0.1:8470 and `npm run dev` in `web/`;
+Vite proxies `/api` to the Core.
 
 Running the Core locally is described in the
 [M1 verification procedure](docs/milestones/M1-core-foundation.md#verification-procedure).

@@ -3,6 +3,7 @@ package app
 
 import (
 	"database/sql"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/webui"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/health"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
@@ -32,6 +34,8 @@ type Options struct {
 	Now    func() time.Time
 	Hash   identity.HashParams
 	Runner jobs.RunnerOptions
+	// UI overrides the embedded web interface (tests).
+	UI fs.FS
 }
 
 // New builds the Core from an open database and validated config.
@@ -60,6 +64,11 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	ids.Register(rt)
 	audit.Register(rt, auditLog)
 	jobs.RegisterRoutes(rt, jobSvc, auditLog, runner.Wake)
+	ui := opts.UI
+	if ui == nil {
+		ui = webui.Dist()
+	}
+	rt.SetFallback(webui.Handler(ui))
 
 	a := &App{
 		Handler:  httpserver.Middleware(log, cfg.Server.MaxBodyBytes, rt),

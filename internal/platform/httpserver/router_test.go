@@ -79,3 +79,29 @@ func TestClientIP(t *testing.T) {
 		}
 	}
 }
+
+func TestFallbackOnlyForNonAPIReads(t *testing.T) {
+	rt := NewRouter(nil)
+	rt.HandleFunc("GET /api/v1/x", Public(), func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) })
+	rt.SetFallback(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(299) }))
+	cases := []struct {
+		method, path string
+		want         int
+	}{
+		{"GET", "/", 299},
+		{"GET", "/users/5", 299},
+		{"HEAD", "/jobs", 299},
+		{"GET", "/api/v1/x", 204},
+		{"GET", "/api/v1/missing", 404},
+		{"GET", "/api", 404},
+		{"POST", "/users", 404},
+		{"DELETE", "/api/v1/x", 405},
+	}
+	for _, tc := range cases {
+		rec := httptest.NewRecorder()
+		rt.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, nil))
+		if rec.Code != tc.want {
+			t.Errorf("%s %s: %d, want %d", tc.method, tc.path, rec.Code, tc.want)
+		}
+	}
+}

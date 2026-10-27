@@ -486,3 +486,43 @@ func TestTamperedCookieRejected(t *testing.T) {
 }
 
 func itoa(v int64) string { return strconv.FormatInt(v, 10) }
+
+// AT-F01-03: preferences are stored per user on the server.
+func TestPreferences(t *testing.T) {
+	h := newHarness(t)
+	owner := h.setupOwner()
+	var p struct{ Theme string }
+	owner.do("GET", "/api/v1/auth/preferences", nil).expect(200).json(&p)
+	if p.Theme != "system" {
+		t.Fatalf("default theme %q", p.Theme)
+	}
+	owner.do("PUT", "/api/v1/auth/preferences", map[string]string{"theme": "dark"}).expect(200)
+	if r := owner.do("PUT", "/api/v1/auth/preferences", map[string]string{"theme": "neon"}); r.Code != 422 {
+		t.Fatalf("invalid theme: %d", r.Code)
+	}
+	other := h.loginAs("owner") // another device
+	other.do("GET", "/api/v1/auth/preferences", nil).expect(200).json(&p)
+	if p.Theme != "dark" {
+		t.Fatalf("theme not persisted: %q", p.Theme)
+	}
+}
+
+// AT-F01-01: the web UI is served for non-API paths, never for API paths.
+func TestWebUIFallback(t *testing.T) {
+	h := newHarness(t)
+	c := h.newClient()
+	r := c.do("GET", "/users", nil)
+	if r.Code != 200 || !strings.Contains(r.Body.String(), "<div id=\"root\">") {
+		t.Fatalf("UI route: %d %q", r.Code, r.Body.String())
+	}
+	if csp := r.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") || strings.Contains(csp, "unsafe") {
+		t.Fatalf("UI CSP %q", csp)
+	}
+	r = c.do("GET", "/api/v1/does-not-exist", nil)
+	if r.Code != 404 || r.errorCode() != "not_found" {
+		t.Fatalf("API 404: %d %s", r.Code, r.Body.String())
+	}
+	if csp := r.Header().Get("Content-Security-Policy"); !strings.HasPrefix(csp, "default-src 'none'") {
+		t.Fatalf("API CSP %q", csp)
+	}
+}

@@ -24,10 +24,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F01-01 | Embedded SPA served by Core | UI is served from the Core binary with a strict CSP (no inline script, no third-party origins) | M5 | Not started |
-| AT-F01-02 | Responsive layout | All primary views usable at 360 px, 768 px and 1440 px widths (Playwright visual checks) | M5 | Not started |
-| AT-F01-03 | Light and dark theme | Theme follows OS preference and can be overridden per user | M5 | Not started |
-| AT-F01-04 | Accessibility | Automated axe checks pass with no serious/critical violations; keyboard-only navigation works | M5 | Not started |
+| AT-F01-01 | Embedded SPA served by Core | UI is served from the Core binary with a strict CSP (no inline script, no third-party origins) | M5 | In progress (implemented; E2E runs in CI) |
+| AT-F01-02 | Responsive layout | All primary views usable at 360 px, 768 px and 1440 px widths (Playwright visual checks) | M5 | In progress (implemented; E2E runs in CI) |
+| AT-F01-03 | Light and dark theme | Theme follows OS preference and can be overridden per user | M5 | In progress (implemented; E2E runs in CI) |
+| AT-F01-04 | Accessibility | Automated axe checks pass with no serious/critical violations; keyboard-only navigation works | M5 | In progress (implemented; E2E runs in CI) |
 | AT-F01-05 | Live status | Container/app status updates without page reload (SSE) | M6 | Not started |
 
 ## F02 — Complete Docker container management
@@ -98,7 +98,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F08-02 | Password auth | Argon2id hashing; breached/weak password rejection; rate limiting and lockout with backoff | M2 | Done (CI 40510127374; merge pending owner review) |
 | AT-F08-03 | Sessions | Server-side sessions, secure/HttpOnly/SameSite cookies, idle and absolute timeouts, rotation on privilege change | M2 | Done (CI 40510127374; merge pending owner review) |
 | AT-F08-04 | CSRF | All state-changing requests require a valid CSRF token and same-origin check | M2 | Done (CI 40510127374; merge pending owner review) |
-| AT-F08-05 | Session management UI | Users see and revoke their sessions; Owners revoke any session | M5 | Not started |
+| AT-F08-05 | Session management UI | Users see and revoke their sessions; Owners revoke any session | M5 | In progress (implemented; E2E runs in CI) |
 | AT-F08-06 | User lifecycle | Create, disable, delete users; Owner cannot delete the last Owner | M2 | Done (CI 40510127374; merge pending owner review) |
 
 ## F09 — Passkeys, MFA and role-based access control
@@ -190,5 +190,5 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 |---|---|---|---|---|
 | AT-F18-01 | Persistent job queue | Jobs survive restarts; at-least-once execution with idempotent steps | M3 | Done (CI 40511595535; merge pending owner review) |
 | AT-F18-02 | Crash recovery | `kill -9` of Core or agent at any job step recovers to a consistent state on restart | M3 | Done (CI 40511595535; merge pending owner review) |
-| AT-F18-03 | Job visibility | Users see job progress, logs and outcome; jobs can be cancelled where safe | M5 | Not started |
+| AT-F18-03 | Job visibility | Users see job progress, logs and outcome; jobs can be cancelled where safe | M5 | In progress (implemented; E2E runs in CI) |
 | AT-F18-04 | Power-loss safety | SQLite WAL with synchronous=FULL for journal tables; recovery after simulated power loss (VM reset) | M3 | Blocked (B-2: VM reset test); WAL + synchronous=FULL in place |

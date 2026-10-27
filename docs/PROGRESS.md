@@ -17,7 +17,8 @@ network, backup or installer functionality.
 | M1 | Core foundation | Done | [M1 evidence](milestones/M1-core-foundation.md#verification-evidence-2026-10-27), CI run 40506636168 |
 | M2 | Identity, sessions, RBAC, audit | Implemented, CI green (run 40510127374); owner review pending | [M2 evidence](milestones/M2-identity.md#verification-evidence-2026-10-27-branch-m2-identity) |
 | M3 | Persistent jobs, crash recovery | Implemented, CI green (run 40511595535); owner review pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
-| M4–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M5 | Web dashboard shell | Implemented on branch `m5-dashboard` (based on M3); CI pending | [M5 design](milestones/M5-dashboard.md) |
+| M4, M6–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -26,18 +27,18 @@ network, backup or installer functionality.
 | B-1 | Docker Engine missing on `khv01-dev`; installing needs `sudo` | M4, M6–M8, M14, M16 integration | Install Docker Engine (and add a dedicated test user/VM policy) |
 | B-2 | No disposable Debian 13 VMs (amd64, arm64) | All privileged integration, upgrade, backup/restore and release tests (G3/G4) | Provide VMs or a hypervisor the dev server may use |
 | B-3 | Release signing key ceremony undecided (ADR-0013) | M18, signed artifacts | Decision + offline key |
-| B-5 | No Node.js on the dev server (needed to build the web UI) | M5 | None — can be installed in the user's home without `sudo` |
+| B-5 | Playwright browsers need system libraries on the dev server (`sudo`) | Local E2E runs | None — E2E runs in CI; optional `sudo npx playwright install-deps chromium` |
 | B-6 | No C toolchain on the dev server | Local `-race` runs | None — CI covers it; optional `sudo apt install gcc` |
 
 ## Next steps (in order)
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
-2. M5: web dashboard shell (install Node.js in `~/.local`; no `sudo` needed).
+2. Owner reviews `m5-dashboard`.
 3. M4 onward requires B-1 (Docker), then B-2 (Debian 13 VMs) for release evidence.
 
 ## Development environment
 
 - Dev server `khv01-dev` (Ubuntu 26.04, amd64), user `dev01`, repo `~/KERNHAVEN`.
-- Go 1.27.3 in `~/.local/go` (checksum-verified download from go.dev).
+- Go 1.27.3 in `~/.local/go`, Node.js 24.22.1 LTS in `~/.local/node` (checksum-verified downloads).
 - Push via deploy key `~/.ssh/kernhaven_deploy` (host alias `github-kernhaven`).
 - Run `scripts/check.sh` before every commit.

@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
@@ -75,6 +76,7 @@ func newHarness(t *testing.T) *harness {
 		Hash: identity.HashParams{Memory: 64, Time: 1, Threads: 1},
 		Runner: jobs.RunnerOptions{Workers: 2, Lease: 300 * time.Millisecond, Heartbeat: 20 * time.Millisecond,
 			PollInterval: 10 * time.Millisecond, BackoffBase: 10 * time.Millisecond, BackoffMax: 50 * time.Millisecond},
+		UI: fstest.MapFS{"index.html": {Data: []byte(`<!doctype html><div id="root"></div>`)}},
 	})
 	if err != nil {
 		t.Fatal(err)

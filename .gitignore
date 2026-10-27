@@ -21,3 +21,10 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Web UI build output (embedded into the Core at build time)
+/internal/core/webui/dist/*
+!/internal/core/webui/dist/.gitkeep
+/web/node_modules/
+/web/test-results/
+/web/playwright-report/

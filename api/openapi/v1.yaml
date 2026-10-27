@@ -128,6 +128,21 @@ paths:
         "204": { description: Password changed }
         "401": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /auth/preferences:
+    get:
+      operationId: getPreferences
+      x-permission: self.manage
+      responses:
+        "200": { description: The caller's preferences, content: { application/json: { schema: { $ref: "#/components/schemas/Preferences" } } } }
+    put:
+      operationId: setPreferences
+      x-permission: self.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Preferences" } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/Preferences" } } } }
+        "422": { $ref: "#/components/responses/Error" }
   /auth/sessions:
     get:
       operationId: listOwnSessions
@@ -374,6 +389,12 @@ components:
         details: { type: object, additionalProperties: { type: string } }
         prev_hash: { type: string }
         hash: { type: string }
+    Preferences:
+      type: object
+      required: [theme]
+      additionalProperties: false
+      properties:
+        theme: { type: string, enum: [system, light, dark] }
     Job:
       type: object
       properties:

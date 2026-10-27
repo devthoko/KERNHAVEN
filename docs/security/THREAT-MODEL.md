@@ -56,7 +56,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Partially mitigated (M2: Argon2id, IP rate limit, lockout; MFA in M11) |
 | TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2 | Mitigated (AT-F08-03) |
 | TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Mitigated (AT-F08-04) |
-| TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Open |
+| TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Partially mitigated (M5: strict CSP without unsafe-inline, React escaping only, dangerouslySetInnerHTML banned in CI; file previews in M10) |
 | TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation | M1 | Mitigated (AT-F00-01) |
 | TH-06 | D | Slowloris / large bodies / request floods | Server timeouts, header/body limits, rate limits | M1/M2 | Partially mitigated (M1: timeouts, body limit; M2: auth rate limits) |
 | TH-07 | I | Error responses leak internals (stack traces, SQL) | Uniform error model; panics recovered and logged with request ID only | M1 | Mitigated (AT-F00-04) |

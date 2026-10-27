@@ -35,6 +35,14 @@ for arch in amd64 arm64; do
   CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -o "bin/kernhaven-core-linux-$arch" ./cmd/kernhaven-core
 done
 
+echo "== web"
+if command -v npm >/dev/null 2>&1; then
+  (cd web && npm ci --ignore-scripts --no-audit --no-fund >/dev/null && npm run typecheck && npm test && npm run build >/dev/null && npm audit --audit-level=high)
+else
+  echo "(npm not found: skipping web checks; CI runs them)"
+fi
+if grep -rn "dangerouslySetInnerHTML" web/src; then echo "dangerouslySetInnerHTML is forbidden (TH-04)"; exit 1; fi
+
 echo "== secret scan"
 if git grep -nE -- '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' -- . ':!scripts/check.sh' ':!.github/workflows/ci.yml'; then
   echo "private key material found"; exit 1

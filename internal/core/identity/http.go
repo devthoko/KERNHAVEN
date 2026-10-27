@@ -177,6 +177,7 @@ func (s *Service) Register(rt *httpserver.Router) {
 	self := httpserver.RequirePermission(string(authz.SelfManage))
 	usersRead := httpserver.RequirePermission(string(authz.UsersRead))
 	usersManage := httpserver.RequirePermission(string(authz.UsersManage))
+	s.registerPreferences(rt)
 
 	rt.HandleFunc("GET /api/v1/setup", httpserver.Public(), func(w http.ResponseWriter, r *http.Request) {
 		required, err := s.SetupRequired(r.Context())
