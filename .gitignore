@@ -1,0 +1,23 @@
+# Credentials and secrets - never commit (see CLAUDE.md)
+*.rtf
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_*
+*_deploy
+*creds*
+*secret*
+
+# Build output
+/bin/
+/dist/
+node_modules/
+*.db
+*.sqlite
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
