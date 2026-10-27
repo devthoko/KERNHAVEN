@@ -1,0 +1,10 @@
+{
+   "blockdevices": [
+      {"name": "vda", "path": "/dev/vda", "type": "disk", "size": "21474836480", "ro": "0", "rm": "0", "rota": "1", "model": null, "serial": null, "wwn": null, "tran": null, "fstype": null, "label": null, "uuid": null, "fssize": null, "fsused": null, "fsavail": null, "mountpoint": null,
+         "children": [
+            {"name": "vda1", "path": "/dev/vda1", "type": "part", "size": "21473787904", "ro": "0", "rm": "0", "rota": "1", "model": null, "serial": null, "wwn": null, "tran": null, "fstype": "ext4", "label": null, "uuid": "11111111-2222-3333-4444-555555555555", "fssize": "21000000000", "fsused": "5000000000", "fsavail": "15000000000", "mountpoint": "/"}
+         ]
+      },
+      {"name": "vdb", "path": "/dev/vdb", "type": "disk", "size": "107374182400", "ro": "0", "rm": "0", "rota": "1", "model": null, "serial": "data1", "wwn": null, "tran": null, "fstype": null, "label": null, "uuid": null, "fssize": null, "fsused": null, "fsavail": null, "mountpoint": null}
+   ]
+}

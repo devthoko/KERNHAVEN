@@ -1,0 +1,20 @@
+# Kernhaven storage service configuration — /etc/kernhaven/storage.toml
+# The same binary as the agent, in the storage role: it runs as root and only
+# offers disk inventory, formatting and mounts (M9). Unknown keys are rejected.
+
+role = "storage"
+
+# Unix socket the Core connects to (directory created by systemd).
+socket = "/run/kernhaven-storage/storage.sock"
+
+# Only these UIDs may connect (SO_PEERCRED): the Core user (id -u kernhaven).
+allowed_uids = [998]
+
+# The same grant verification key as the agent (copied by the installer).
+grant_public_key = "/etc/kernhaven/agent-grant.pub"
+
+# Data disks are mounted below this directory, one folder per disk.
+mount_root = "/srv/kernhaven"
+
+[log]
+level = "info"   # debug | info | warn | error

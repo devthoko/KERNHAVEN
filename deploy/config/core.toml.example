@@ -24,6 +24,10 @@ level = "info"
 # Unix socket of kernhaven-agent; empty disables container features.
 socket = "/run/kernhaven/agent.sock"
 
+# Unix socket of kernhaven-storage (disks and mounts, M9); empty disables
+# disk management.
+storage_socket = "/run/kernhaven-storage/storage.sock"
+
 [auth]
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout

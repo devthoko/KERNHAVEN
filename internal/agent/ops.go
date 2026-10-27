@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
+	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
@@ -105,15 +106,20 @@ type Options struct {
 	AllowedBindRoots []string
 	// HelperImage runs volume copies (ADR-0021); empty means DefaultHelperImage.
 	HelperImage string
+	// Storage selects the storage role (M9): the server then offers only
+	// agent.info and the storage operations, and no Docker operation.
+	Storage *storage.Host
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
 func operations(d Docker, started time.Time, o Options) map[string]handler {
+	if o.Storage != nil {
+		ops := storageOperations(o.Storage)
+		ops[agentproto.OpAgentInfo] = agentInfo(started)
+		return ops
+	}
 	ops := map[string]handler{
-		agentproto.OpAgentInfo: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
-			v := version.Get()
-			return agentproto.AgentInfo{Version: v.Version, Commit: v.Commit, UptimeSeconds: int64(time.Since(started).Seconds())}, nil
-		}),
+		agentproto.OpAgentInfo: agentInfo(started),
 		agentproto.OpDockerInfo: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
 			return d.Info(ctx)
 		}),
@@ -163,9 +169,25 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 	return ops
 }
 
+func agentInfo(started time.Time) handler {
+	return typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
+		v := version.Get()
+		return agentproto.AgentInfo{Version: v.Version, Commit: v.Commit, UptimeSeconds: int64(time.Since(started).Seconds())}, nil
+	})
+}
+
+// StorageOperationNames lists the operations of the storage role (sorted).
+func StorageOperationNames() []string {
+	return sortedNames(operations(nil, time.Time{}, Options{Storage: &storage.Host{}}))
+}
+
 // OperationNames lists the allow-listed operations (sorted).
 func OperationNames() []string {
 	ops := operations(nil, time.Time{}, Options{})
+	return sortedNames(ops)
+}
+
+func sortedNames(ops map[string]handler) []string {
 	names := make([]string, 0, len(ops))
 	for n := range ops {
 		names = append(names, n)
@@ -180,6 +202,12 @@ func errorCode(err error) (string, int) {
 	switch {
 	case errors.As(err, &ip):
 		return agentproto.CodeInvalidParams, 400
+	case errors.As(err, new(*storage.InvalidError)), errors.Is(err, storage.ErrToolMissing):
+		return agentproto.CodeInvalidParams, 400
+	case errors.Is(err, storage.ErrNotFound):
+		return agentproto.CodeNotFound, 404
+	case errors.Is(err, storage.ErrBusy):
+		return agentproto.CodeConflict, 409
 	case errors.As(err, new(*policy.PolicyError)):
 		return agentproto.CodePolicyViolation, 422
 	case errors.Is(err, docker.ErrInvalid):

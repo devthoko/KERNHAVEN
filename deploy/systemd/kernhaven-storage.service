@@ -1,0 +1,56 @@
+[Unit]
+Description=Kernhaven storage service (disks and mounts)
+Documentation=https://github.com/devthoko/KERNHAVEN
+After=local-fs.target systemd-udevd.service
+
+[Service]
+Type=exec
+# Disk operations need root (raw block devices, mount units). They run in this
+# separate service (M9, ADR-0022) so the Docker agent keeps no privileges. It
+# offers only agent.info and the storage.* operations, verifies the Core's
+# grants like the agent, and has no network.
+User=root
+Group=kernhaven-agent
+ExecStart=/usr/bin/kernhaven-agent -config /etc/kernhaven/storage.toml
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=30s
+
+# /run/kernhaven-storage (0750, group kernhaven-agent): the Core user is a
+# member of kernhaven-agent and connects to storage.sock (0660).
+RuntimeDirectory=kernhaven-storage
+RuntimeDirectoryMode=0750
+UMask=0117
+
+NoNewPrivileges=yes
+# sfdisk re-reads partition tables (SYS_ADMIN), smartctl talks to drives
+# (SYS_RAWIO). No other capability.
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_RAWIO
+AmbientCapabilities=
+ProtectSystem=strict
+# Mount units and mount points are the only writable paths.
+ReadWritePaths=/etc/systemd/system -/srv/kernhaven
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

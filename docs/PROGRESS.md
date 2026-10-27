@@ -6,9 +6,9 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4, M6, M7 and M8 are implemented on
-stacked branches up to `m8-apps`. Storage, file manager, network/TLS,
-backup and installer functionality do not exist yet.
+green CI on stacked branches awaiting owner review; M4 and M6–M9 are implemented on
+stacked branches up to `m9-storage`. File manager, network/TLS, backup
+and installer functionality do not exist yet.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
@@ -20,8 +20,9 @@ backup and installer functionality do not exist yet.
 | M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
 | M6 | Container management (F02-01..06) | Implemented, full CI green incl. browser E2E on real Docker (run 40559956035); owner review pending | [M6 evidence](milestones/M6-containers.md#verification-evidence-2026-10-27-branch-m6-containers) |
 | M7 | Compose stacks (F03) | Done on branch `m7-compose` (stacked on M6), CI 40565761279; merge pending owner review | [M7 evidence](milestones/M7-compose.md#verification-evidence-2026-10-27-branch-m7-compose) |
-| M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
-| M6b, M9–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M8 | App store and app lifecycle (F04, F05) | Implemented on branch `m8-apps` (stacked on M7), CI pending; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
+| M9 | Storage and disk management (F06-01..03) | Implemented on branch `m9-storage` (stacked on M8), CI pending | [M9 evidence](milestones/M9-storage.md#verification-evidence-2026-10-28-branch-m9-storage) |
+| M6b, M10–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -37,7 +38,7 @@ backup and installer functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`. Next: M9 storage and disk management, M12 reverse proxy (completes AT-F05-01), or M6b streaming.
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps` and `m9-storage`. Next: M10 file manager (builds on the mount root), M12 reverse proxy (completes AT-F05-01), or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

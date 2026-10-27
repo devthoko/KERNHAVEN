@@ -692,6 +692,63 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /storage:
+    get:
+      operationId: getStorageInventory
+      x-permission: storage.read
+      description: Disks with partitions, file systems, usage, SMART health and their classification (system, in_use, managed, free) as determined by the storage service, plus Kernhaven's mounts.
+      responses:
+        "200": { description: Inventory, content: { application/json: { schema: { $ref: "#/components/schemas/StorageInventory" } } } }
+        "503": { description: The storage service is not configured or not reachable (code storage_unavailable), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /storage/format:
+    post:
+      operationId: formatDisk
+      x-permission: storage.manage
+      description: Queues formatting a free disk with one GPT partition and a file system. Requires the disk's name as typed confirmation and the user's password. The storage service refuses the system disk, disks in use and disks whose serial, WWN or size no longer match. Never retried automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, size_bytes, fstype, label, confirm, password]
+              properties:
+                path: { type: string }
+                serial: { type: string }
+                wwn: { type: string }
+                size_bytes: { type: integer }
+                fstype: { type: string, enum: [ext4, xfs, btrfs] }
+                label: { type: string, pattern: "^[A-Za-z0-9_-]{1,12}$" }
+                confirm: { type: string, description: the disk's name, for example sdb }
+                password: { type: string }
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "403": { description: Wrong password (code reauthentication_failed), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { description: Missing or wrong confirmation (code confirmation_required), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /storage/mounts:
+    post:
+      operationId: mountFileSystem
+      x-permission: storage.manage
+      description: Mounts a file system of a non-system disk at <mount_root>/<name> through a persistent systemd mount unit (by UUID, nofail,nosuid,nodev).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [path, uuid, name], properties: { path: { type: string }, uuid: { type: string }, name: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" } } } } }
+      responses:
+        "201": { description: Mounted, content: { application/json: { schema: { $ref: "#/components/schemas/ManagedMount" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /storage/mounts/{name}:
+    delete:
+      operationId: unmountFileSystem
+      x-permission: storage.manage
+      description: Stops and removes a Kernhaven mount unit. A busy file system is reported (409), never forced.
+      parameters: [{ name: name, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" } }]
+      responses:
+        "204": { description: Unmounted }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -720,6 +777,60 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    ManagedMount:
+      type: object
+      properties:
+        name: { type: string }
+        path: { type: string }
+        unit: { type: string }
+        what: { type: string }
+        fstype: { type: string }
+        active: { type: boolean }
+    StorageInventory:
+      type: object
+      properties:
+        mount_root: { type: string }
+        formattable_fstypes: { type: array, items: { type: string } }
+        smart_tool: { type: boolean }
+        privileged: { type: boolean }
+        mounts: { type: array, items: { $ref: "#/components/schemas/ManagedMount" } }
+        disks:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              name: { type: string }
+              model: { type: string }
+              serial: { type: string }
+              wwn: { type: string }
+              transport: { type: string }
+              size_bytes: { type: integer }
+              rotational: { type: boolean }
+              removable: { type: boolean }
+              read_only: { type: boolean }
+              class: { type: string, enum: [system, in_use, managed, free] }
+              reason: { type: string }
+              formattable: { type: boolean }
+              smart: { type: object, properties: { available: { type: boolean }, passed: { type: boolean }, temperature_c: { type: integer }, power_on_hours: { type: integer }, message: { type: string } } }
+              file_systems:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path: { type: string }
+                    name: { type: string }
+                    type: { type: string }
+                    fstype: { type: string }
+                    label: { type: string }
+                    uuid: { type: string }
+                    size_bytes: { type: integer }
+                    fs_size_bytes: { type: integer }
+                    fs_used_bytes: { type: integer }
+                    fs_available_bytes: { type: integer }
+                    mountpoints: { type: array, items: { type: string } }
+                    mount_name: { type: string }
+                    mountable: { type: boolean }
     CatalogSource:
       type: object
       properties:

@@ -1,0 +1,149 @@
+{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "path": "/dev/loop0",
+         "type": "loop",
+         "size": 1581056,
+         "ro": true,
+         "rm": false,
+         "rota": true,
+         "model": null,
+         "serial": null,
+         "wwn": null,
+         "tran": null,
+         "fstype": "squashfs",
+         "label": null,
+         "uuid": null,
+         "fssize": 1703936,
+         "fsused": 1703936,
+         "fsavail": 0,
+         "mountpoints": [
+             "/snap/hwctl/123"
+         ]
+      },{
+         "name": "loop1",
+         "path": "/dev/loop1",
+         "type": "loop",
+         "size": 70049792,
+         "ro": true,
+         "rm": false,
+         "rota": true,
+         "model": null,
+         "serial": null,
+         "wwn": null,
+         "tran": null,
+         "fstype": "squashfs",
+         "label": null,
+         "uuid": null,
+         "fssize": 70123520,
+         "fsused": 70123520,
+         "fsavail": 0,
+         "mountpoints": [
+             "/snap/core24/1643"
+         ]
+      },{
+         "name": "loop2",
+         "path": "/dev/loop2",
+         "type": "loop",
+         "size": 52535296,
+         "ro": true,
+         "rm": false,
+         "rota": true,
+         "model": null,
+         "serial": null,
+         "wwn": null,
+         "tran": null,
+         "fstype": "squashfs",
+         "label": null,
+         "uuid": null,
+         "fssize": 52559872,
+         "fsused": 52559872,
+         "fsavail": 0,
+         "mountpoints": [
+             "/snap/snapd/27710"
+         ]
+      },{
+         "name": "sda",
+         "path": "/dev/sda",
+         "type": "disk",
+         "size": 68719476736,
+         "ro": false,
+         "rm": false,
+         "rota": true,
+         "model": "QEMU HARDDISK",
+         "serial": "drive-scsi0",
+         "wwn": null,
+         "tran": null,
+         "fstype": null,
+         "label": null,
+         "uuid": null,
+         "fssize": null,
+         "fsused": null,
+         "fsavail": null,
+         "mountpoints": [],
+         "children": [
+            {
+               "name": "sda1",
+               "path": "/dev/sda1",
+               "type": "part",
+               "size": 1048576,
+               "ro": false,
+               "rm": false,
+               "rota": true,
+               "model": null,
+               "serial": null,
+               "wwn": null,
+               "tran": null,
+               "fstype": null,
+               "label": null,
+               "uuid": null,
+               "fssize": null,
+               "fsused": null,
+               "fsavail": null,
+               "mountpoints": []
+            },{
+               "name": "sda2",
+               "path": "/dev/sda2",
+               "type": "part",
+               "size": 68716331008,
+               "ro": false,
+               "rm": false,
+               "rota": true,
+               "model": null,
+               "serial": null,
+               "wwn": null,
+               "tran": null,
+               "fstype": "ext4",
+               "label": null,
+               "uuid": "4abb2928-fa89-41f7-9ce9-5257d3d89e3b",
+               "fssize": 67314954240,
+               "fsused": 11809218560,
+               "fsavail": 52053143552,
+               "mountpoints": [
+                   "/"
+               ]
+            }
+         ]
+      },{
+         "name": "sr0",
+         "path": "/dev/sr0",
+         "type": "rom",
+         "size": 2927861760,
+         "ro": true,
+         "rm": true,
+         "rota": true,
+         "model": "QEMU DVD-ROM",
+         "serial": "QM00003",
+         "wwn": null,
+         "tran": "ata",
+         "fstype": "iso9660",
+         "label": "Ubuntu-Server 26.04.1 LTS amd64",
+         "uuid": "2026-08-26-05-03-12-00",
+         "fssize": null,
+         "fsused": null,
+         "fsavail": null,
+         "mountpoints": []
+      }
+   ]
+}

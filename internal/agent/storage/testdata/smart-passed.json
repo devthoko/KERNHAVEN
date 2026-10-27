@@ -1,0 +1,1 @@
+{"json_format_version":[1,0],"smartctl":{"version":[7,4],"exit_status":0},"device":{"name":"/dev/sda","type":"sat"},"model_name":"WDC WD40EFRX","smart_status":{"passed":true},"temperature":{"current":34},"power_on_time":{"hours":28123}}

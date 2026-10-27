@@ -1,0 +1,1 @@
+{"json_format_version":[1,0],"smartctl":{"version":[7,4],"exit_status":4,"messages":[{"string":"/dev/sda: Unknown USB bridge [0x0bda:0x9210 (0xf000)]","severity":"error"}]},"device":{"name":"/dev/sda","type":"scsi"}}

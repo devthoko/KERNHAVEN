@@ -8,6 +8,7 @@ PORT=${KH_E2E_PORT:-18471}
 WORK=$(mktemp -d)
 cleanup() {
   if [ -n "${AGENT_PID:-}" ]; then kill -TERM "$AGENT_PID" 2>/dev/null || true; wait "$AGENT_PID" 2>/dev/null || true; fi
+  if [ -n "${STORAGE_PID:-}" ]; then kill -TERM "$STORAGE_PID" 2>/dev/null || true; wait "$STORAGE_PID" 2>/dev/null || true; fi
   if [ -n "${DOCKER_SOCK:-}" ] && command -v docker >/dev/null; then
     DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-web >/dev/null 2>&1 || true
     DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-vol >/dev/null 2>&1 || true
@@ -44,6 +45,7 @@ public_origin = "http://localhost:$PORT"
 data_dir = "$WORK/data"
 [agent]
 socket = "$WORK/agent.sock"
+storage_socket = "$WORK/storage.sock"
 CFG
 
 "$WORK/kernhaven-core" -config "$WORK/core.toml" 2> "$WORK/core.log" &
@@ -63,6 +65,17 @@ CFG
   AGENT_PID=$!
   export KH_E2E_DOCKER=1
 fi
+
+# Storage service (M9) without root: inventory of the real disks, no changes.
+cat > "$WORK/storage.toml" <<CFG
+role = "storage"
+socket = "$WORK/storage.sock"
+allowed_uids = [$(id -u)]
+grant_public_key = "$WORK/data/agent-grant.pub"
+mount_root = "$WORK/mnt"
+CFG
+"$WORK/kernhaven-agent" -config "$WORK/storage.toml" 2> "$WORK/storage.log" &
+STORAGE_PID=$!
 
 TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -f4)
 if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exit 1; fi

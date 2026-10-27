@@ -185,7 +185,16 @@ func TestOperationAllowList(t *testing.T) {
 		"images.list", "images.prune", "images.pull", "images.remove", "networks.create", "networks.list", "networks.remove",
 		"volumes.copy", "volumes.create", "volumes.list", "volumes.remove"}
 	if got := OperationNames(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6/M8 design)", got, want)
+		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6/M8/M9 design)", got, want)
+	}
+}
+
+// M9: the storage role offers only these operations — no Docker access, and
+// the Docker role offers no storage operation (separate privilege domains).
+func TestStorageRoleAllowList(t *testing.T) {
+	want := []string{"agent.info", "storage.format", "storage.inventory", "storage.mount", "storage.unmount"}
+	if got := StorageOperationNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("storage operations = %v\nwant %v", got, want)
 	}
 }
 

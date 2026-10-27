@@ -9,6 +9,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
 )
@@ -27,7 +28,13 @@ type Config struct {
 	AllowedBindRoots []string `toml:"allowed_bind_roots"`
 	// HelperImage is the image for volume copies before app updates (ADR-0021).
 	HelperImage string `toml:"helper_image"`
-	Log         struct {
+	// Role is "docker" (default) or "storage" (M9, runs as root, disks only).
+	Role string `toml:"role"`
+	// MountRoot is where data disks are mounted (M9).
+	MountRoot string `toml:"mount_root"`
+	// StorageIncludeLoop treats loop devices as disks. Only for tests.
+	StorageIncludeLoop bool `toml:"storage_include_loop_devices"`
+	Log                struct {
 		Level string `toml:"level"`
 	} `toml:"log"`
 
@@ -39,7 +46,7 @@ func (c Config) PublicKey() ed25519.PublicKey { return c.publicKey }
 
 // LoadConfig reads and validates the agent configuration strictly.
 func LoadConfig(path string) (Config, error) {
-	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub", HelperImage: DefaultHelperImage}
+	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub", HelperImage: DefaultHelperImage, MountRoot: storage.DefaultMountRoot, Role: "docker"}
 	cfg.Log.Level = "info"
 	md, err := toml.DecodeFile(path, &cfg)
 	if err != nil {
@@ -62,6 +69,12 @@ func LoadConfig(path string) (Config, error) {
 		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
 			errs = append(errs, fmt.Errorf("allowed_bind_roots: %q must be an absolute, clean directory other than /", r))
 		}
+	}
+	if cfg.Role != "docker" && cfg.Role != "storage" {
+		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage", cfg.Role))
+	}
+	if !filepath.IsAbs(cfg.MountRoot) || filepath.Clean(cfg.MountRoot) != cfg.MountRoot || cfg.MountRoot == "/" {
+		errs = append(errs, fmt.Errorf("mount_root: %q must be an absolute, clean directory other than /", cfg.MountRoot))
 	}
 	if !policy.ValidImageReference(cfg.HelperImage) {
 		errs = append(errs, fmt.Errorf("helper_image: %q is not a valid image reference", cfg.HelperImage))

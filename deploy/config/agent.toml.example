@@ -20,5 +20,9 @@ docker_socket = "/run/docker.sock"
 # busybox 1.37.0 pinned by digest; air-gapped hosts point this to a local image.
 # helper_image = "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
 
+# Data disks are mounted below this directory (M9). Add it to the Core's
+# containers.allowed_bind_roots so apps can use the disks without exceptions.
+# mount_root = "/srv/kernhaven"
+
 [log]
 level = "info"   # debug | info | warn | error

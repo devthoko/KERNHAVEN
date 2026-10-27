@@ -80,7 +80,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 |---|---|---|---|---|---|
 | TH-30 | E | Container escape via privileged mode, host namespaces, dangerous capabilities or `docker.sock` mount | Policy engine denies by default; explicit, audited exceptions | M6/M7 | Mitigated for single containers (M6, AT-F02-04: deny-by-default policy in Core and agent; Docker socket and system paths never exemptible); Compose in M7 |
 | TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Partially mitigated (M6: bind sources resolved with EvalSymlinks in the agent and checked against allowed roots and protected paths; file manager in M10) |
-| TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Open |
+| TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Mitigated (M9: the storage service classifies every disk on every request and refuses the system disk, disks in use and disks whose identity changed before running any tool; typed confirmation and password in the Core; never retried; separate root service with its own allow-list, ADR-0022) |
 | TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Mitigated for stacks (M7: every stack gets its own default network; services join only declared networks; one network per service) |
 | TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Mitigated for M4 operations (no process execution; Docker API calls only with validated, path-escaped references) |
 | TH-35 | T | Kernhaven modifies firewall or SSH and locks the user out | Out of scope by policy; agent has no such operations | — | Mitigated by design |
@@ -123,3 +123,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-27 | M6 | TH-30 mitigated for single containers; TH-21, TH-31, TH-33, TH-41 partially |
 | 2026-10-27 | M7 | TH-42 (Compose URL import), TH-51 (stack variables), TH-33 (stacks) mitigated |
 | 2026-10-27 | M8 | TH-40 mitigated (signed catalogs); TH-41 update diff; TH-51 app secrets; new agent operation volumes.copy (ADR-0021) |
+| 2026-10-28 | M9 | TH-32 mitigated; new privilege domain: root storage service with its own allow-list (ADR-0022); mount points only below the mount root, nosuid,nodev |

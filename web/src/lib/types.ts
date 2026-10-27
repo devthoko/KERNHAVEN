@@ -19,7 +19,9 @@ export type Permission =
   | "policy.exceptions"
   | "apps.read"
   | "apps.manage"
-  | "catalog.manage";
+  | "catalog.manage"
+  | "storage.read"
+  | "storage.manage";
 
 export interface User {
   id: number;
@@ -436,4 +438,66 @@ export interface InstalledAppDetail extends InstalledApp {
   homepage: string;
   summary: string;
   web: { service: string; port: number } | null;
+}
+
+// ---- M9: storage ----
+
+export interface SmartInfo {
+  available: boolean;
+  passed?: boolean;
+  temperature_c?: number;
+  power_on_hours?: number;
+  message?: string;
+}
+
+export interface FileSystemInfo {
+  path: string;
+  name: string;
+  type: string;
+  fstype: string;
+  label: string;
+  uuid: string;
+  size_bytes: number;
+  fs_size_bytes: number;
+  fs_used_bytes: number;
+  fs_available_bytes: number;
+  mountpoints: string[];
+  mount_name?: string;
+  mountable: boolean;
+}
+
+export interface DiskInfo {
+  path: string;
+  name: string;
+  model: string;
+  serial: string;
+  wwn: string;
+  transport: string;
+  size_bytes: number;
+  rotational: boolean;
+  removable: boolean;
+  read_only: boolean;
+  class: "system" | "in_use" | "managed" | "free";
+  reason?: string;
+  formattable: boolean;
+  file_systems: FileSystemInfo[];
+  smart: SmartInfo;
+}
+
+export interface ManagedMount {
+  name: string;
+  path: string;
+  unit: string;
+  what: string;
+  fstype: string;
+  active: boolean;
+}
+
+export interface StorageInventory {
+  disks: DiskInfo[];
+  mounts: ManagedMount[];
+  mount_root: string;
+  formattable_fstypes: string[];
+  smart_tool: boolean;
+  privileged: boolean;
 }

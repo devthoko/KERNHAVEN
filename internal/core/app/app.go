@@ -17,6 +17,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
+	khstorage "github.com/devthoko/KERNHAVEN/internal/core/storage"
 	"github.com/devthoko/KERNHAVEN/internal/core/webui"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/health"
@@ -85,6 +86,16 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		agent = agentclient.New(cfg.Agent.Socket, key)
 	}
 	agentclient.RegisterRoutes(rt, agent)
+	// Disk management goes to the separate root storage service (M9).
+	var storageClient *agentclient.Client
+	if cfg.Agent.StorageSocket != "" {
+		key, err := agentclient.LoadOrCreateKey(cfg.Storage.DataDir)
+		if err != nil {
+			return nil, fmt.Errorf("agent grant key: %w", err)
+		}
+		storageClient = agentclient.New(cfg.Agent.StorageSocket, key)
+	}
+	khstorage.New(storageClient, auditLog, ids, jobSvc, runner.Wake).Register(rt)
 	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
 	box, err := secretbox.Open(filepath.Join(cfg.Storage.DataDir, secretbox.KeyFile))
 	if err != nil {

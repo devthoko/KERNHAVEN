@@ -1,0 +1,1 @@
+{"json_format_version":[1,0],"smartctl":{"version":[7,4],"exit_status":8,"messages":[{"string":"SMART overall-health self-assessment test result: FAILED!","severity":"error"}]},"device":{"name":"/dev/sdb","type":"sat"},"smart_status":{"passed":false},"temperature":{"current":51},"power_on_time":{"hours":61000}}

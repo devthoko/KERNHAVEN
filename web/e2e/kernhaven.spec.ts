@@ -421,6 +421,16 @@ test("AT-F05-03: remove the app and its data after re-entering the password", as
   await expect(page.getByText("No apps installed yet.")).toBeVisible({ timeout: 120_000 });
 });
 
+test("AT-F06-01, TH-32: the storage page shows the real disks and finds the system disk", async () => {
+  await page.goto("/storage");
+  await expect(page.getByRole("heading", { name: "Storage", exact: true })).toBeVisible();
+  await expect(page.getByText("system disk", { exact: true }).first()).toBeVisible();
+  // Without root the storage service only reports; nothing can be formatted or mounted.
+  await expect(page.getByText(/does not run as root/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Format…" })).toHaveCount(0);
+  await expectAccessible(page, "storage");
+});
+
 test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser }) => {
   const other = await freshLogin(browser, OWNER);
   await page.goto("/account");
@@ -437,7 +447,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -485,6 +495,8 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await viewer.goto("/containers");
   await expect(viewer.getByRole("heading", { name: "Containers", exact: true })).toBeVisible();
   await expect(viewer.getByRole("button", { name: "New container" })).toHaveCount(0);
+  // M9: viewers do not see disks.
+  await expect(nav.getByRole("link", { name: "Storage" })).toHaveCount(0);
   // M8: viewers browse the store but cannot install or manage sources.
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();

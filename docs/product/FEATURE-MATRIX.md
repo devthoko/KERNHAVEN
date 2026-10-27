@@ -57,27 +57,27 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F04-01 | Catalog sync | Catalog fetched from configured sources; signature verified; unsigned or tampered catalogs are rejected | M8 | Done (CI 40574613677; merge pending owner review) |
-| AT-F04-02 | Browse and search | Category, text search and app detail pages with required permissions shown | M8 | Done (CI 40574613677; merge pending owner review) |
-| AT-F04-03 | Multiple sources | Owner can add/remove catalog sources with their own trust keys | M8 | Done (CI 40574613677; merge pending owner review) |
-| AT-F04-04 | Policy disclosure | Each app shows the privileges it requests before install | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F04-01 | Catalog sync | Catalog fetched from configured sources; signature verified; unsigned or tampered catalogs are rejected | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F04-02 | Browse and search | Category, text search and app detail pages with required permissions shown | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F04-03 | Multiple sources | Owner can add/remove catalog sources with their own trust keys | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F04-04 | Policy disclosure | Each app shows the privileges it requests before install | M8 | Implemented on `m8-apps`; CI pending |
 
 ## F05 — App installation, updating and removal
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8 | Partial (CI 40574613677; form, generated secrets, health check; the reverse proxy route needs M12) |
-| AT-F05-02 | Update | Update with pre-update snapshot; failed health check rolls back automatically | M8 | Done (CI 40574613677; merge pending owner review) |
-| AT-F05-03 | Remove | Remove with choice to keep or delete data; deletion requires re-authentication | M8 | Done (CI 40574613677; merge pending owner review) |
-| AT-F05-04 | Interrupted operations | Killing Core or agent mid-install/update resumes or rolls back cleanly on restart | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8 | Partial on `m8-apps` (form, generated secrets, health check; the reverse proxy route needs M12); CI pending |
+| AT-F05-02 | Update | Update with pre-update snapshot; failed health check rolls back automatically | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F05-03 | Remove | Remove with choice to keep or delete data; deletion requires re-authentication | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F05-04 | Interrupted operations | Killing Core or agent mid-install/update resumes or rolls back cleanly on restart | M8 | Implemented on `m8-apps`; CI pending |
 
 ## F06 — Storage and disk management
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F06-01 | Inventory | Disks, partitions, filesystems, usage and SMART health are shown | M9 | Not started |
-| AT-F06-02 | Mount management | Mount/unmount data disks to allow-listed mount roots; persistent via systemd mount units | M9 | Not started |
-| AT-F06-03 | Format | Format a non-system disk (ext4, xfs, btrfs) with typed confirmation; system disk is never offered | M9 | Not started |
+| AT-F06-01 | Inventory | Disks, partitions, filesystems, usage and SMART health are shown | M9 | Implemented on `m9-storage`; CI pending |
+| AT-F06-02 | Mount management | Mount/unmount data disks to allow-listed mount roots; persistent via systemd mount units | M9 | Implemented on `m9-storage`; CI pending |
+| AT-F06-03 | Format | Format a non-system disk (ext4, xfs, btrfs) with typed confirmation; system disk is never offered | M9 | Implemented on `m9-storage`; CI pending |
 | AT-F06-04 | Usage alerts | Threshold alerts for capacity and SMART failures | M15 | Not started |
 
 ## F07 — Web-based file manager

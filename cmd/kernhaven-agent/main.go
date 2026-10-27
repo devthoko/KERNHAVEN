@@ -14,6 +14,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
+	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/platform/logging"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
 )
@@ -55,9 +56,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitConfig
 	}
 	info := version.Get()
-	log.Info("starting kernhaven-agent", "version", info.Version, "commit", info.Commit, "socket", cfg.Socket, "docker_socket", cfg.DockerSocket)
+	log.Info("starting kernhaven-agent", "version", info.Version, "commit", info.Commit, "role", cfg.Role, "socket", cfg.Socket, "docker_socket", cfg.DockerSocket)
 
-	srv := agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second), agent.Options{AllowedBindRoots: cfg.AllowedBindRoots, HelperImage: cfg.HelperImage})
+	// The storage role (M9) runs as root and offers only disk operations;
+	// the docker role never gets them.
+	var srv *agent.Server
+	if cfg.Role == "storage" {
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{
+			Storage: storage.New(storage.NewExecRunner(), storage.Config{MountRoot: cfg.MountRoot, IncludeLoop: cfg.StorageIncludeLoop})})
+	} else {
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second),
+			agent.Options{AllowedBindRoots: cfg.AllowedBindRoots, HelperImage: cfg.HelperImage})
+	}
 	ln, err := agent.Listen(cfg.Socket)
 	if err != nil {
 		log.Error("listen failed", "error", err.Error())

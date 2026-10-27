@@ -44,6 +44,10 @@ const (
 	OpNetworksCreate    = "networks.create"
 	OpNetworksRemove    = "networks.remove"
 	OpVolumesCopy       = "volumes.copy"
+	OpStorageInventory  = "storage.inventory"
+	OpStorageFormat     = "storage.format"
+	OpStorageMount      = "storage.mount"
+	OpStorageUnmount    = "storage.unmount"
 )
 
 // Grant limits.

@@ -27,3 +27,4 @@ ADR that supersedes the old one.
 | [0019](0019-secret-encryption.md) | AES-256-GCM encryption for stack variables | Accepted |
 | [0020](0020-signed-catalogs.md) | Ed25519-signed JSON catalogs with per-source trust keys | Accepted |
 | [0021](0021-volume-snapshots-helper.md) | Volume snapshots with an agent-built helper container | Accepted |
+| [0022](0022-host-tools-and-mount-units.md) | Fixed host tools for storage, systemd mount units, separate storage service | Accepted |

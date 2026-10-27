@@ -297,3 +297,110 @@ type VolumeCopy struct {
 type VolumeCopyResult struct {
 	Helper string `json:"helper"`
 }
+
+// ---- M9: storage ----
+
+// SMART is the health summary of a disk.
+type SMART struct {
+	Available    bool   `json:"available"`
+	Passed       *bool  `json:"passed,omitempty"`
+	TemperatureC int    `json:"temperature_c,omitempty"`
+	PowerOnHours int    `json:"power_on_hours,omitempty"`
+	Message      string `json:"message,omitempty"`
+}
+
+// FileSystem is a partition, logical volume or file system on a disk.
+type FileSystem struct {
+	Path        string   `json:"path"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"` // lsblk type: part, disk, lvm, crypt, raid1, …
+	FSType      string   `json:"fstype"`
+	Label       string   `json:"label"`
+	UUID        string   `json:"uuid"`
+	SizeBytes   int64    `json:"size_bytes"`
+	FSSizeBytes int64    `json:"fs_size_bytes"`
+	FSUsedBytes int64    `json:"fs_used_bytes"`
+	FSAvailable int64    `json:"fs_available_bytes"`
+	Mountpoints []string `json:"mountpoints"`
+	MountName   string   `json:"mount_name,omitempty"` // set when mounted by Kernhaven
+	Mountable   bool     `json:"mountable"`
+}
+
+// Disk classes (M9 classification).
+const (
+	DiskSystem  = "system"
+	DiskInUse   = "in_use"
+	DiskManaged = "managed"
+	DiskFree    = "free"
+)
+
+// Disk is a physical or virtual disk with its classification.
+type Disk struct {
+	Path        string       `json:"path"`
+	Name        string       `json:"name"`
+	Model       string       `json:"model"`
+	Serial      string       `json:"serial"`
+	WWN         string       `json:"wwn"`
+	Transport   string       `json:"transport"`
+	SizeBytes   int64        `json:"size_bytes"`
+	Rotational  bool         `json:"rotational"`
+	Removable   bool         `json:"removable"`
+	ReadOnly    bool         `json:"read_only"`
+	Class       string       `json:"class"`
+	Reason      string       `json:"reason,omitempty"`
+	Formattable bool         `json:"formattable"`
+	FileSystems []FileSystem `json:"file_systems"`
+	SMART       SMART        `json:"smart"`
+}
+
+// ManagedMount is a mount unit written by Kernhaven.
+type ManagedMount struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Unit   string `json:"unit"`
+	What   string `json:"what"`
+	FSType string `json:"fstype"`
+	Active bool   `json:"active"`
+}
+
+// StorageInventory is the result of storage.inventory.
+type StorageInventory struct {
+	Disks       []Disk         `json:"disks"`
+	Mounts      []ManagedMount `json:"mounts"`
+	MountRoot   string         `json:"mount_root"`
+	FileSystems []string       `json:"formattable_fstypes"` // mkfs tools installed
+	SMART       bool           `json:"smart_tool"`
+	Privileged  bool           `json:"privileged"`
+}
+
+// StorageFormat formats a free disk with one GPT partition. Serial, WWN and
+// SizeBytes are the identity the user confirmed; the agent refuses if the
+// device at Path no longer matches.
+type StorageFormat struct {
+	Path      string `json:"path"`
+	Serial    string `json:"serial"`
+	WWN       string `json:"wwn"`
+	SizeBytes int64  `json:"size_bytes"`
+	FSType    string `json:"fstype"`
+	Label     string `json:"label"`
+}
+
+// StorageFormatResult names the new file system.
+type StorageFormatResult struct {
+	Partition string `json:"partition"`
+	UUID      string `json:"uuid"`
+	FSType    string `json:"fstype"`
+}
+
+// StorageMount mounts the file system Path (identified by UUID) at
+// <mount root>/<Name> through a systemd mount unit.
+type StorageMount struct {
+	Path string `json:"path"`
+	UUID string `json:"uuid"`
+	Name string `json:"name"`
+}
+
+// StorageUnmount removes the mount unit of Name.
+type StorageUnmount struct {
+	Name string `json:"name"`
+}

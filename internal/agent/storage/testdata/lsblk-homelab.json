@@ -1,0 +1,44 @@
+{
+   "blockdevices": [
+      {"name":"nvme0n1","path":"/dev/nvme0n1","type":"disk","size":512110190592,"ro":false,"rm":false,"rota":false,"model":"Samsung SSD 980 PRO 500GB","serial":"S5GXNX0R1","wwn":"eui.002538b111b2","tran":"nvme","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"nvme0n1p1","path":"/dev/nvme0n1p1","type":"part","size":536870912,"ro":false,"rm":false,"rota":false,"model":null,"serial":null,"wwn":"eui.002538b111b2","tran":"nvme","fstype":"vfat","label":null,"uuid":"A1B2-C3D4","fssize":535805952,"fsused":6291456,"fsavail":529514496,"mountpoints":["/boot/efi"]},
+            {"name":"nvme0n1p2","path":"/dev/nvme0n1p2","type":"part","size":511571673088,"ro":false,"rm":false,"rota":false,"model":null,"serial":null,"wwn":"eui.002538b111b2","tran":"nvme","fstype":"ext4","label":null,"uuid":"0f7e1c4a-1111-4a2b-9c3d-000000000001","fssize":502000000000,"fsused":40000000000,"fsavail":436000000000,"mountpoints":["/"]}
+         ]
+      },
+      {"name":"sda","path":"/dev/sda","type":"disk","size":4000787030016,"ro":false,"rm":false,"rota":true,"model":"WDC WD40EFRX","serial":"WD-FREE0001","wwn":"0x50014ee2b1111111","tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null]},
+      {"name":"sdb","path":"/dev/sdb","type":"disk","size":2000398934016,"ro":false,"rm":false,"rota":true,"model":"ST2000DM008","serial":"ZFL0DATA","wwn":"0x5000c500a2222222","tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"sdb1","path":"/dev/sdb1","type":"part","size":2000397868544,"ro":false,"rm":false,"rota":true,"model":null,"serial":null,"wwn":"0x5000c500a2222222","tran":"sata","fstype":"ext4","label":"media","uuid":"9a1e0b2c-2222-4c1d-8e7f-000000000002","fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null]}
+         ]
+      },
+      {"name":"sdc","path":"/dev/sdc","type":"disk","size":1000204886016,"ro":false,"rm":false,"rota":true,"model":"HGST","serial":"LVMPV0003","wwn":null,"tran":"sata","fstype":"LVM2_member","label":null,"uuid":"pv-uuid-3","fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"vg0-data","path":"/dev/mapper/vg0-data","type":"lvm","size":1000000000000,"ro":false,"rm":false,"rota":true,"model":null,"serial":null,"wwn":null,"tran":null,"fstype":"xfs","label":null,"uuid":"lv-uuid-3","fssize":999000000000,"fsused":100,"fsavail":998999999900,"mountpoints":["/data"]}
+         ]
+      },
+      {"name":"sdd","path":"/dev/sdd","type":"disk","size":1000204886016,"ro":false,"rm":false,"rota":true,"model":"HGST","serial":"RAID0004","wwn":null,"tran":"sata","fstype":"linux_raid_member","label":"nas:0","uuid":"raid-uuid-4","fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"md0","path":"/dev/md0","type":"raid1","size":1000000000000,"ro":false,"rm":false,"rota":true,"model":null,"serial":null,"wwn":null,"tran":null,"fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null]}
+         ]
+      },
+      {"name":"sde","path":"/dev/sde","type":"disk","size":64023257088,"ro":false,"rm":true,"rota":false,"model":"SanDisk Ultra","serial":"USB0005","wwn":null,"tran":"usb","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"sde1","path":"/dev/sde1","type":"part","size":64022208512,"ro":false,"rm":true,"rota":false,"model":null,"serial":null,"wwn":null,"tran":"usb","fstype":"exfat","label":"STICK","uuid":"1234-ABCD","fssize":64000000000,"fsused":1000,"fsavail":63999999000,"mountpoints":["/media/user/STICK"]}
+         ]
+      },
+      {"name":"sdf","path":"/dev/sdf","type":"disk","size":8001563222016,"ro":false,"rm":false,"rota":true,"model":"WDC WD80EFZZ","serial":"WD-MANAGED6","wwn":"0x5000cca2b6666666","tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"sdf1","path":"/dev/sdf1","type":"part","size":8001562173440,"ro":false,"rm":false,"rota":true,"model":null,"serial":null,"wwn":"0x5000cca2b6666666","tran":"sata","fstype":"btrfs","label":"archive","uuid":"b7f0a1c2-6666-4d5e-9f00-000000000006","fssize":8001000000000,"fsused":2000000000000,"fsavail":6001000000000,"mountpoints":["/srv/kernhaven/archive"]}
+         ]
+      },
+      {"name":"sdg","path":"/dev/sdg","type":"disk","size":500107862016,"ro":true,"rm":false,"rota":true,"model":"Write protected","serial":"RO0007","wwn":null,"tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null]},
+      {"name":"sdh","path":"/dev/sdh","type":"disk","size":3000592982016,"ro":false,"rm":false,"rota":true,"model":"Toshiba","serial":"FOREIGN8","wwn":null,"tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null],
+         "children":[
+            {"name":"sdh1","path":"/dev/sdh1","type":"part","size":3000591933440,"ro":false,"rm":false,"rota":true,"model":null,"serial":null,"wwn":null,"tran":"sata","fstype":"xfs","label":null,"uuid":"c3d4e5f6-8888-4a1b-8c2d-000000000008","fssize":3000000000000,"fsused":10,"fsavail":2999999999990,"mountpoints":["/srv/kernhaven/manual"]}
+         ]
+      },
+      {"name":"zram0","path":"/dev/zram0","type":"disk","size":4294967296,"ro":false,"rm":false,"rota":false,"model":null,"serial":null,"wwn":null,"tran":null,"fstype":"swap","label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":["[SWAP]"]},
+      {"name":"sr0","path":"/dev/sr0","type":"rom","size":1073741312,"ro":false,"rm":true,"rota":true,"model":"DVD","serial":"ROM9","wwn":null,"tran":"sata","fstype":null,"label":null,"uuid":null,"fssize":null,"fsused":null,"fsavail":null,"mountpoints":[null]}
+   ]
+}
