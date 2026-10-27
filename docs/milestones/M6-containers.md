@@ -118,4 +118,17 @@ prune), volumes and networks (create, remove).
 | Contract: 46 operations; routes ↔ OpenAPI; documented `x-permission` equals enforced permission; RBAC matrix | `khv01-dev` | Passed |
 | Integration on real rootless Docker 29.9.2: pull resolves digest; missing image fails; agent refuses privileged; create with volume + internal network + digest-pinned image + start; labels; stdout/stderr logs and `since`; pause/unpause; in-use volume/network conflict; remove (conflict without force); prune; built-in network protected | `khv01-dev` | Passed, no leftovers |
 | Live UI check in a browser against real rootless Docker: create with live policy panel, running as 65534, "created by owner", log line visible, stop (exit 137 after grace period), remove with typed confirmation | `khv01-dev` | Passed; badge layout defect found and fixed |
-| CI incl. browser E2E with the runner's Docker (pull, create with policy panel, logs, stop/start, volumes, networks, remove, axe, layouts) | GitHub Actions | Pending |
+| CI run [40559956035](https://github.com/devthoko/KERNHAVEN/actions/runs/40559956035), commit `e100fed`: race tests amd64 + arm64, Debian 13 amd64 + arm64, real-Docker integration amd64 + arm64, browser E2E with the runner Docker (pull, create with policy panel, logs, stop/start, volumes, networks, remove, axe on every page, 360/768/1440 px), fuzzing, web, lint/vuln, systemd | GitHub Actions | All 11 jobs passed |
+
+### Defects found while verifying M6
+
+| Found by | Defect | Fix |
+|---|---|---|
+| Agent test | `../x` was accepted as an image reference (registry part allowed `..`) | Registry host must be a real host name (`policy.go`) |
+| Live browser check | Warning badge squeezed into a tall oval next to long text | Badges do not shrink or wrap |
+| axe (E2E) | Contrast measured during a 150 ms colour transition after switching to dark mode | Buttons skip transitions under reduced motion; E2E runs with reduced motion |
+| Race detector, arm64 | Crash test killed the child between creating and writing a marker file | Test waits for the complete marker line |
+
+Test-suite defects fixed on the way: three ambiguous end-to-end selectors.
+Go test failures in CI are now reported as annotations (`scripts/go-test-ci.sh`),
+because job logs require repository admin rights.

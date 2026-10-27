@@ -4,7 +4,15 @@ Gates are cumulative: G2 includes G1, G3 includes G2, G4 includes G3.
 A gate passes only on evidence (CI run links, test logs, reports) recorded in
 the milestone or release document. A gate never passes on assertion alone.
 
-## G1 — Change gate (every push / pull request)
+## G1 — Change gate
+
+CI runs at two depths (`.github/workflows/ci.yml`). **Quick** on every push to a
+feature branch: formatting, vet, staticcheck, govulncheck, secret scan, Go tests
+with the race detector on amd64, web typecheck/tests/build/audit, systemd units.
+**Full** on pull requests, pushes to `main`, nightly and on manual runs: in
+addition arm64, Debian 13, real-Docker integration, browser end-to-end tests
+and fuzzing. A change may only be merged to `main` with a green full run.
+
 
 - [ ] `gofmt` clean, `go vet` clean, `staticcheck` clean
 - [ ] `go test -race ./...` passes on amd64 and arm64
