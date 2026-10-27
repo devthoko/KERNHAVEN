@@ -25,7 +25,7 @@ func setup(t *testing.T) (http.Handler, func(), *bytes.Buffer) {
 	t.Cleanup(func() { db.Close() })
 	var logs bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&logs, nil))
-	rt := httpserver.NewRouter()
+	rt := httpserver.NewRouter(allowAll)
 	Register(rt, db, log)
 	return httpserver.Middleware(log, 1<<20, rt), func() { db.Close() }, &logs
 }
@@ -86,5 +86,19 @@ func TestHealthRoutesRejectWrites(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/v1/health/live", nil))
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d", rec.Code)
+	}
+}
+
+// allowAll is a guard that admits every request; authorization itself is
+// tested in the identity and app packages.
+func allowAll(_ string, next http.Handler) http.Handler { return next }
+
+func TestVersionRequiresPermission(t *testing.T) {
+	rt := httpserver.NewRouter(allowAll)
+	Register(rt, nil, slog.Default())
+	for _, r := range rt.Routes() {
+		if r.Pattern == "GET /api/v1/version" && r.Access.Permission() != VersionPermission {
+			t.Fatalf("version access = %+v", r.Access)
+		}
 	}
 }

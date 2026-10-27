@@ -1,0 +1,80 @@
+// Package authz defines roles and permissions. Authorization is decided on the
+// server only; the UI merely mirrors it (CLAUDE.md).
+package authz
+
+// Role is one of the fixed 1.0 roles.
+type Role string
+
+const (
+	Owner    Role = "owner"
+	Admin    Role = "admin"
+	Operator Role = "operator"
+	Viewer   Role = "viewer"
+)
+
+// Permission names a capability required by a route.
+type Permission string
+
+const (
+	SelfManage     Permission = "self.manage"
+	SystemRead     Permission = "system.read"
+	UsersRead      Permission = "users.read"
+	UsersManage    Permission = "users.manage"
+	SessionsManage Permission = "sessions.manage"
+	AuditRead      Permission = "audit.read"
+)
+
+var rolePermissions = map[Role][]Permission{
+	Owner:    {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead},
+	Admin:    {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead},
+	Operator: {SelfManage, SystemRead},
+	Viewer:   {SelfManage, SystemRead},
+}
+
+// Roles lists all roles from most to least privileged.
+func Roles() []Role { return []Role{Owner, Admin, Operator, Viewer} }
+
+// Valid reports whether r is a known role.
+func (r Role) Valid() bool {
+	_, ok := rolePermissions[r]
+	return ok
+}
+
+// Has reports whether r grants p. Unknown roles grant nothing.
+func (r Role) Has(p Permission) bool {
+	for _, q := range rolePermissions[r] {
+		if q == p {
+			return true
+		}
+	}
+	return false
+}
+
+// Permissions returns the permissions granted by r.
+func (r Role) Permissions() []Permission {
+	return append([]Permission(nil), rolePermissions[r]...)
+}
+
+// Known reports whether p is granted by at least one role.
+func Known(p Permission) bool {
+	for _, r := range Roles() {
+		if r.Has(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// CanManage reports whether a user with role actor may create, modify, delete
+// or reset a user that has (or would get) role target. Owners manage everyone;
+// admins manage only operators and viewers.
+func CanManage(actor, target Role) bool {
+	switch actor {
+	case Owner:
+		return target.Valid()
+	case Admin:
+		return target == Operator || target == Viewer
+	default:
+		return false
+	}
+}

@@ -19,16 +19,19 @@ type Pinger interface {
 // readyTimeout bounds the readiness dependency check.
 const readyTimeout = 2 * time.Second
 
+// VersionPermission guards build information to limit fingerprinting.
+const VersionPermission = "system.read"
+
 type status struct {
 	Status string `json:"status"`
 }
 
 // Register adds the health and version routes to rt.
 func Register(rt *httpserver.Router, db Pinger, log *slog.Logger) {
-	rt.HandleFunc("GET /api/v1/health/live", func(w http.ResponseWriter, r *http.Request) {
+	rt.HandleFunc("GET /api/v1/health/live", httpserver.Public(), func(w http.ResponseWriter, r *http.Request) {
 		httpserver.WriteJSON(w, http.StatusOK, status{"ok"})
 	})
-	rt.HandleFunc("GET /api/v1/health/ready", func(w http.ResponseWriter, r *http.Request) {
+	rt.HandleFunc("GET /api/v1/health/ready", httpserver.Public(), func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), readyTimeout)
 		defer cancel()
 		if err := db.PingContext(ctx); err != nil {
@@ -39,7 +42,7 @@ func Register(rt *httpserver.Router, db Pinger, log *slog.Logger) {
 		}
 		httpserver.WriteJSON(w, http.StatusOK, status{"ok"})
 	})
-	rt.HandleFunc("GET /api/v1/version", func(w http.ResponseWriter, r *http.Request) {
+	rt.HandleFunc("GET /api/v1/version", httpserver.RequirePermission(VersionPermission), func(w http.ResponseWriter, r *http.Request) {
 		httpserver.WriteJSON(w, http.StatusOK, version.Get())
 	})
 }

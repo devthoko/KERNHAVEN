@@ -7,14 +7,16 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	"github.com/devthoko/KERNHAVEN/internal/core/app"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
-	"github.com/devthoko/KERNHAVEN/internal/platform/health"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
 	"github.com/devthoko/KERNHAVEN/internal/platform/logging"
 	"github.com/devthoko/KERNHAVEN/internal/platform/store"
@@ -84,9 +86,23 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitDatabase
 	}
 
-	rt := httpserver.NewRouter()
-	health.Register(rt, db, log)
-	handler := httpserver.Middleware(log, cfg.Server.MaxBodyBytes, rt)
+	core, err := app.New(db, cfg, log, app.Options{})
+	if err != nil {
+		log.Error("initialization failed", "error", err.Error())
+		return exitRuntime
+	}
+	setupToken, err := core.Identity.PrepareSetup(ctx)
+	if err != nil {
+		log.Error("database error", "error", err.Error())
+		return exitDatabase
+	}
+	if setupToken != "" {
+		// TH-10: the one-time token is only available to whoever can read the
+		// service journal on the host.
+		log.Warn("first-run setup required: open the web UI and enter the setup token",
+			"setup_token", setupToken, "valid_for", cfg.Auth.SetupTokenTTL.Duration.String())
+	}
+	go purgeSessions(ctx, core, log)
 
 	ln, err := net.Listen("tcp", cfg.Server.Listen)
 	if err != nil {
@@ -95,7 +111,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 	log.Info("listening", "address", ln.Addr().String(), "instance_id", instanceID)
 
-	if err := httpserver.Run(ctx, ln, handler, httpserver.Options{
+	if err := httpserver.Run(ctx, ln, core.Handler, httpserver.Options{
 		ShutdownTimeout: cfg.Server.ShutdownTimeout.Duration,
 		Logger:          log,
 	}); err != nil {
@@ -104,4 +120,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 	log.Info("stopped")
 	return exitOK
+}
+
+// purgeSessions removes expired sessions hourly until ctx is cancelled.
+func purgeSessions(ctx context.Context, core *app.App, log *slog.Logger) {
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		if n, err := core.Identity.PurgeExpiredSessions(ctx); err != nil && ctx.Err() == nil {
+			log.Warn("session purge failed", "error", err.Error())
+		} else if n > 0 {
+			log.Info("expired sessions purged", "count", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }

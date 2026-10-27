@@ -13,7 +13,15 @@ import (
 
 type ctxKey int
 
-const requestIDKey ctxKey = iota
+const (
+	requestIDKey ctxKey = iota
+	loggerKey
+)
+
+func loggerFrom(ctx context.Context) *slog.Logger {
+	l, _ := ctx.Value(loggerKey).(*slog.Logger)
+	return l
+}
 
 // RequestID returns the request ID assigned by the middleware, or "".
 func RequestID(ctx context.Context) string {
@@ -62,18 +70,20 @@ func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 // Middleware builds the standard chain:
 // request ID → access log → panic recovery → security headers → body limit.
 func Middleware(log *slog.Logger, maxBodyBytes int64, next http.Handler) http.Handler {
-	return withRequestID(withAccessLog(log, withRecover(log, withSecurityHeaders(withBodyLimit(maxBodyBytes, next)))))
+	return withRequestID(log, withAccessLog(log, withRecover(log, withSecurityHeaders(withBodyLimit(maxBodyBytes, next)))))
 }
 
 // withRequestID assigns a random request ID. Client-supplied IDs are ignored
 // to keep log correlation trustworthy.
-func withRequestID(next http.Handler) http.Handler {
+func withRequestID(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b := make([]byte, 16)
 		_, _ = rand.Read(b)
 		id := hex.EncodeToString(b)
 		w.Header().Set("X-Request-ID", id)
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey, id)))
+		ctx := context.WithValue(r.Context(), requestIDKey, id)
+		ctx = context.WithValue(ctx, loggerKey, log)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

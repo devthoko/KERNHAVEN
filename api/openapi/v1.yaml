@@ -6,48 +6,277 @@ info:
     Versioned REST API of kernhaven-core (ADR-0012). Every response carries the
     security headers listed in docs/milestones/M1-core-foundation.md and an
     `X-Request-ID` header.
+
+    Authentication uses the session cookie `__Host-kh_session` (or
+    `kh_session` for http://localhost development origins). Unsafe methods on
+    authenticated routes require the `X-CSRF-Token` header with the token
+    returned by login/session, and a same-origin `Origin` header when sent by a
+    browser. Each operation documents its required permission in
+    `x-permission`; `public` marks unauthenticated routes.
 servers:
   - url: /api/v1
+security:
+  - session: []
 paths:
   /health/live:
     get:
       operationId: getLiveness
-      summary: Process liveness
+      x-permission: public
       security: []
       responses:
-        "200":
-          description: Process is running
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Status" }
+        "200": { description: Process is running, content: { application/json: { schema: { $ref: "#/components/schemas/Status" } } } }
   /health/ready:
     get:
       operationId: getReadiness
-      summary: Readiness including database availability
+      x-permission: public
       security: []
       responses:
-        "200":
-          description: Ready to serve
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Status" }
-        "503":
-          description: A dependency is unavailable
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Status" }
+        "200": { description: Ready, content: { application/json: { schema: { $ref: "#/components/schemas/Status" } } } }
+        "503": { description: A dependency is unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/Status" } } } }
   /version:
     get:
       operationId: getVersion
-      summary: Build information
+      x-permission: system.read
+      responses:
+        "200": { description: Build information, content: { application/json: { schema: { $ref: "#/components/schemas/Version" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /setup:
+    get:
+      operationId: getSetupStatus
+      x-permission: public
       security: []
       responses:
         "200":
-          description: Build information
+          description: Whether first-run setup is required
+          content: { application/json: { schema: { type: object, required: [required], properties: { required: { type: boolean } } } } }
+    post:
+      operationId: completeSetup
+      x-permission: public
+      security: []
+      description: Creates the first owner with the one-time setup token from the service journal and logs them in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, username, password]
+              additionalProperties: false
+              properties:
+                token: { type: string }
+                username: { $ref: "#/components/schemas/Username" }
+                display_name: { type: string, maxLength: 64 }
+                password: { type: string, minLength: 12 }
+      responses:
+        "201": { description: Owner created and logged in, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/login:
+    post:
+      operationId: login
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              additionalProperties: false
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: Logged in; session cookie set, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/logout:
+    post:
+      operationId: logout
+      x-permission: self.manage
+      responses:
+        "204": { description: Logged out; cookie cleared }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /auth/session:
+    get:
+      operationId: getSession
+      x-permission: self.manage
+      responses:
+        "200": { description: Current session, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /auth/password:
+    post:
+      operationId: changeOwnPassword
+      x-permission: self.manage
+      description: Changes the caller's password and ends all of their other sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              additionalProperties: false
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 12 }
+      responses:
+        "204": { description: Password changed }
+        "401": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/sessions:
+    get:
+      operationId: listOwnSessions
+      x-permission: self.manage
+      responses:
+        "200":
+          description: The caller's active sessions
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Version" }
+              schema: { type: object, properties: { sessions: { type: array, items: { $ref: "#/components/schemas/Session" } } } }
+  /auth/sessions/{id}:
+    delete:
+      operationId: revokeSession
+      x-permission: self.manage
+      description: Ends one session. Other users' sessions additionally require sessions.manage and are reported as 404 otherwise.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Session ended }
+        "404": { $ref: "#/components/responses/Error" }
+  /users:
+    get:
+      operationId: listUsers
+      x-permission: users.read
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema: { type: object, properties: { users: { type: array, items: { $ref: "#/components/schemas/User" } } } }
+    post:
+      operationId: createUser
+      x-permission: users.manage
+      description: Admins may only create operators and viewers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, role, password]
+              additionalProperties: false
+              properties:
+                username: { $ref: "#/components/schemas/Username" }
+                display_name: { type: string, maxLength: 64 }
+                role: { $ref: "#/components/schemas/Role" }
+                password: { type: string, minLength: 12 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /users/{id}:
+    get:
+      operationId: getUser
+      x-permission: users.read
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      responses:
+        "200": { description: User, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateUser
+      x-permission: users.manage
+      description: Role or disabled changes end all sessions of the user. Nobody can change their own role or disable themselves; the last enabled owner is protected.
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                display_name: { type: string, maxLength: 64 }
+                role: { $ref: "#/components/schemas/Role" }
+                disabled: { type: boolean }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteUser
+      x-permission: users.manage
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /users/{id}/password:
+    post:
+      operationId: resetUserPassword
+      x-permission: users.manage
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [password], additionalProperties: false, properties: { password: { type: string, minLength: 12 } } }
+      responses:
+        "204": { description: Password reset; the user's sessions ended }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /audit:
+    get:
+      operationId: listAuditEvents
+      x-permission: audit.read
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: before, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: actor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Audit events, newest first
+          content:
+            application/json:
+              schema: { type: object, properties: { events: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /audit/verify:
+    get:
+      operationId: verifyAuditChain
+      x-permission: audit.read
+      responses:
+        "200":
+          description: Chain verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, records]
+                properties:
+                  ok: { type: boolean }
+                  records: { type: integer }
+                  broken_at: { type: integer }
+                  reason: { type: string }
 components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-kh_session
+  parameters:
+    UserID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
   schemas:
     Status:
       type: object
@@ -62,6 +291,56 @@ components:
         commit: { type: string }
         build_date: { type: string }
         go_version: { type: string }
+    Username:
+      type: string
+      pattern: "^[a-z0-9][a-z0-9._-]{2,31}$"
+    Role:
+      type: string
+      enum: [owner, admin, operator, viewer]
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        disabled: { type: boolean }
+        locked: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    SessionInfo:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        permissions: { type: array, items: { type: string } }
+        csrf_token: { type: string }
+        expires_at: { type: string, format: date-time }
+    Session:
+      type: object
+      properties:
+        id: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        idle_expires_at: { type: string, format: date-time }
+        absolute_expires_at: { type: string, format: date-time }
+        ip: { type: string }
+        user_agent: { type: string }
+        current: { type: boolean }
+    AuditEvent:
+      type: object
+      properties:
+        seq: { type: integer }
+        time: { type: string, format: date-time }
+        actor_id: { type: integer }
+        actor: { type: string }
+        action: { type: string }
+        target: { type: string }
+        result: { type: string, enum: [success, failure, denied] }
+        request_id: { type: string }
+        ip: { type: string }
+        details: { type: object, additionalProperties: { type: string } }
+        prev_hash: { type: string }
+        hash: { type: string }
     Error:
       type: object
       required: [error]
@@ -70,19 +349,13 @@ components:
           type: object
           required: [code, message]
           properties:
-            code:
-              type: string
-              enum: [not_found, method_not_allowed, body_too_large, invalid_json, internal_error]
+            code: { type: string }
             message: { type: string }
             request_id: { type: string }
   responses:
-    NotFound:
-      description: Unknown route
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/Error" }
-    MethodNotAllowed:
-      description: Method not allowed; see the Allow header
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthenticated:
+      description: No valid session
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

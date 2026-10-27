@@ -160,3 +160,41 @@ func TestLocalhostAndIPv6LoopbackAccepted(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicOriginValidation(t *testing.T) {
+	ok := []string{"https://kernhaven.home.arpa", "https://192.168.1.5:8443", "http://localhost:8470", "http://127.0.0.1:8470", "http://[::1]:8470", "https://k.example/"}
+	bad := []string{"", "kernhaven.local", "http://192.168.1.5:8470", "http://kernhaven.local", "ftp://x", "https://u:p@x", "https://x/path", "https://x?q=1", "https://x#f"}
+	for _, o := range ok {
+		if err := validateOrigin(o); err != nil {
+			t.Errorf("%q rejected: %v", o, err)
+		}
+	}
+	for _, o := range bad {
+		if err := validateOrigin(o); err == nil {
+			t.Errorf("%q accepted", o)
+		}
+	}
+	if got := (Server{PublicOrigin: "https://k.example/"}).Origin(); got != "https://k.example" {
+		t.Errorf("Origin() = %q", got)
+	}
+}
+
+func TestAuthValidation(t *testing.T) {
+	cfg := Default()
+	cfg.Storage.DataDir = privateDir(t)
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("defaults invalid: %v", err)
+	}
+	cfg.Auth.SessionIdleTimeout.Duration = 2 * time.Hour
+	cfg.Auth.SessionAbsoluteTimeout.Duration = time.Hour
+	cfg.Auth.SetupTokenTTL.Duration = time.Minute
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	for _, want := range []string{"must not be shorter", "auth.setup_token_ttl"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q missing %q", err, want)
+		}
+	}
+}

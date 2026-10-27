@@ -61,3 +61,12 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, v any) error {
 	WriteError(w, r, http.StatusBadRequest, "invalid_json", "request body is not valid JSON for this endpoint")
 	return err
 }
+
+// InternalError logs err with the request ID and writes a generic 500. The
+// logger is taken from the request context (set by Middleware).
+func InternalError(w http.ResponseWriter, r *http.Request, err error) {
+	if log := loggerFrom(r.Context()); log != nil {
+		log.ErrorContext(r.Context(), "internal error", "request_id", RequestID(r.Context()), "error", err.Error())
+	}
+	WriteError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+}

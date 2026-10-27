@@ -11,57 +11,6 @@ import (
 	"time"
 )
 
-// Router is a method-aware router that answers unmatched requests with the
-// uniform JSON error body (404 or 405).
-type Router struct {
-	mux *http.ServeMux
-}
-
-// NewRouter returns an empty router; nothing is reachable until registered.
-func NewRouter() *Router { return &Router{mux: http.NewServeMux()} }
-
-// Handle registers h for a method-qualified pattern such as
-// "GET /api/v1/health/live". Patterns without a method are rejected so every
-// route states which methods it accepts.
-func (rt *Router) Handle(pattern string, h http.Handler) {
-	if len(pattern) == 0 || pattern[0] == '/' {
-		panic("httpserver: route pattern must start with an HTTP method: " + pattern)
-	}
-	rt.mux.Handle(pattern, h)
-}
-
-// HandleFunc is Handle for functions.
-func (rt *Router) HandleFunc(pattern string, h func(http.ResponseWriter, *http.Request)) {
-	rt.Handle(pattern, http.HandlerFunc(h))
-}
-
-func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h, pattern := rt.mux.Handler(r)
-	if pattern != "" {
-		rt.mux.ServeHTTP(w, r)
-		return
-	}
-	// The mux produced its own plain-text 404/405; capture it and reply in
-	// the uniform format instead.
-	rec := &discardWriter{header: http.Header{}}
-	h.ServeHTTP(rec, r)
-	if rec.status == http.StatusMethodNotAllowed {
-		w.Header().Set("Allow", rec.header.Get("Allow"))
-		WriteError(w, r, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
-		return
-	}
-	WriteError(w, r, http.StatusNotFound, "not_found", "not found")
-}
-
-type discardWriter struct {
-	header http.Header
-	status int
-}
-
-func (d *discardWriter) Header() http.Header         { return d.header }
-func (d *discardWriter) Write(b []byte) (int, error) { return len(b), nil }
-func (d *discardWriter) WriteHeader(code int)        { d.status = code }
-
 // Options configures the server lifecycle.
 type Options struct {
 	ShutdownTimeout time.Duration

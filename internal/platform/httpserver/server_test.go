@@ -23,14 +23,14 @@ func testLogger(buf *bytes.Buffer) *slog.Logger {
 // testHandler builds the full middleware chain around a router with test routes.
 func testHandler(t *testing.T, logs *bytes.Buffer, limit int64) http.Handler {
 	t.Helper()
-	rt := NewRouter()
-	rt.HandleFunc("GET /ok", func(w http.ResponseWriter, r *http.Request) {
+	rt := NewRouter(nil)
+	rt.HandleFunc("GET /ok", Public(), func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-	rt.HandleFunc("GET /panic", func(w http.ResponseWriter, r *http.Request) {
+	rt.HandleFunc("GET /panic", Public(), func(w http.ResponseWriter, r *http.Request) {
 		panic("secret internal detail: db password is hunter2")
 	})
-	rt.HandleFunc("POST /echo", func(w http.ResponseWriter, r *http.Request) {
+	rt.HandleFunc("POST /echo", Public(), func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			Name string `json:"name"`
 		}
@@ -198,7 +198,7 @@ func TestHandleRequiresMethod(t *testing.T) {
 			t.Fatal("expected panic for pattern without method")
 		}
 	}()
-	NewRouter().HandleFunc("/no-method", func(http.ResponseWriter, *http.Request) {})
+	NewRouter(nil).HandleFunc("/no-method", Public(), func(http.ResponseWriter, *http.Request) {})
 }
 
 func TestServerTimeouts(t *testing.T) {
@@ -219,8 +219,8 @@ func TestRunGracefulShutdownCompletesInFlightRequest(t *testing.T) {
 	}
 	started := make(chan struct{})
 	release := make(chan struct{})
-	rt := NewRouter()
-	rt.HandleFunc("GET /slow", func(w http.ResponseWriter, r *http.Request) {
+	rt := NewRouter(nil)
+	rt.HandleFunc("GET /slow", Public(), func(w http.ResponseWriter, r *http.Request) {
 		close(started)
 		<-release
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "done"})
@@ -276,8 +276,8 @@ func TestRunShutdownTimeoutReported(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	defer close(release)
-	rt := NewRouter()
-	rt.HandleFunc("GET /stuck", func(w http.ResponseWriter, r *http.Request) {
+	rt := NewRouter(nil)
+	rt.HandleFunc("GET /stuck", Public(), func(w http.ResponseWriter, r *http.Request) {
 		close(started)
 		<-release
 	})
