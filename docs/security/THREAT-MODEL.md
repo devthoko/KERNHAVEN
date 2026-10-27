@@ -69,7 +69,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
 | TH-20 | E | Compromised Core (T6) runs arbitrary host commands | No generic exec operation; typed allow-listed operations only | M4 | Mitigated (AT-M4-01: pinned allow-list of typed operations, no exec or passthrough) |
-| TH-21 | E | Compromised Core requests privileged containers or host mounts | Agent-side container policy; exceptions require Owner-signed approval with a key not held by Core at rest | M4/M6 | Open (no container creation exists yet; policy engine with M6) |
+| TH-21 | E | Compromised Core requests privileged containers or host mounts | Agent-side container policy; exceptions require Owner-signed approval with a key not held by Core at rest | M4/M6 | Partially mitigated (M6: agent re-evaluates policy; exceptions owner-only, reasoned, audited, labelled; signing exceptions outside the Core planned with M11) |
 | TH-22 | S | Local user (T8) connects to the agent socket | Socket mode 0660 owned by agent group with only `kernhaven` member; `SO_PEERCRED` check | M4 | Mitigated (AT-M4-02: socket 0660 + SO_PEERCRED allow-list) |
 | TH-23 | T/R | Replay of a captured grant | Grants bound to operation+target, short expiry, nonce cache | M4 | Mitigated (AT-M4-03/04: Ed25519 grants bound to op and params hash, 60 s lifetime, nonce cache) |
 | TH-24 | D | Malformed requests crash the agent | Strict decoding, size limits, fuzzing in CI | M4 | Mitigated (AT-M4-05: strict decoding, 64 KiB limit, timeouts; fuzzing in CI) |
@@ -78,10 +78,10 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-30 | E | Container escape via privileged mode, host namespaces, dangerous capabilities or `docker.sock` mount | Policy engine denies by default; explicit, audited exceptions | M6/M7 | Open |
-| TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Open |
+| TH-30 | E | Container escape via privileged mode, host namespaces, dangerous capabilities or `docker.sock` mount | Policy engine denies by default; explicit, audited exceptions | M6/M7 | Mitigated for single containers (M6, AT-F02-04: deny-by-default policy in Core and agent; Docker socket and system paths never exemptible); Compose in M7 |
+| TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Partially mitigated (M6: bind sources resolved with EvalSymlinks in the agent and checked against allowed roots and protected paths; file manager in M10) |
 | TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Open |
-| TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Open |
+| TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Partially mitigated (Core loopback-only, agent unix socket; internal networks available; per-stack isolation with Compose in M7) |
 | TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Mitigated for M4 operations (no process execution; Docker API calls only with validated, path-escaped references) |
 | TH-35 | T | Kernhaven modifies firewall or SSH and locks the user out | Out of scope by policy; agent has no such operations | — | Mitigated by design |
 
@@ -90,7 +90,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
 | TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Open |
-| TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Open |
+| TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Partially mitigated (M6: pulls record the resolved digest, UI warns about unpinned images; update diffing in M8) |
 | TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Open |
 | TH-43 | T | Tampered release or upgrade (T7) | Signed releases, pinned public key, refuse unsigned | M18 | Open |
 | TH-44 | T | Compromised CI action or dependency | Actions pinned by SHA, `govulncheck`, minimal dependencies, `go.sum` verification | M0 | Mitigated (ADR-0014) |
@@ -120,3 +120,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-27 | M2 | TH-02, TH-03, TH-08, TH-09, TH-10 mitigated; TH-01, TH-06, TH-52 partially |
 | 2026-10-27 | M3–M5 | TH-04 partially (CSP), TH-53 partially (journaled jobs) |
 | 2026-10-27 | M4 | TH-20, TH-22, TH-23, TH-24, TH-34 mitigated |
+| 2026-10-27 | M6 | TH-30 mitigated for single containers; TH-21, TH-31, TH-33, TH-41 partially |

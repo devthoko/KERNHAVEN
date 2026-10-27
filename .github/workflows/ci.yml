@@ -169,7 +169,9 @@ jobs:
       - name: install Chromium for Playwright
         working-directory: web
         run: npx playwright install --with-deps chromium
-      - name: run end-to-end tests
+      - name: run end-to-end tests (with the runner's Docker Engine)
+        env:
+          KH_E2E_REQUIRE_DOCKER: "1"
         run: scripts/e2e.sh
       - name: upload traces on failure
         if: failure()

@@ -26,6 +26,23 @@ const (
 	OpContainersStart   = "containers.start"
 	OpContainersStop    = "containers.stop"
 	OpContainersRestart = "containers.restart"
+
+	// M6
+	OpContainersCreate  = "containers.create"
+	OpContainersRemove  = "containers.remove"
+	OpContainersPause   = "containers.pause"
+	OpContainersUnpause = "containers.unpause"
+	OpContainersLogs    = "containers.logs"
+	OpImagesList        = "images.list"
+	OpImagesPull        = "images.pull"
+	OpImagesRemove      = "images.remove"
+	OpImagesPrune       = "images.prune"
+	OpVolumesList       = "volumes.list"
+	OpVolumesCreate     = "volumes.create"
+	OpVolumesRemove     = "volumes.remove"
+	OpNetworksList      = "networks.list"
+	OpNetworksCreate    = "networks.create"
+	OpNetworksRemove    = "networks.remove"
 )
 
 // Grant limits.
@@ -69,6 +86,7 @@ const (
 	CodeNotFound          = "not_found"
 	CodeConflict          = "conflict"
 	CodeDockerUnavailable = "docker_unavailable"
+	CodePolicyViolation   = "policy_violation"
 	CodeInternal          = "internal_error"
 )
 

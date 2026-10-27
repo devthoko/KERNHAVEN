@@ -6,9 +6,9 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 is implemented on
-`m4-agent` (stacked on M5). Container management UI, storage, network,
-backup and installer functionality do not exist yet.
+green CI on stacked branches awaiting owner review; M4 and M6 are implemented on
+`m4-agent` and `m6-containers` (stacked). Compose, app store, storage, file
+manager, network/TLS, backup and installer functionality do not exist yet.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
@@ -18,7 +18,8 @@ backup and installer functionality do not exist yet.
 | M3 | Persistent jobs, crash recovery | Implemented, CI green (run 40511595535); owner review pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
 | M5 | Web dashboard shell | Implemented, CI green incl. browser E2E (run 40519204275); owner review pending | [M5 design](milestones/M5-dashboard.md) |
 | M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
-| M6–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M6 | Container management (F02-01..06) | Implemented on branch `m6-containers` (stacked on M4); CI pending | [M6 evidence](milestones/M6-containers.md#verification-evidence-2026-10-27-branch-m6-containers) |
+| M6b, M7–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -34,7 +35,7 @@ backup and installer functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews `m4-agent`. Next: M6 container management (UI, creation with policy engine, logs, images, volumes, networks).
+3. Owner reviews `m6-containers` (contains M2–M6). Next: M7 Compose import, validation and deployment, or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

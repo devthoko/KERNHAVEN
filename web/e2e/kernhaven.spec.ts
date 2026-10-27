@@ -9,6 +9,8 @@ test.describe.configure({ mode: "serial" });
 const token = process.env.KH_SETUP_TOKEN ?? "";
 const OWNER = { username: "owner", password: "correct horse battery staple" };
 const VIEWER = { username: "viewer1", password: "another long viewer passphrase" };
+// Set by scripts/e2e.sh when a real agent with Docker runs (always in CI).
+const docker = process.env.KH_E2E_DOCKER === "1";
 
 let ownerContext: BrowserContext;
 let page: Page;
@@ -84,9 +86,8 @@ test("AT-F08-01, AT-F01-04: first-run setup works by keyboard and is accessible"
 
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  // No agent runs in this environment: the dashboard says so instead of failing.
   await expect(page.getByText("Host agent", { exact: true })).toBeVisible();
-  await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText(docker ? "Connected" : "Unavailable", { exact: true })).toBeVisible();
   await expectAccessible(page, "dashboard");
 });
 
@@ -142,6 +143,91 @@ test("AT-F10-03 (partial): audit log lists events and verifies the chain", async
   await expectAccessible(page, "audit");
 });
 
+test("AT-F02-05: pull an image through the UI", async () => {
+  test.skip(!docker, "needs the agent with Docker (always present in CI)");
+  await page.goto("/images");
+  await expect(page.getByRole("heading", { name: "Images", exact: true })).toBeVisible();
+  await expectAccessible(page, "images");
+  await page.getByLabel("Image reference").fill("alpine:3");
+  await page.getByRole("button", { name: "Pull", exact: true }).click();
+  await page.getByRole("link", { name: /Follow job #\d+/ }).click();
+  await expect(page.getByText("Succeeded", { exact: true })).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText(/pulled alpine:3 → .*@sha256:/)).toBeVisible();
+});
+
+test("AT-F02-04: the create form shows policy findings and exceptions", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/containers/new");
+  await page.getByLabel("Name", { exact: true }).fill("e2e-web");
+  await page.getByLabel("Image", { exact: true }).fill("alpine:3");
+  await page.getByLabel("User (optional)").fill("65534");
+  await page.getByLabel("Memory limit (MiB, 0 = none)").fill("64");
+  await page.getByLabel("Command (one argument per line)").fill("sh\n-c\necho e2e-hello; sleep 600");
+  await expect(page.getByText("No policy violations.")).toBeVisible();
+  await expect(page.getByText(/not pinned by digest/)).toBeVisible();
+  await page.getByLabel("Privileged mode").check();
+  await expect(page.getByText("Violation: privileged")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create container" })).toBeDisabled();
+  await expect(page.getByLabel("Approve an exception (audited)")).toBeVisible();
+  await expectAccessible(page, "new container (violation)");
+  await page.getByLabel("Privileged mode").uncheck();
+  await expect(page.getByText("No policy violations.")).toBeVisible();
+});
+
+test("AT-F02-02, AT-F02-03: create, inspect, read logs, stop and start a container", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.getByRole("button", { name: "Create container" }).click();
+  await expect(page.getByRole("heading", { name: "e2e-web" })).toBeVisible();
+  await expect(page.getByText("running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/created by owner/)).toBeVisible();
+  await expect(page.getByLabel("Container log output")).toContainText("e2e-hello", { timeout: 15_000 });
+  await expectAccessible(page, "container detail");
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(page.getByText("exited", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Start", exact: true }).click();
+  await expect(page.getByText("running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+
+  await page.goto("/containers");
+  await expect(page.getByRole("link", { name: "e2e-web" })).toBeVisible();
+  await expectAccessible(page, "containers");
+});
+
+test("AT-F02-06: volumes and networks", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/volumes");
+  await page.getByLabel("New volume name").fill("e2e-vol");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByRole("cell", { name: /e2e-vol/ })).toBeVisible();
+  await expectAccessible(page, "volumes");
+  await page.getByRole("button", { name: "Remove volume e2e-vol" }).click();
+  await page.getByLabel('Type "e2e-vol" to confirm').fill("e2e-vol");
+  await page.getByRole("button", { name: "Remove volume and its data" }).click();
+  await expect(page.getByRole("cell", { name: /e2e-vol/ })).toHaveCount(0);
+
+  await page.goto("/networks");
+  await page.getByLabel("New network name").fill("e2e-net");
+  await page.getByLabel(/Internal/).check();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByRole("row", { name: /e2e-net/ })).toContainText("internal");
+  await expectAccessible(page, "networks");
+  await page.getByRole("button", { name: "Remove network e2e-net" }).click();
+  await page.getByLabel('Type "e2e-net" to confirm').fill("e2e-net");
+  await page.getByRole("button", { name: "Remove network" }).click();
+  await expect(page.getByRole("row", { name: /e2e-net/ })).toHaveCount(0);
+});
+
+test("AT-F02-02: remove a container with typed confirmation", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/containers/e2e-web");
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Remove container" });
+  await expect(dialog.getByRole("button", { name: "Remove container" })).toBeDisabled();
+  await dialog.getByLabel('Type "e2e-web" to confirm').fill("e2e-web");
+  await dialog.getByRole("button", { name: "Remove container" }).click();
+  await expect(page.getByRole("heading", { name: "Containers", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "e2e-web" })).toHaveCount(0);
+});
+
 test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser }) => {
   const other = await freshLogin(browser, OWNER);
   await page.goto("/account");
@@ -158,7 +244,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -203,5 +289,8 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await viewer.getByRole("link", { name: /maintenance\./ }).first().click();
   await expect(viewer.getByRole("heading", { name: /Job #\d+/ })).toBeVisible();
   await expect(viewer.getByRole("button", { name: "Cancel job" })).toHaveCount(0);
+  await viewer.goto("/containers");
+  await expect(viewer.getByRole("heading", { name: "Containers", exact: true })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "New container" })).toHaveCount(0);
   await viewer.context().close();
 });

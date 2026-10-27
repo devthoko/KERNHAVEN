@@ -27,3 +27,18 @@ export function formatRelative(iso: string | undefined, now = Date.now()): strin
 export function roleLabel(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
+
+export function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) {
+    n /= 1000;
+    i++;
+  }
+  return `${n >= 10 || i === 0 ? Math.round(n) : n.toFixed(1)} ${units[i]}`;
+}
+
+export function containerName(c: { names: string[]; id: string }): string {
+  return c.names[0] ?? c.id.slice(0, 12);
+}

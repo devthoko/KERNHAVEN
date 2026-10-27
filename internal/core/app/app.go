@@ -11,6 +11,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/devthoko/KERNHAVEN/internal/core/containers"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/core/webui"
@@ -76,6 +77,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		agent = agentclient.New(cfg.Agent.Socket, key)
 	}
 	agentclient.RegisterRoutes(rt, agent)
+	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
 	ui := opts.UI
 	if ui == nil {
 		ui = webui.Dist()

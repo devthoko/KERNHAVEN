@@ -28,19 +28,19 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F01-02 | Responsive layout | All primary views usable at 360 px, 768 px and 1440 px widths (Playwright visual checks) | M5 | Done (CI 40519204275; merge pending owner review) |
 | AT-F01-03 | Light and dark theme | Theme follows OS preference and can be overridden per user | M5 | Done (CI 40519204275; merge pending owner review) |
 | AT-F01-04 | Accessibility | Automated axe checks pass with no serious/critical violations; keyboard-only navigation works | M5 | Done (CI 40519204275; merge pending owner review) |
-| AT-F01-05 | Live status | Container/app status updates without page reload (SSE) | M6 | Not started |
+| AT-F01-05 | Live status | Container/app status updates without page reload (SSE) | M6 | Moved to M6b (polling every 2–3 s in M6) |
 
 ## F02 — Complete Docker container management
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F02-01 | List and inspect | All containers, images, networks and volumes are listed with state from the real Docker Engine | M6 | Not started |
-| AT-F02-02 | Lifecycle | Start, stop, restart, pause, unpause, remove work and are audited | M6 | Not started |
-| AT-F02-03 | Logs | Streamed and historical logs with follow, tail and time range | M6 | Not started |
-| AT-F02-04 | Create from spec | Create a container from a validated spec; policy violations (privileged, host PID/network, dangerous mounts, added capabilities) are rejected unless explicitly allowed by an Owner-approved exception | M6 | Not started |
-| AT-F02-05 | Images | Pull (with digest pinning), list, remove, prune | M6 | Not started |
-| AT-F02-06 | Volumes and networks | Create, inspect, remove; in-use resources cannot be removed | M6 | Not started |
-| AT-F02-07 | Exec console | Interactive shell into a container for Admin+, audited, with session recording of metadata (not content) | M6 | Not started |
+| AT-F02-01 | List and inspect | All containers, images, networks and volumes are listed with state from the real Docker Engine | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-02 | Lifecycle | Start, stop, restart, pause, unpause, remove work and are audited | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-03 | Logs | Streamed and historical logs with follow, tail and time range | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-04 | Create from spec | Create a container from a validated spec; policy violations (privileged, host PID/network, dangerous mounts, added capabilities) are rejected unless explicitly allowed by an Owner-approved exception | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-05 | Images | Pull (with digest pinning), list, remove, prune | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-06 | Volumes and networks | Create, inspect, remove; in-use resources cannot be removed | M6 | Implemented on `m6-containers`; CI pending |
+| AT-F02-07 | Exec console | Interactive shell into a container for Admin+, audited, with session recording of metadata (not content) | M6 | Moved to M6b (needs bidirectional streaming design) |
 
 ## F03 — Docker Compose import, validation, editing and deployment
 

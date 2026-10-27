@@ -24,13 +24,20 @@ const (
 	AuditRead      Permission = "audit.read"
 	JobsRead       Permission = "jobs.read"
 	JobsManage     Permission = "jobs.manage"
+
+	ContainersRead    Permission = "containers.read"
+	ContainersOperate Permission = "containers.operate"
+	ContainersManage  Permission = "containers.manage"
+	PolicyExceptions  Permission = "policy.exceptions"
 )
 
 var rolePermissions = map[Role][]Permission{
-	Owner:    {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead, JobsRead, JobsManage},
-	Admin:    {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead, JobsRead, JobsManage},
-	Operator: {SelfManage, SystemRead, JobsRead, JobsManage},
-	Viewer:   {SelfManage, SystemRead, JobsRead},
+	Owner: {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead, JobsRead, JobsManage,
+		ContainersRead, ContainersOperate, ContainersManage, PolicyExceptions},
+	Admin: {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead, JobsRead, JobsManage,
+		ContainersRead, ContainersOperate, ContainersManage},
+	Operator: {SelfManage, SystemRead, JobsRead, JobsManage, ContainersRead, ContainersOperate},
+	Viewer:   {SelfManage, SystemRead, JobsRead, ContainersRead},
 }
 
 // Roles lists all roles from most to least privileged.

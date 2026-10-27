@@ -52,37 +52,52 @@ func TestRouteAccessContract(t *testing.T) {
 }
 
 var (
-	specPath   = regexp.MustCompile(`^  (/[^:]*):\s*$`)
-	specMethod = regexp.MustCompile(`^    (get|post|put|patch|delete):\s*$`)
+	specPath       = regexp.MustCompile(`^  (/[^:]*):\s*$`)
+	specMethod     = regexp.MustCompile(`^    (get|post|put|patch|delete):\s*$`)
+	specPermission = regexp.MustCompile(`x-permission: ([a-z.]+)`)
 )
 
 // specOperations returns "METHOD /api/v1/path" for every operation in the
 // OpenAPI document (paths are relative to the /api/v1 server URL).
 func specOperations(t *testing.T) []string {
+	ops := []string{}
+	for op := range specPermissions(t) {
+		ops = append(ops, op)
+	}
+	sort.Strings(ops)
+	return ops
+}
+
+// specPermissions maps each operation to its x-permission value.
+func specPermissions(t *testing.T) map[string]string {
 	t.Helper()
 	f, err := os.Open("../../../api/openapi/v1.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	var ops []string
-	var current string
+	perms := map[string]string{}
+	var current, op string
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
 		if m := specPath.FindStringSubmatch(line); m != nil {
-			current = m[1]
+			current, op = m[1], ""
 			continue
 		}
 		if strings.HasPrefix(line, "components:") {
-			current = ""
+			current, op = "", ""
 		}
 		if m := specMethod.FindStringSubmatch(line); m != nil && current != "" {
-			ops = append(ops, strings.ToUpper(m[1])+" /api/v1"+current)
+			op = strings.ToUpper(m[1]) + " /api/v1" + current
+			perms[op] = ""
+			continue
+		}
+		if m := specPermission.FindStringSubmatch(line); m != nil && op != "" && perms[op] == "" {
+			perms[op] = m[1]
 		}
 	}
-	sort.Strings(ops)
-	return ops
+	return perms
 }
 
 // ADR-0012: routes and the OpenAPI contract stay synchronized.
@@ -145,6 +160,21 @@ func TestRBACMatrix(t *testing.T) {
 			if !allowed && (r.Code != http.StatusForbidden || r.errorCode() != "forbidden") {
 				t.Errorf("%s %s: got %d %s, want 403 forbidden", role, route.Pattern, r.Code, r.errorCode())
 			}
+		}
+	}
+}
+
+// ADR-0012: the documented x-permission equals the enforced access.
+func TestOpenAPIPermissionsMatchRoutes(t *testing.T) {
+	h := newHarness(t)
+	perms := specPermissions(t)
+	for _, r := range h.app.Router.Routes() {
+		want := r.Access.Permission()
+		if r.Access.IsPublic() {
+			want = "public"
+		}
+		if got := perms[r.Pattern]; got != want {
+			t.Errorf("%s: spec x-permission %q, route enforces %q", r.Pattern, got, want)
 		}
 	}
 }

@@ -320,6 +320,153 @@ paths:
       description: Availability of the host agent and the Docker Engine behind it. Always 200; unavailability is reported in the body.
       responses:
         "200": { description: Status, content: { application/json: { schema: { $ref: "#/components/schemas/AgentStatus" } } } }
+  /containers:
+    get:
+      operationId: listContainers
+      x-permission: containers.read
+      parameters: [{ name: all, in: query, schema: { type: boolean, default: true } }]
+      responses:
+        "200": { description: Containers, content: { application/json: { schema: { type: object, properties: { containers: { type: array, items: { type: object } } } } } } }
+        "503": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createContainer
+      x-permission: containers.manage
+      description: Creates a container after policy evaluation in Core and agent. Exceptions require policy.exceptions (owners) and a reason; they are audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [spec]
+              additionalProperties: false
+              properties:
+                spec: { $ref: "#/components/schemas/ContainerSpec" }
+                exceptions: { type: array, items: { type: object, required: [rule, reason], properties: { rule: { type: string }, reason: { type: string, minLength: 10, maxLength: 500 } } } }
+                start: { type: boolean }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { id: { type: string }, warnings: { type: array, items: { type: string } } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /containers/validate:
+    post:
+      operationId: validateContainer
+      x-permission: containers.manage
+      description: Policy preview for a container spec; changes nothing.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerSpec" } } } }
+      responses:
+        "200": { description: Evaluation, content: { application/json: { schema: { $ref: "#/components/schemas/PolicyEvaluation" } } } }
+  /containers/{id}:
+    get:
+      operationId: inspectContainer
+      x-permission: containers.read
+      parameters: [{ $ref: "#/components/parameters/ContainerID" }]
+      responses:
+        "200": { description: Security-relevant summary, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeContainer
+      x-permission: containers.manage
+      parameters:
+        - { $ref: "#/components/parameters/ContainerID" }
+        - { name: force, in: query, schema: { type: boolean } }
+        - { name: volumes, in: query, schema: { type: boolean } }
+      responses:
+        "204": { description: Removed }
+        "409": { $ref: "#/components/responses/Error" }
+  /containers/{id}/start:
+    post:
+      { operationId: startContainer, x-permission: containers.operate, parameters: [{ $ref: "#/components/parameters/ContainerID" }], responses: { "200": { $ref: "#/components/responses/Action" } } }
+  /containers/{id}/stop:
+    post:
+      operationId: stopContainer
+      x-permission: containers.operate
+      parameters: [{ $ref: "#/components/parameters/ContainerID" }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { timeout_seconds: { type: integer, minimum: 0, maximum: 300 } } } } } }
+      responses: { "200": { $ref: "#/components/responses/Action" } }
+  /containers/{id}/restart:
+    post:
+      operationId: restartContainer
+      x-permission: containers.operate
+      parameters: [{ $ref: "#/components/parameters/ContainerID" }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { timeout_seconds: { type: integer, minimum: 0, maximum: 300 } } } } } }
+      responses: { "200": { $ref: "#/components/responses/Action" } }
+  /containers/{id}/pause:
+    post:
+      { operationId: pauseContainer, x-permission: containers.operate, parameters: [{ $ref: "#/components/parameters/ContainerID" }], responses: { "200": { $ref: "#/components/responses/Action" } } }
+  /containers/{id}/unpause:
+    post:
+      { operationId: unpauseContainer, x-permission: containers.operate, parameters: [{ $ref: "#/components/parameters/ContainerID" }], responses: { "200": { $ref: "#/components/responses/Action" } } }
+  /containers/{id}/logs:
+    get:
+      operationId: containerLogs
+      x-permission: containers.operate
+      description: Logs often contain secrets, so they need containers.operate.
+      parameters:
+        - { $ref: "#/components/parameters/ContainerID" }
+        - { name: tail, in: query, schema: { type: integer, minimum: 1, maximum: 10000, default: 200 } }
+        - { name: since, in: query, schema: { type: integer } }
+        - { name: until, in: query, schema: { type: integer } }
+        - { name: timestamps, in: query, schema: { type: boolean } }
+      responses:
+        "200": { description: Log lines, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: object, properties: { stream: { type: string }, text: { type: string } } } }, truncated: { type: boolean } } } } } }
+  /images:
+    get:
+      operationId: listImages
+      x-permission: containers.read
+      responses: { "200": { description: Images, content: { application/json: { schema: { type: object } } } } }
+  /images/pull:
+    post:
+      operationId: pullImage
+      x-permission: containers.manage
+      description: Starts an images.pull job; the job output records the resolved digest.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reference], properties: { reference: { type: string } } } } } }
+      responses:
+        "202": { description: Job queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /images/remove:
+    post:
+      operationId: removeImage
+      x-permission: containers.manage
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reference], properties: { reference: { type: string }, force: { type: boolean } } } } } }
+      responses: { "204": { description: Removed }, "409": { $ref: "#/components/responses/Error" } }
+  /images/prune:
+    post:
+      operationId: pruneImages
+      x-permission: containers.manage
+      description: Removes dangling images only.
+      responses: { "200": { description: Pruned, content: { application/json: { schema: { type: object, properties: { deleted: { type: integer }, space_reclaimed: { type: integer } } } } } } }
+  /volumes:
+    get:
+      { operationId: listVolumes, x-permission: containers.read, responses: { "200": { description: Volumes, content: { application/json: { schema: { type: object } } } } } }
+    post:
+      operationId: createVolume
+      x-permission: containers.manage
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, labels: { type: object } } } } } }
+      responses: { "201": { description: Created } }
+  /volumes/{name}:
+    delete:
+      operationId: removeVolume
+      x-permission: containers.manage
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Removed }, "409": { $ref: "#/components/responses/Error" } }
+  /networks:
+    get:
+      { operationId: listNetworks, x-permission: containers.read, responses: { "200": { description: Networks, content: { application/json: { schema: { type: object } } } } } }
+    post:
+      operationId: createNetwork
+      x-permission: containers.manage
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, internal: { type: boolean }, labels: { type: object } } } } } }
+      responses: { "201": { description: Created } }
+  /networks/{name}:
+    delete:
+      operationId: removeNetwork
+      x-permission: containers.manage
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Removed }, "409": { $ref: "#/components/responses/Error" } }
 components:
   securitySchemes:
     session:
@@ -327,6 +474,11 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    ContainerID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$" }
     UserID:
       name: id
       in: path
@@ -437,6 +589,48 @@ components:
                 paused: { type: integer }
                 stopped: { type: integer }
                 images: { type: integer }
+    ContainerSpec:
+      type: object
+      required: [name, image]
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        image: { type: string }
+        cmd: { type: array, items: { type: string } }
+        entrypoint: { type: array, items: { type: string } }
+        env: { type: array, items: { type: object, properties: { name: { type: string }, value: { type: string } } } }
+        user: { type: string }
+        working_dir: { type: string }
+        ports: { type: array, items: { type: object, properties: { host_ip: { type: string }, host_port: { type: integer }, container_port: { type: integer }, protocol: { type: string, enum: [tcp, udp] } } } }
+        mounts: { type: array, items: { type: object, properties: { type: { type: string, enum: [volume, bind, tmpfs] }, source: { type: string }, target: { type: string }, read_only: { type: boolean } } } }
+        network_mode: { type: string }
+        restart_policy: { type: string, enum: ["", "no", always, unless-stopped, on-failure] }
+        labels: { type: object, additionalProperties: { type: string } }
+        privileged: { type: boolean }
+        cap_add: { type: array, items: { type: string } }
+        cap_drop: { type: array, items: { type: string } }
+        pid_mode: { type: string }
+        ipc_mode: { type: string }
+        uts_mode: { type: string }
+        devices: { type: array, items: { type: string } }
+        security_opt: { type: array, items: { type: string } }
+        read_only_rootfs: { type: boolean }
+        memory_bytes: { type: integer }
+        nano_cpus: { type: integer }
+    PolicyEvaluation:
+      type: object
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        violations: { type: array, items: { $ref: "#/components/schemas/PolicyFinding" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/PolicyFinding" } }
+    PolicyFinding:
+      type: object
+      properties:
+        rule: { type: string }
+        field: { type: string }
+        message: { type: string }
+        exemptible: { type: boolean }
     Job:
       type: object
       properties:
@@ -484,6 +678,9 @@ components:
             message: { type: string }
             request_id: { type: string }
   responses:
+    Action:
+      description: Action result
+      content: { application/json: { schema: { type: object, properties: { id: { type: string }, changed: { type: boolean } } } } }
     Error:
       description: Error
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

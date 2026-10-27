@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
+	"github.com/devthoko/KERNHAVEN/internal/policy"
 )
 
 // Server serves the agent protocol.
@@ -32,12 +33,12 @@ type Server struct {
 }
 
 // NewServer returns a server using docker for operations.
-func NewServer(log *slog.Logger, pub ed25519.PublicKey, allowedUIDs []uint32, d Docker) *Server {
+func NewServer(log *slog.Logger, pub ed25519.PublicKey, allowedUIDs []uint32, d Docker, o Options) *Server {
 	allowed := map[uint32]bool{}
 	for _, u := range allowedUIDs {
 		allowed[u] = true
 	}
-	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now()), nonces: newNonceCache(100000), now: time.Now}
+	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now(), o), nonces: newNonceCache(100000), now: time.Now}
 }
 
 // Listen creates the unix socket with mode 0660. An existing socket file is
@@ -203,7 +204,7 @@ func (s *Server) handleOp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h(r.Context(), json.RawMessage(params))
+	result, err := h(context.WithValue(r.Context(), actorKey{}, g.Actor), json.RawMessage(params))
 	attrs := []any{"op", op, "actor", g.Actor, "request_id", g.RequestID, "duration", time.Since(start).String()}
 	if err != nil {
 		code, status := errorCode(err)
@@ -211,6 +212,9 @@ func (s *Server) handleOp(w http.ResponseWriter, r *http.Request) {
 		msg := err.Error()
 		if code == agentproto.CodeInternal {
 			msg = "internal error"
+		}
+		if errors.As(err, new(*policy.PolicyError)) {
+			s.log.Warn("policy rejected container", append(attrs, "error", err.Error())...)
 		}
 		writeErr(w, status, code, msg)
 		return

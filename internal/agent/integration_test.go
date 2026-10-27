@@ -88,7 +88,7 @@ func TestRealDockerThroughAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, docker.New(sock, 30*time.Second))
+	srv := NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, docker.New(sock, 30*time.Second), Options{})
 	agentSock := filepath.Join(dir, "agent.sock")
 	ln, err := Listen(agentSock)
 	if err != nil {

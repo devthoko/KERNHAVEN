@@ -33,11 +33,19 @@ const (
 
 // Config is the validated Core configuration.
 type Config struct {
-	Server  Server  `toml:"server"`
-	Storage Storage `toml:"storage"`
-	Log     Log     `toml:"log"`
-	Auth    Auth    `toml:"auth"`
-	Agent   Agent   `toml:"agent"`
+	Server     Server     `toml:"server"`
+	Storage    Storage    `toml:"storage"`
+	Log        Log        `toml:"log"`
+	Auth       Auth       `toml:"auth"`
+	Agent      Agent      `toml:"agent"`
+	Containers Containers `toml:"containers"`
+}
+
+// Containers configures container management (M6).
+type Containers struct {
+	// AllowedBindRoots mirror the agent setting for policy previews; the
+	// agent's own setting is authoritative.
+	AllowedBindRoots []string `toml:"allowed_bind_roots"`
 }
 
 // Agent configures the connection to kernhaven-agent (M4).
@@ -142,6 +150,11 @@ func (c Config) Validate() error {
 		errs = append(errs, fmt.Errorf("server.public_origin: %w", err))
 	}
 	errs = append(errs, c.Auth.validate()...)
+	for _, r := range c.Containers.AllowedBindRoots {
+		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
+			errs = append(errs, fmt.Errorf("containers.allowed_bind_roots: %q must be an absolute, clean directory other than /", r))
+		}
+	}
 	if s := c.Agent.Socket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.socket: %q must be an absolute, clean path or empty", s))
 	}

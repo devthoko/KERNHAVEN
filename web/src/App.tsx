@@ -6,6 +6,11 @@ import { SessionProvider, useSession } from "./lib/session";
 import type { Permission } from "./lib/types";
 import { AccountPage } from "./pages/AccountPage";
 import { AuditPage } from "./pages/AuditPage";
+import { ContainerDetailPage } from "./pages/ContainerDetailPage";
+import { ContainersPage } from "./pages/ContainersPage";
+import { CreateContainerPage } from "./pages/CreateContainerPage";
+import { ImagesPage } from "./pages/ImagesPage";
+import { NetworksPage, VolumesPage } from "./pages/VolumesNetworksPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
 import { JobsPage } from "./pages/JobsPage";
@@ -23,6 +28,12 @@ interface RouteDef {
 
 const routes: RouteDef[] = [
   { pattern: "/", title: "Dashboard", render: () => <DashboardPage /> },
+  { pattern: "/containers", title: "Containers", permission: "containers.read", render: () => <ContainersPage /> },
+  { pattern: "/containers/new", title: "New container", permission: "containers.manage", render: () => <CreateContainerPage /> },
+  { pattern: "/containers/:id", title: "Container", permission: "containers.read", render: (p) => <ContainerDetailPage id={p.id ?? ""} /> },
+  { pattern: "/images", title: "Images", permission: "containers.read", render: () => <ImagesPage /> },
+  { pattern: "/volumes", title: "Volumes", permission: "containers.read", render: () => <VolumesPage /> },
+  { pattern: "/networks", title: "Networks", permission: "containers.read", render: () => <NetworksPage /> },
   { pattern: "/jobs", title: "Jobs", permission: "jobs.read", render: () => <JobsPage /> },
   { pattern: "/jobs/:id", title: "Job", permission: "jobs.read", render: (p) => <JobDetailPage id={p.id ?? ""} /> },
   { pattern: "/users", title: "Users", permission: "users.read", render: () => <UsersPage /> },

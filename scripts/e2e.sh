@@ -7,6 +7,12 @@ cd "$(dirname "$0")/.."
 PORT=${KH_E2E_PORT:-18471}
 WORK=$(mktemp -d)
 cleanup() {
+  if [ -n "${AGENT_PID:-}" ]; then kill -TERM "$AGENT_PID" 2>/dev/null || true; wait "$AGENT_PID" 2>/dev/null || true; fi
+  if [ -n "${DOCKER_SOCK:-}" ] && command -v docker >/dev/null; then
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-web >/dev/null 2>&1 || true
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-vol >/dev/null 2>&1 || true
+    DOCKER_HOST="unix://$DOCKER_SOCK" docker network rm e2e-net >/dev/null 2>&1 || true
+  fi
   if [ -n "${CORE_PID:-}" ]; then kill -TERM "$CORE_PID" 2>/dev/null || true; wait "$CORE_PID" 2>/dev/null || true; fi
   if [ "${KH_E2E_KEEP:-}" = "1" ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi
 }
@@ -14,6 +20,14 @@ trap cleanup EXIT
 
 (cd web && npm run build)
 CGO_ENABLED=0 go build -trimpath -o "$WORK/kernhaven-core" ./cmd/kernhaven-core
+CGO_ENABLED=0 go build -trimpath -o "$WORK/kernhaven-agent" ./cmd/kernhaven-agent
+
+# Docker for the container tests: KH_E2E_DOCKER_SOCKET, else /var/run/docker.sock.
+DOCKER_SOCK=${KH_E2E_DOCKER_SOCKET:-/var/run/docker.sock}
+if [ ! -S "$DOCKER_SOCK" ]; then
+  if [ "${KH_E2E_REQUIRE_DOCKER:-}" = "1" ]; then echo "Docker socket $DOCKER_SOCK not found"; exit 1; fi
+  DOCKER_SOCK=""
+fi
 
 mkdir -m 700 "$WORK/data"
 cat > "$WORK/core.toml" <<CFG
@@ -22,6 +36,8 @@ listen = "127.0.0.1:$PORT"
 public_origin = "http://localhost:$PORT"
 [storage]
 data_dir = "$WORK/data"
+[agent]
+socket = "$WORK/agent.sock"
 CFG
 
 "$WORK/kernhaven-core" -config "$WORK/core.toml" 2> "$WORK/core.log" &
@@ -30,6 +46,18 @@ for _ in $(seq 1 100); do
   curl -sf "http://127.0.0.1:$PORT/api/v1/health/ready" >/dev/null && break
   sleep 0.1
 done
+if [ -n "$DOCKER_SOCK" ]; then
+  cat > "$WORK/agent.toml" <<CFG
+socket = "$WORK/agent.sock"
+allowed_uids = [$(id -u)]
+grant_public_key = "$WORK/data/agent-grant.pub"
+docker_socket = "$DOCKER_SOCK"
+CFG
+  "$WORK/kernhaven-agent" -config "$WORK/agent.toml" 2> "$WORK/agent.log" &
+  AGENT_PID=$!
+  export KH_E2E_DOCKER=1
+fi
+
 TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -f4)
 if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exit 1; fi
 

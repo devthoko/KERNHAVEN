@@ -53,7 +53,8 @@ graph TD
 | M3 | Persistent jobs and crash recovery | M1 | F18 (01, 02, 04) | Implemented on branch `m3-jobs` (based on `m2-identity`), CI green, owner review pending — [design](M3-jobs.md) |
 | M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Implemented on branch `m4-agent` (based on `m5-dashboard`), CI green, owner review pending — [design](M4-agent.md) |
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Implemented on branch `m5-dashboard` (based on `m3-jobs`), CI green, owner review pending — [design](M5-dashboard.md) |
-| M6 | Container management | M4, M5 | F02, F01-05 | Not started |
+| M6 | Container management | M4, M5 | F02, F01-05 | Implemented on branch `m6-containers` (F02-01..06), CI pending — [design](M6-containers.md) |
+| M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Not started |
 | M7 | Compose import, validation, deploy | M6 | F03 | Not started |
 | M8 | App store and app lifecycle | M7 | F04, F05 | Not started |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Not started |

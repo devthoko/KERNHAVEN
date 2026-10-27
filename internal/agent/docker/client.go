@@ -4,6 +4,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,6 +35,8 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrConflict means the request conflicts with the object's state.
 	ErrConflict = errors.New("conflict")
+	// ErrInvalid means Docker rejected the request as malformed.
+	ErrInvalid = errors.New("rejected by Docker")
 )
 
 // Client talks to one Docker Engine.
@@ -71,13 +74,14 @@ type apiError struct {
 // do sends a request and decodes a JSON response into out (if non-nil).
 // Status 304 is returned as (304, nil) for start/stop semantics.
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, extra time.Duration, out any) (int, error) {
+	return c.doBody(ctx, method, path, query, extra, nil, out)
+}
+
+// doBody is do with an optional JSON request body.
+func (c *Client) doBody(ctx context.Context, method, path string, query url.Values, extra time.Duration, in, out any) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout+extra)
 	defer cancel()
-	u := "http://docker" + path
-	if len(query) > 0 {
-		u += "?" + query.Encode()
-	}
-	req, err := http.NewRequestWithContext(ctx, method, u, nil)
+	req, err := c.newRequest(ctx, method, path, query, in)
 	if err != nil {
 		return 0, err
 	}
@@ -86,6 +90,34 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return 0, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
 	defer resp.Body.Close()
+	return c.decode(resp, out)
+}
+
+func (c *Client) newRequest(ctx context.Context, method, path string, query url.Values, in any) (*http.Request, error) {
+	u := "http://docker" + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
+	}
+	var body io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, u, body)
+	if err != nil {
+		return nil, err
+	}
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return req, nil
+}
+
+// decode maps a Docker response to (status, error) and decodes JSON into out.
+func (c *Client) decode(resp *http.Response, out any) (int, error) {
 	body := io.LimitReader(resp.Body, 32<<20)
 
 	switch {
@@ -109,7 +141,9 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	case http.StatusConflict:
 		return resp.StatusCode, fmt.Errorf("%w: %s", ErrConflict, msg)
 	case http.StatusBadRequest:
-		return resp.StatusCode, fmt.Errorf("bad request: %s", msg)
+		return resp.StatusCode, fmt.Errorf("%w: %s", ErrInvalid, msg)
+	case http.StatusForbidden:
+		return resp.StatusCode, fmt.Errorf("%w: %s", ErrConflict, msg)
 	default:
 		return resp.StatusCode, fmt.Errorf("%w: HTTP %d: %s", ErrUnavailable, resp.StatusCode, msg)
 	}
@@ -276,7 +310,9 @@ func (c *Client) Inspect(ctx context.Context, ref string) (agentproto.ContainerD
 			} `json:"Health"`
 		} `json:"State"`
 		Config struct {
-			Image string `json:"Image"`
+			Image  string            `json:"Image"`
+			User   string            `json:"User"`
+			Labels map[string]string `json:"Labels"`
 		} `json:"Config"`
 		HostConfig struct {
 			Privileged    bool     `json:"Privileged"`
@@ -302,7 +338,10 @@ func (c *Client) Inspect(ctx context.Context, ref string) (agentproto.ContainerD
 		StartedAt: raw.State.StartedAt, FinishedAt: raw.State.FinishedAt,
 		RestartPolicy: raw.HostConfig.RestartPolicy.Name, Privileged: raw.HostConfig.Privileged,
 		NetworkMode: raw.HostConfig.NetworkMode, CapAdd: append([]string{}, raw.HostConfig.CapAdd...),
-		Mounts: []agentproto.Mount{},
+		Mounts: []agentproto.Mount{}, User: raw.Config.User, Labels: raw.Config.Labels,
+	}
+	if d.Labels == nil {
+		d.Labels = map[string]string{}
 	}
 	if raw.State.Health != nil {
 		d.Health = raw.State.Health.Status

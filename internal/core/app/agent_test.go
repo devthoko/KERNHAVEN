@@ -16,7 +16,10 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 )
 
-type stubDocker struct{ err error }
+type stubDocker struct {
+	agent.Docker // M6 methods unused here
+	err          error
+}
 
 func (s stubDocker) Info(context.Context) (agentproto.DockerInfo, error) {
 	return agentproto.DockerInfo{ServerVersion: "29.9.2", Rootless: true}, s.err
@@ -79,7 +82,7 @@ func TestAgentStatusAvailable(t *testing.T) {
 		dockerErr error
 	}{{"docker up", nil}, {"docker down", errDockerDown}} {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := agent.NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, stubDocker{err: tc.dockerErr})
+			srv := agent.NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, stubDocker{err: tc.dockerErr}, agent.Options{})
 			ln, err := agent.Listen(sock)
 			if err != nil {
 				t.Fatal(err)

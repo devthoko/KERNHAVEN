@@ -27,6 +27,7 @@ import (
 // fakeDocker records calls; tests that expect rejection before Docker set
 // forbid=true so any call fails the test.
 type fakeDocker struct {
+	Docker // unimplemented methods panic; tests only call recorded ones
 	mu     sync.Mutex
 	calls  []string
 	forbid bool
@@ -112,7 +113,7 @@ func start(t *testing.T, allowed []uint32) *env {
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	fd := &fakeDocker{t: t}
 	logs := &syncBuffer{}
-	srv := NewServer(slog.New(slog.NewJSONHandler(logs, nil)), pub, allowed, fd)
+	srv := NewServer(slog.New(slog.NewJSONHandler(logs, nil)), pub, allowed, fd, Options{})
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := Listen(sock)
 	if err != nil {
@@ -179,7 +180,10 @@ func (e *env) call(op string, params string, mod func(*agentproto.Grant)) reply 
 
 // AT-M4-01: the allow-list is exactly these operations — no exec, no passthrough.
 func TestOperationAllowList(t *testing.T) {
-	want := []string{"agent.info", "containers.inspect", "containers.list", "containers.restart", "containers.start", "containers.stop", "docker.info"}
+	want := []string{"agent.info", "containers.create", "containers.inspect", "containers.list", "containers.logs", "containers.pause",
+		"containers.remove", "containers.restart", "containers.start", "containers.stop", "containers.unpause", "docker.info",
+		"images.list", "images.prune", "images.pull", "images.remove", "networks.create", "networks.list", "networks.remove",
+		"volumes.create", "volumes.list", "volumes.remove"}
 	if got := OperationNames(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6 design)", got, want)
 	}
@@ -343,7 +347,7 @@ func TestListenSocketSafety(t *testing.T) {
 // Malformed envelopes never crash the handler (TH-24).
 func FuzzHandleOp(f *testing.F) {
 	pub, _, _ := ed25519.GenerateKey(rand.Reader)
-	srv := NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, self(), &fakeDocker{})
+	srv := NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, self(), &fakeDocker{}, Options{})
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/op/{op}", srv.handleOp)
 	f.Add("docker.info", []byte(`{"grant":"a.b","params":{}}`))

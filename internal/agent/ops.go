@@ -13,6 +13,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
+	"github.com/devthoko/KERNHAVEN/internal/policy"
 )
 
 // Docker is the subset of the Docker client the operations use.
@@ -23,6 +24,23 @@ type Docker interface {
 	Start(ctx context.Context, ref string) (bool, error)
 	Stop(ctx context.Context, ref string, timeout time.Duration) (bool, error)
 	Restart(ctx context.Context, ref string, timeout time.Duration) (bool, error)
+
+	// M6
+	Create(ctx context.Context, s agentproto.ContainerSpec, labels map[string]string) (agentproto.CreateResult, error)
+	Remove(ctx context.Context, ref string, force, volumes bool) error
+	Pause(ctx context.Context, ref string) (bool, error)
+	Unpause(ctx context.Context, ref string) (bool, error)
+	Logs(ctx context.Context, r agentproto.LogsRequest) (agentproto.Logs, error)
+	ListImages(ctx context.Context) ([]agentproto.ImageSummary, error)
+	Pull(ctx context.Context, ref string) (agentproto.PullResult, error)
+	RemoveImage(ctx context.Context, ref string, force bool) error
+	PruneImages(ctx context.Context) (agentproto.PruneResult, error)
+	ListVolumes(ctx context.Context) ([]agentproto.VolumeSummary, error)
+	CreateVolume(ctx context.Context, name string, labels map[string]string) error
+	RemoveVolume(ctx context.Context, name string) error
+	ListNetworks(ctx context.Context) ([]agentproto.NetworkSummary, error)
+	CreateNetwork(ctx context.Context, name string, internal bool, labels map[string]string) (string, error)
+	RemoveNetwork(ctx context.Context, ref string) error
 }
 
 // errInvalidParams marks parameter validation failures.
@@ -82,9 +100,14 @@ func stopTimeout(s int) (time.Duration, error) {
 	return time.Duration(s) * time.Second, nil
 }
 
+// Options configure the agent's own policy evaluation.
+type Options struct {
+	AllowedBindRoots []string
+}
+
 // operations builds the allow-list. Nothing outside this map can be invoked.
-func operations(d Docker, started time.Time) map[string]handler {
-	return map[string]handler{
+func operations(d Docker, started time.Time, o Options) map[string]handler {
+	ops := map[string]handler{
 		agentproto.OpAgentInfo: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
 			v := version.Get()
 			return agentproto.AgentInfo{Version: v.Version, Commit: v.Commit, UptimeSeconds: int64(time.Since(started).Seconds())}, nil
@@ -131,11 +154,15 @@ func operations(d Docker, started time.Time) map[string]handler {
 			return agentproto.ActionResult{ID: p.ID, Changed: changed}, err
 		}),
 	}
+	for name, h := range manageOperations(d, o) {
+		ops[name] = h
+	}
+	return ops
 }
 
 // OperationNames lists the allow-listed operations (sorted).
 func OperationNames() []string {
-	ops := operations(nil, time.Time{})
+	ops := operations(nil, time.Time{}, Options{})
 	names := make([]string, 0, len(ops))
 	for n := range ops {
 		names = append(names, n)
@@ -149,6 +176,10 @@ func errorCode(err error) (string, int) {
 	var ip *errInvalidParams
 	switch {
 	case errors.As(err, &ip):
+		return agentproto.CodeInvalidParams, 400
+	case errors.As(err, new(*policy.PolicyError)):
+		return agentproto.CodePolicyViolation, 422
+	case errors.Is(err, docker.ErrInvalid):
 		return agentproto.CodeInvalidParams, 400
 	case errors.Is(err, docker.ErrNotFound):
 		return agentproto.CodeNotFound, 404

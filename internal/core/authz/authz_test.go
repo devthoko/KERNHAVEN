@@ -4,14 +4,18 @@ import "testing"
 
 func TestRolePermissionMatrix(t *testing.T) {
 	want := map[Permission][]Role{
-		SelfManage:     {Owner, Admin, Operator, Viewer},
-		SystemRead:     {Owner, Admin, Operator, Viewer},
-		UsersRead:      {Owner, Admin},
-		UsersManage:    {Owner, Admin},
-		SessionsManage: {Owner},
-		AuditRead:      {Owner, Admin},
-		JobsRead:       {Owner, Admin, Operator, Viewer},
-		JobsManage:     {Owner, Admin, Operator},
+		SelfManage:        {Owner, Admin, Operator, Viewer},
+		SystemRead:        {Owner, Admin, Operator, Viewer},
+		UsersRead:         {Owner, Admin},
+		UsersManage:       {Owner, Admin},
+		SessionsManage:    {Owner},
+		AuditRead:         {Owner, Admin},
+		JobsRead:          {Owner, Admin, Operator, Viewer},
+		JobsManage:        {Owner, Admin, Operator},
+		ContainersRead:    {Owner, Admin, Operator, Viewer},
+		ContainersOperate: {Owner, Admin, Operator},
+		ContainersManage:  {Owner, Admin},
+		PolicyExceptions:  {Owner},
 	}
 	for p, roles := range want {
 		granted := map[Role]bool{}

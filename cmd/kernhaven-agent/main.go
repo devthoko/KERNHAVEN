@@ -57,7 +57,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	info := version.Get()
 	log.Info("starting kernhaven-agent", "version", info.Version, "commit", info.Commit, "socket", cfg.Socket, "docker_socket", cfg.DockerSocket)
 
-	srv := agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second))
+	srv := agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second), agent.Options{AllowedBindRoots: cfg.AllowedBindRoots})
 	ln, err := agent.Listen(cfg.Socket)
 	if err != nil {
 		log.Error("listen failed", "error", err.Error())

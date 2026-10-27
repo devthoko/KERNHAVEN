@@ -21,7 +21,10 @@ type Config struct {
 	AllowedUIDs    []uint32 `toml:"allowed_uids"`
 	GrantPublicKey string   `toml:"grant_public_key"`
 	DockerSocket   string   `toml:"docker_socket"`
-	Log            struct {
+	// AllowedBindRoots are host directories containers may bind-mount
+	// without a policy exception (M6). Empty means none.
+	AllowedBindRoots []string `toml:"allowed_bind_roots"`
+	Log              struct {
 		Level string `toml:"level"`
 	} `toml:"log"`
 
@@ -50,6 +53,11 @@ func LoadConfig(path string) (Config, error) {
 	for name, p := range map[string]string{"socket": cfg.Socket, "docker_socket": cfg.DockerSocket, "grant_public_key": cfg.GrantPublicKey} {
 		if !filepath.IsAbs(p) || filepath.Clean(p) != p {
 			errs = append(errs, fmt.Errorf("%s: %q must be an absolute, clean path", name, p))
+		}
+	}
+	for _, r := range cfg.AllowedBindRoots {
+		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
+			errs = append(errs, fmt.Errorf("allowed_bind_roots: %q must be an absolute, clean directory other than /", r))
 		}
 	}
 	if len(cfg.AllowedUIDs) == 0 {

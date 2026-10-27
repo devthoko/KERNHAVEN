@@ -7,6 +7,10 @@ import { Button } from "./ui";
 
 const nav: { to: string; label: string; permission?: Permission }[] = [
   { to: "/", label: "Dashboard" },
+  { to: "/containers", label: "Containers", permission: "containers.read" },
+  { to: "/images", label: "Images", permission: "containers.read" },
+  { to: "/volumes", label: "Volumes", permission: "containers.read" },
+  { to: "/networks", label: "Networks", permission: "containers.read" },
   { to: "/jobs", label: "Jobs", permission: "jobs.read" },
   { to: "/users", label: "Users", permission: "users.read" },
   { to: "/audit", label: "Audit log", permission: "audit.read" },
