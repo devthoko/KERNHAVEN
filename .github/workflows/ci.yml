@@ -1,0 +1,123 @@
+# Change gate G1 (docs/release/QUALITY-GATES.md). Actions are pinned by commit
+# SHA (ADR-0014).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  STATICCHECK_VERSION: v0.8.2
+  GOVULNCHECK_VERSION: v1.9.0
+
+jobs:
+  lint:
+    name: lint and vulnerability scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "$unformatted"; exit 1; fi
+      - name: go mod verify
+        run: go mod verify
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        run: go run "honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}" ./...
+      - name: govulncheck
+        run: go run "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" ./...
+      - name: secret scan
+        run: |
+          if git grep -nE -- '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' -- . ':!scripts/check.sh' ':!.github/workflows/ci.yml'; then
+            echo "private key material found"; exit 1
+          fi
+
+  test:
+    name: test (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: test with race detector
+        run: go test -race -count=1 ./...
+      - name: build
+        run: CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-core ./cmd/kernhaven-core
+      - name: smoke test binary
+        run: ./bin/kernhaven-core version
+
+  test-debian:
+    name: test on debian 13 (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container: debian:13
+    steps:
+      - name: install base packages
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: test as unprivileged user
+        # Tests check file ownership and permissions; running as root would
+        # mask permission bugs.
+        run: |
+          useradd --create-home tester
+          chown -R tester "$GITHUB_WORKSPACE"
+          su tester -c "export PATH=$(dirname "$(command -v go)"):\$PATH HOME=/home/tester; cd '$GITHUB_WORKSPACE' && git config --global --add safe.directory '$GITHUB_WORKSPACE' && go test -count=1 ./..."
+
+  systemd:
+    name: systemd unit hardening
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: install binary and unit
+        run: |
+          CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-core ./cmd/kernhaven-core
+          sudo install -m 0755 bin/kernhaven-core /usr/bin/kernhaven-core
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven
+      - name: systemd-analyze verify
+        run: systemd-analyze verify deploy/systemd/kernhaven-core.service
+      - name: systemd-analyze security (AT-F00-06, threshold 2.0)
+        run: |
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
