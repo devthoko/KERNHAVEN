@@ -34,6 +34,42 @@ type fakeDocker struct {
 	err    error
 }
 
+func (f *fakeDocker) setForbid(v bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.forbid = v
+}
+
+func (f *fakeDocker) setErr(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err = err
+}
+
+func (f *fakeDocker) callList() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.calls...)
+}
+
+// syncBuffer is a log sink that tests may read while the server writes.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 func (f *fakeDocker) record(s string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -68,15 +104,15 @@ type env struct {
 	priv   ed25519.PrivateKey
 	docker *fakeDocker
 	http   *http.Client
-	logs   *bytes.Buffer
+	logs   *syncBuffer
 }
 
 func start(t *testing.T, allowed []uint32) *env {
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	fd := &fakeDocker{t: t}
-	var logs bytes.Buffer
-	srv := NewServer(slog.New(slog.NewJSONHandler(&logs, nil)), pub, allowed, fd)
+	logs := &syncBuffer{}
+	srv := NewServer(slog.New(slog.NewJSONHandler(logs, nil)), pub, allowed, fd)
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := Listen(sock)
 	if err != nil {
@@ -90,7 +126,7 @@ func start(t *testing.T, allowed []uint32) *env {
 		var d net.Dialer
 		return d.DialContext(ctx, "unix", sock)
 	}}, Timeout: 5 * time.Second}
-	return &env{t: t, sock: sock, priv: priv, docker: fd, http: cl, logs: &logs}
+	return &env{t: t, sock: sock, priv: priv, docker: fd, http: cl, logs: logs}
 }
 
 func self() []uint32 { return []uint32{uint32(os.Getuid())} }
@@ -163,8 +199,8 @@ func TestValidRequestsReachDocker(t *testing.T) {
 	e.call("containers.stop", `{"id":"web-1","timeout_seconds":5}`, nil)
 	e.call("containers.restart", `{"id":"0123456789ab"}`, nil)
 	want := []string{"info", "list", "inspect web-1", "start web-1", "stop web-1 5s", "restart 0123456789ab 10s"}
-	if !reflect.DeepEqual(e.docker.calls, want) {
-		t.Fatalf("docker calls %v, want %v", e.docker.calls, want)
+	if !reflect.DeepEqual(e.docker.callList(), want) {
+		t.Fatalf("docker calls %v, want %v", e.docker.callList(), want)
 	}
 	if !strings.Contains(e.logs.String(), `"actor":"owner"`) {
 		t.Fatal("operations are not logged with the actor")
@@ -174,7 +210,7 @@ func TestValidRequestsReachDocker(t *testing.T) {
 // AT-M4-02
 func TestUnauthorizedPeerRejected(t *testing.T) {
 	e := start(t, []uint32{uint32(os.Getuid()) + 4242})
-	e.docker.forbid = true
+	e.docker.setForbid(true)
 	p := []byte(`{}`)
 	body, _ := json.Marshal(agentproto.Request{Grant: e.grant("docker.info", p, nil), Params: p})
 	if r, err := e.post("docker.info", body); err == nil {
@@ -188,7 +224,7 @@ func TestUnauthorizedPeerRejected(t *testing.T) {
 // AT-M4-03, AT-M4-04
 func TestGrantChecks(t *testing.T) {
 	e := start(t, self())
-	e.docker.forbid = true
+	e.docker.setForbid(true)
 	other, _, _ := ed25519.GenerateKey(rand.Reader)
 	_ = other
 	_, otherPriv, _ := ed25519.GenerateKey(rand.Reader)
@@ -220,7 +256,7 @@ func TestGrantChecks(t *testing.T) {
 	}
 
 	// Replay: the same grant twice.
-	e.docker.forbid = false
+	e.docker.setForbid(false)
 	body := mk(e.grant("containers.start", params, nil), params)
 	if r, _ := e.post("containers.start", body); r.status != 200 {
 		t.Fatalf("first use: %+v", r)
@@ -233,7 +269,7 @@ func TestGrantChecks(t *testing.T) {
 // AT-M4-05: invalid parameters never reach Docker.
 func TestInvalidParamsRejected(t *testing.T) {
 	e := start(t, self())
-	e.docker.forbid = true
+	e.docker.setForbid(true)
 	cases := map[string]struct{ op, params string }{
 		"unknown field":     {"containers.start", `{"id":"web","privileged":true}`},
 		"empty id":          {"containers.start", `{"id":""}`},
@@ -267,7 +303,7 @@ func TestInvalidParamsRejected(t *testing.T) {
 func TestDockerErrorsMapped(t *testing.T) {
 	e := start(t, self())
 	for err, want := range map[error]string{docker.ErrUnavailable: agentproto.CodeDockerUnavailable, docker.ErrNotFound: agentproto.CodeNotFound, docker.ErrConflict: agentproto.CodeConflict, io.ErrUnexpectedEOF: agentproto.CodeInternal} {
-		e.docker.err = err
+		e.docker.setErr(err)
 		if r := e.call("containers.start", `{"id":"web"}`, nil); r.code != want {
 			t.Errorf("%v: code %s, want %s", err, r.code, want)
 		}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -34,16 +35,25 @@ func versionHandler(api string) http.HandlerFunc {
 
 func TestNegotiatesAPIVersion(t *testing.T) {
 	for api, want := range map[string]string{"1.52": "1.47", "1.45": "1.45"} {
+		var mu sync.Mutex
 		var seen string
 		mux := http.NewServeMux()
 		mux.HandleFunc("/version", versionHandler(api))
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { seen = r.URL.Path; w.Write([]byte("[]")) })
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			seen = r.URL.Path
+			mu.Unlock()
+			w.Write([]byte("[]"))
+		})
 		c := New(fakeDaemon(t, mux), time.Second)
 		if _, err := c.ListContainers(context.Background(), true); err != nil {
 			t.Fatal(err)
 		}
-		if seen != "/v"+want+"/containers/json" {
-			t.Errorf("daemon %s: path %s, want /v%s/...", api, seen, want)
+		mu.Lock()
+		got := seen
+		mu.Unlock()
+		if got != "/v"+want+"/containers/json" {
+			t.Errorf("daemon %s: path %s, want /v%s/...", api, got, want)
 		}
 	}
 }
@@ -122,12 +132,20 @@ func TestUnavailableDaemon(t *testing.T) {
 }
 
 func TestPathEscaping(t *testing.T) {
+	var mu sync.Mutex
 	var raw string
 	mux := http.NewServeMux()
 	mux.HandleFunc("/version", versionHandler("1.47"))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { raw = r.URL.EscapedPath(); w.WriteHeader(404) })
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		raw = r.URL.EscapedPath()
+		mu.Unlock()
+		w.WriteHeader(404)
+	})
 	c := New(fakeDaemon(t, mux), time.Second)
 	_, _ = c.Inspect(context.Background(), "../../images/x")
+	mu.Lock()
+	defer mu.Unlock()
 	if strings.Contains(raw, "/images/") {
 		t.Fatalf("reference escaped the path: %s", raw)
 	}

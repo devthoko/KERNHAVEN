@@ -7,9 +7,8 @@ sessions. It states only verified facts; see the linked evidence.
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
 green CI on stacked branches awaiting owner review; M4 is implemented on
-`m4-agent` (stacked on M5). No user-facing
-product exists yet: there is no container management UI, storage, network,
-backup or installer functionality yet.
+`m4-agent` (stacked on M5). Container management UI, storage, network,
+backup and installer functionality do not exist yet.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
