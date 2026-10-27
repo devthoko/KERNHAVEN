@@ -68,11 +68,11 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-20 | E | Compromised Core (T6) runs arbitrary host commands | No generic exec operation; typed allow-listed operations only | M4 | Open |
-| TH-21 | E | Compromised Core requests privileged containers or host mounts | Agent-side container policy; exceptions require Owner-signed approval with a key not held by Core at rest | M4/M6 | Open |
-| TH-22 | S | Local user (T8) connects to the agent socket | Socket mode 0660 owned by agent group with only `kernhaven` member; `SO_PEERCRED` check | M4 | Open |
-| TH-23 | T/R | Replay of a captured grant | Grants bound to operation+target, short expiry, nonce cache | M4 | Open |
-| TH-24 | D | Malformed requests crash the agent | Strict decoding, size limits, fuzzing in CI | M4 | Open |
+| TH-20 | E | Compromised Core (T6) runs arbitrary host commands | No generic exec operation; typed allow-listed operations only | M4 | Mitigated (AT-M4-01: pinned allow-list of typed operations, no exec or passthrough) |
+| TH-21 | E | Compromised Core requests privileged containers or host mounts | Agent-side container policy; exceptions require Owner-signed approval with a key not held by Core at rest | M4/M6 | Open (no container creation exists yet; policy engine with M6) |
+| TH-22 | S | Local user (T8) connects to the agent socket | Socket mode 0660 owned by agent group with only `kernhaven` member; `SO_PEERCRED` check | M4 | Mitigated (AT-M4-02: socket 0660 + SO_PEERCRED allow-list) |
+| TH-23 | T/R | Replay of a captured grant | Grants bound to operation+target, short expiry, nonce cache | M4 | Mitigated (AT-M4-03/04: Ed25519 grants bound to op and params hash, 60 s lifetime, nonce cache) |
+| TH-24 | D | Malformed requests crash the agent | Strict decoding, size limits, fuzzing in CI | M4 | Mitigated (AT-M4-05: strict decoding, 64 KiB limit, timeouts; fuzzing in CI) |
 
 ### TB-4/TB-5 — Host resources and containers
 
@@ -82,7 +82,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-31 | T | Path traversal / symlink escape in file manager, mounts, Compose bind mounts | Allow-listed roots, `openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS)`, canonicalisation tests | M7/M9/M10 | Open |
 | TH-32 | D | Formatting or unmounting the system disk | System disk detection; never offered; typed confirmation; agent refuses | M9 | Open |
 | TH-33 | I | App containers reach Core/agent | Core loopback only, agent unix socket only; Docker networks isolated per stack | M6 | Open |
-| TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Open |
+| TH-34 | E | Shell/argument injection in host operations | No shell invocation; `exec` with argument arrays; typed parameters validated against patterns | M4 | Mitigated for M4 operations (no process execution; Docker API calls only with validated, path-escaped references) |
 | TH-35 | T | Kernhaven modifies firewall or SSH and locks the user out | Out of scope by policy; agent has no such operations | — | Mitigated by design |
 
 ### TB-6 — External content and supply chain
@@ -118,3 +118,5 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 |---|---|---|
 | 2026-10-27 | M0/M1 | Initial model; TH-05, TH-07, TH-54 mitigated by M1 |
 | 2026-10-27 | M2 | TH-02, TH-03, TH-08, TH-09, TH-10 mitigated; TH-01, TH-06, TH-52 partially |
+| 2026-10-27 | M3–M5 | TH-04 partially (CSP), TH-53 partially (journaled jobs) |
+| 2026-10-27 | M4 | TH-20, TH-22, TH-23, TH-24, TH-34 mitigated |

@@ -32,7 +32,9 @@ fi
 
 echo "== build linux/amd64 + linux/arm64"
 for arch in amd64 arm64; do
-  CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -o "bin/kernhaven-core-linux-$arch" ./cmd/kernhaven-core
+  for cmd in kernhaven-core kernhaven-agent; do
+    CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -o "bin/$cmd-linux-$arch" "./cmd/$cmd"
+  done
 done
 
 echo "== web"

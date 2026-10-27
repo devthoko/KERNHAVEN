@@ -1,0 +1,20 @@
+# Kernhaven host agent configuration — /etc/kernhaven/agent.toml
+# Unknown keys are rejected at startup.
+
+# Unix socket the Core connects to (directory created by systemd).
+socket = "/run/kernhaven/agent.sock"
+
+# Only these UIDs may connect (SO_PEERCRED). Set to the Core user's UID:
+#   id -u kernhaven
+allowed_uids = [998]
+
+# Public key that verifies the Core's grants. The installer copies it from
+# /var/lib/kernhaven/agent-grant.pub to this root-owned path so that the Core
+# cannot replace it at runtime.
+grant_public_key = "/etc/kernhaven/agent-grant.pub"
+
+# Docker Engine socket.
+docker_socket = "/run/docker.sock"
+
+[log]
+level = "info"   # debug | info | warn | error

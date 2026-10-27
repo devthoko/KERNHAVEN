@@ -198,3 +198,20 @@ func TestAuthValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentSocketValidation(t *testing.T) {
+	cfg := Default()
+	cfg.Storage.DataDir = privateDir(t)
+	for _, ok := range []string{"", "/run/kernhaven/agent.sock", "/run/user/1000/kh.sock"} {
+		cfg.Agent.Socket = ok
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("%q rejected: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"agent.sock", "/run/../tmp/a.sock"} {
+		cfg.Agent.Socket = bad
+		if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "agent.socket") {
+			t.Errorf("%q accepted: %v", bad, err)
+		}
+	}
+}

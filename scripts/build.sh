@@ -10,8 +10,10 @@ PKG=github.com/devthoko/KERNHAVEN/internal/platform/version
 
 (cd web && npm ci --ignore-scripts --no-audit --no-fund && npm run build)
 for arch in amd64 arm64; do
-  CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
-    -ldflags "-s -w -X $PKG.Version=$VERSION -X $PKG.Commit=$COMMIT -X $PKG.BuildDate=$DATE" \
-    -o "bin/kernhaven-core-linux-$arch" ./cmd/kernhaven-core
+  for cmd in kernhaven-core kernhaven-agent; do
+    CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
+      -ldflags "-s -w -X $PKG.Version=$VERSION -X $PKG.Commit=$COMMIT -X $PKG.BuildDate=$DATE" \
+      -o "bin/$cmd-linux-$arch" "./cmd/$cmd"
+  done
 done
 ls -l bin/

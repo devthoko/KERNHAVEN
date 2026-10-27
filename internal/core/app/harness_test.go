@@ -43,15 +43,23 @@ func (c *clock) Advance(d time.Duration) {
 }
 
 type harness struct {
-	t     *testing.T
-	app   *App
-	db    *sql.DB
-	clock *clock
-	logs  *bytes.Buffer
-	ipSeq atomic.Int64
+	t       *testing.T
+	dataDir string
+	owner   *client
+	app     *App
+	db      *sql.DB
+	clock   *clock
+	logs    *bytes.Buffer
+	ipSeq   atomic.Int64
 }
 
 func newHarness(t *testing.T) *harness {
+	t.Helper()
+	return newHarnessWith(t, nil)
+}
+
+// newHarnessWith lets a test adjust the configuration before the Core is built.
+func newHarnessWith(t *testing.T, adjust func(*config.Config)) *harness {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "data")
 	if err := os.Mkdir(dir, 0o700); err != nil {
@@ -66,6 +74,10 @@ func newHarness(t *testing.T) *harness {
 	cfg := config.Default()
 	cfg.Storage.DataDir = dir
 	cfg.Server.PublicOrigin = testOrigin
+	cfg.Agent.Socket = ""
+	if adjust != nil {
+		adjust(&cfg)
+	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +93,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &harness{t: t, app: a, db: db, clock: clk, logs: &logs}
+	return &harness{t: t, app: a, db: db, clock: clk, logs: &logs, dataDir: dir}
 }
 
 // client simulates one browser: it keeps the session cookie and CSRF token
@@ -256,4 +268,13 @@ func (h *harness) waitJob(id int64, want jobs.State) jobs.Job {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+// setupOrLogin returns an owner client, running setup on first use.
+func (h *harness) setupOrLogin() *client {
+	h.t.Helper()
+	if h.owner == nil {
+		h.owner = h.setupOwner()
+	}
+	return h.owner
 }

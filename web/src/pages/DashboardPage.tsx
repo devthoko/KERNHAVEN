@@ -4,16 +4,17 @@ import { api } from "../lib/api";
 import { formatDateTime, formatRelative } from "../lib/format";
 import { Link } from "../lib/router";
 import { useCurrentSession, useSession } from "../lib/session";
-import { ACTIVE_JOB_STATES, type AuditEvent, type Job, type JobState, type Version } from "../lib/types";
+import { ACTIVE_JOB_STATES, type AgentStatus, type AuditEvent, type Job, type JobState, type Version } from "../lib/types";
 import { useData } from "../lib/useData";
 
 function PlatformCard() {
   const { data, error, loading } = useData(async () => {
-    const [ready, version] = await Promise.all([
+    const [ready, version, agent] = await Promise.all([
       fetch("/api/v1/health/ready", { credentials: "same-origin" }).then((r) => r.ok),
       api.get<Version>("/version"),
+      api.get<AgentStatus>("/system/agent"),
     ]);
-    return { ready, version };
+    return { ready, version, agent };
   }, []);
   return (
     <Card title="Platform">
@@ -23,6 +24,25 @@ function PlatformCard() {
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
           <dt className="text-slate-600 dark:text-slate-400">Core</dt>
           <dd>{data.ready ? <Badge tone="green">Ready</Badge> : <Badge tone="red">Not ready</Badge>}</dd>
+          <dt className="text-slate-600 dark:text-slate-400">Host agent</dt>
+          <dd>
+            {data.agent.agent.available ? <Badge tone="green">Connected</Badge> : <Badge tone="amber">Unavailable</Badge>}
+            {data.agent.agent.error && <span className="ml-2 text-xs text-slate-600 dark:text-slate-400">{data.agent.agent.error}</span>}
+          </dd>
+          <dt className="text-slate-600 dark:text-slate-400">Docker</dt>
+          <dd>
+            {data.agent.docker.available && data.agent.docker.info ? (
+              <>
+                <Badge tone="green">{data.agent.docker.info.server_version}</Badge>{" "}
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  {data.agent.docker.info.running} running / {data.agent.docker.info.containers} containers
+                  {data.agent.docker.info.rootless ? " · rootless" : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-slate-600 dark:text-slate-400">{data.agent.docker.error ?? "Unavailable"}</span>
+            )}
+          </dd>
           <dt className="text-slate-600 dark:text-slate-400">Version</dt>
           <dd className="break-all">{data.version.version}</dd>
           <dt className="text-slate-600 dark:text-slate-400">Commit</dt>

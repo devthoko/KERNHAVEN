@@ -115,13 +115,17 @@ jobs:
       - name: install binary and unit
         run: |
           CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-core ./cmd/kernhaven-core
-          sudo install -m 0755 bin/kernhaven-core /usr/bin/kernhaven-core
+          CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-agent ./cmd/kernhaven-agent
+          sudo install -m 0755 bin/kernhaven-core bin/kernhaven-agent /usr/bin/
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
+          getent group docker || sudo groupadd docker
       - name: systemd-analyze verify
-        run: systemd-analyze verify deploy/systemd/kernhaven-core.service
+        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service
       - name: systemd-analyze security (AT-F00-06, threshold 2.0)
         run: |
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-agent.service
 
   web:
     name: web UI (typecheck, unit tests, build, audit)
@@ -174,3 +178,41 @@ jobs:
           name: playwright-traces
           path: web/test-results/
           retention-days: 7
+
+  integration:
+    name: integration with real Docker (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Docker Engine
+        run: docker version
+      - name: agent integration tests (AT-M4-06)
+        env:
+          KH_DOCKER_SOCKET: /var/run/docker.sock
+        run: go test -count=1 -race -tags integration -v ./internal/agent/ ./internal/agent/docker/
+
+  fuzz:
+    name: fuzz agent protocol (60 s each)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go test -run='^$' -fuzz=FuzzVerify -fuzztime=60s ./internal/agentproto/
+      - run: go test -run='^$' -fuzz=FuzzHandleOp -fuzztime=60s ./internal/agent/

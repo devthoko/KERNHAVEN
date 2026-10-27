@@ -37,6 +37,13 @@ type Config struct {
 	Storage Storage `toml:"storage"`
 	Log     Log     `toml:"log"`
 	Auth    Auth    `toml:"auth"`
+	Agent   Agent   `toml:"agent"`
+}
+
+// Agent configures the connection to kernhaven-agent (M4).
+type Agent struct {
+	// Socket is the agent's unix socket; empty disables the agent.
+	Socket string `toml:"socket"`
 }
 
 // Server configures the HTTP listener.
@@ -90,6 +97,7 @@ func Default() Config {
 		},
 		Storage: Storage{DataDir: "/var/lib/kernhaven"},
 		Log:     Log{Level: "info"},
+		Agent:   Agent{Socket: "/run/kernhaven/agent.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
 			SessionAbsoluteTimeout: Duration{12 * time.Hour},
@@ -134,6 +142,9 @@ func (c Config) Validate() error {
 		errs = append(errs, fmt.Errorf("server.public_origin: %w", err))
 	}
 	errs = append(errs, c.Auth.validate()...)
+	if s := c.Agent.Socket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
+		errs = append(errs, fmt.Errorf("agent.socket: %q must be an absolute, clean path or empty", s))
+	}
 	if err := validateDataDir(c.Storage.DataDir); err != nil {
 		errs = append(errs, fmt.Errorf("storage.data_dir: %w", err))
 	}

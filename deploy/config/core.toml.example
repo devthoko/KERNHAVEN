@@ -20,6 +20,10 @@ data_dir = "/var/lib/kernhaven"
 # debug | info | warn | error
 level = "info"
 
+[agent]
+# Unix socket of kernhaven-agent; empty disables container features.
+socket = "/run/kernhaven/agent.sock"
+
 [auth]
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout

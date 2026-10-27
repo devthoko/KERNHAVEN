@@ -22,3 +22,4 @@ ADR that supersedes the old one.
 | [0014](0014-ci-supply-chain-pinning.md) | CI actions pinned by commit SHA | Accepted |
 | [0015](0015-argon2id-password-hashing.md) | Argon2id password hashing via golang.org/x/crypto | Accepted |
 | [0016](0016-hash-chained-audit-log.md) | Hash-chained audit log in SQLite | Accepted |
+| [0017](0017-minimal-docker-client.md) | Minimal Docker Engine API client instead of the Docker SDK | Accepted |

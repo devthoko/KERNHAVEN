@@ -51,7 +51,7 @@ graph TD
 | M1 | Core foundation | M0 | AT-F00-01..06 | Done — [design and evidence](M1-core-foundation.md) |
 | M2 | Identity, sessions, RBAC, audit log | M1 | F08 (01–04, 06), F09-01, F10 (01–02) | Implemented on branch `m2-identity`, CI green, owner review pending — [design](M2-identity.md) |
 | M3 | Persistent jobs and crash recovery | M1 | F18 (01, 02, 04) | Implemented on branch `m3-jobs` (based on `m2-identity`), CI green, owner review pending — [design](M3-jobs.md) |
-| M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Not started |
+| M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Implemented on branch `m4-agent` (based on `m5-dashboard`), CI pending — [design](M4-agent.md) |
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Implemented on branch `m5-dashboard` (based on `m3-jobs`), CI green, owner review pending — [design](M5-dashboard.md) |
 | M6 | Container management | M4, M5 | F02, F01-05 | Not started |
 | M7 | Compose import, validation, deploy | M6 | F03 | Not started |
@@ -72,6 +72,6 @@ graph TD
 
 | ID | Blocker | Blocks | Needs |
 |---|---|---|---|
-| B-1 | Docker Engine is not installed on the dev server; installing needs `sudo` | Local development of M4+ | Owner installs Docker Engine on `khv01-dev` (or provides a dedicated test VM) |
+| B-1 | Resolved 2026-10-27: Docker 29.9.2 rootless for `dev01` on `khv01-dev` | — | — |
 | B-2 | No Debian 13 integration VMs (amd64, arm64) exist | Integration acceptance for M4+ and every release gate | Provisioned Debian 13 VMs reachable from CI or the dev server |
 | B-3 | Release signing key ceremony not defined | M18 | Decision on ADR-0013 |

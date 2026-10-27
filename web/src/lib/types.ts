@@ -114,3 +114,21 @@ export interface Version {
   build_date: string;
   go_version: string;
 }
+
+export interface ComponentStatus<T> {
+  available: boolean;
+  error?: string;
+  info?: T;
+}
+
+export interface AgentStatus {
+  agent: ComponentStatus<{ version: string; commit: string; uptime_seconds: number }>;
+  docker: ComponentStatus<{
+    server_version: string;
+    api_version: string;
+    rootless: boolean;
+    containers: number;
+    running: number;
+    images: number;
+  }>;
+}

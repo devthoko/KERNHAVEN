@@ -313,6 +313,13 @@ paths:
         "202": { description: Cancellation requested }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /system/agent:
+    get:
+      operationId: getAgentStatus
+      x-permission: system.read
+      description: Availability of the host agent and the Docker Engine behind it. Always 200; unavailability is reported in the body.
+      responses:
+        "200": { description: Status, content: { application/json: { schema: { $ref: "#/components/schemas/AgentStatus" } } } }
 components:
   securitySchemes:
     session:
@@ -395,6 +402,41 @@ components:
       additionalProperties: false
       properties:
         theme: { type: string, enum: [system, light, dark] }
+    AgentStatus:
+      type: object
+      properties:
+        agent:
+          type: object
+          properties:
+            available: { type: boolean }
+            error: { type: string }
+            info:
+              type: object
+              properties:
+                version: { type: string }
+                commit: { type: string }
+                uptime_seconds: { type: integer }
+        docker:
+          type: object
+          properties:
+            available: { type: boolean }
+            error: { type: string }
+            info:
+              type: object
+              properties:
+                server_version: { type: string }
+                api_version: { type: string }
+                negotiated_api_version: { type: string }
+                os: { type: string }
+                arch: { type: string }
+                kernel_version: { type: string }
+                rootless: { type: boolean }
+                storage_driver: { type: string }
+                containers: { type: integer }
+                running: { type: integer }
+                paused: { type: integer }
+                stopped: { type: integer }
+                images: { type: integer }
     Job:
       type: object
       properties:

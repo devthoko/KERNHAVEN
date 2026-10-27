@@ -3,11 +3,13 @@ package app
 
 import (
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
@@ -24,6 +26,7 @@ type App struct {
 	Identity *identity.Service
 	Audit    *audit.Log
 	Jobs     *jobs.Service
+	Agent    *agentclient.Client // nil when no agent is configured
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -64,6 +67,15 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	ids.Register(rt)
 	audit.Register(rt, auditLog)
 	jobs.RegisterRoutes(rt, jobSvc, auditLog, runner.Wake)
+	var agent *agentclient.Client
+	if cfg.Agent.Socket != "" {
+		key, err := agentclient.LoadOrCreateKey(cfg.Storage.DataDir)
+		if err != nil {
+			return nil, fmt.Errorf("agent grant key: %w", err)
+		}
+		agent = agentclient.New(cfg.Agent.Socket, key)
+	}
+	agentclient.RegisterRoutes(rt, agent)
 	ui := opts.UI
 	if ui == nil {
 		ui = webui.Dist()
@@ -76,6 +88,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Identity: ids,
 		Audit:    auditLog,
 		Jobs:     jobSvc,
+		Agent:    agent,
 		Runner:   runner,
 		now:      now,
 	}
