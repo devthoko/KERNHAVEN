@@ -115,4 +115,4 @@ shutdown timeout and requeues interrupted jobs *without* consuming an attempt.
 | `internal/core/jobs`: 13 component tests (outputs, retry from journal, reverse compensation, attempts exhausted, cancel queued/running, compensation failure, shutdown requeue, recovery, dedupe, validation, unknown kind, bounded logs, purge) | `khv01-dev` | Passed |
 | `internal/core/jobs`: SIGKILL of a real process in each of 4 steps and during rollback, then restart; effects applied exactly once, completed steps and compensations not repeated | `khv01-dev` | Passed (5 scenarios) |
 | `internal/core/app`: maintenance jobs through the real runner and API; cancel with RBAC and audit; RBAC matrix and OpenAPI contract include the job routes | `khv01-dev` | Passed |
-| CI | GitHub Actions | Pending |
+| CI run [40511595535](https://github.com/devthoko/KERNHAVEN/actions/runs/40511595535), commit `57c23c0`: race tests incl. SIGKILL scenarios on amd64 + arm64, Debian 13 amd64 + arm64, lint/vuln, systemd | GitHub Actions | All 6 jobs passed |

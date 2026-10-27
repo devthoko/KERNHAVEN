@@ -188,7 +188,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F18-01 | Persistent job queue | Jobs survive restarts; at-least-once execution with idempotent steps | M3 | Done pending CI (local: in-process and SIGKILL process tests pass) |
-| AT-F18-02 | Crash recovery | `kill -9` of Core or agent at any job step recovers to a consistent state on restart | M3 | Done pending CI (local: in-process and SIGKILL process tests pass) |
+| AT-F18-01 | Persistent job queue | Jobs survive restarts; at-least-once execution with idempotent steps | M3 | Done (CI 40511595535; merge pending owner review) |
+| AT-F18-02 | Crash recovery | `kill -9` of Core or agent at any job step recovers to a consistent state on restart | M3 | Done (CI 40511595535; merge pending owner review) |
 | AT-F18-03 | Job visibility | Users see job progress, logs and outcome; jobs can be cancelled where safe | M5 | Not started |
 | AT-F18-04 | Power-loss safety | SQLite WAL with synchronous=FULL for journal tables; recovery after simulated power loss (VM reset) | M3 | Blocked (B-2: VM reset test); WAL + synchronous=FULL in place |

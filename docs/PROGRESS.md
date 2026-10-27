@@ -16,7 +16,7 @@ network, backup or installer functionality.
 | M0 | Spec, repo, CI | Done | `main` @ `f0d2c71` |
 | M1 | Core foundation | Done | [M1 evidence](milestones/M1-core-foundation.md#verification-evidence-2026-10-27), CI run 40506636168 |
 | M2 | Identity, sessions, RBAC, audit | Implemented, CI green (run 40510127374); owner review pending | [M2 evidence](milestones/M2-identity.md#verification-evidence-2026-10-27-branch-m2-identity) |
-| M3 | Persistent jobs, crash recovery | Implemented on branch `m3-jobs`; CI pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
+| M3 | Persistent jobs, crash recovery | Implemented, CI green (run 40511595535); owner review pending | [M3 evidence](milestones/M3-jobs.md#verification-evidence-2026-10-27-branch-m3-jobs) |
 | M4–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
@@ -31,10 +31,9 @@ network, backup or installer functionality.
 
 ## Next steps (in order)
 
-1. Owner reviews and merges `m2-identity` (CI green).
-   privileges needed; can proceed without B-1/B-2).
-3. M5: web dashboard shell (install Node.js in `~/.local`).
-3. M4 onward requires B-1, then B-2 for release evidence.
+1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
+2. M5: web dashboard shell (install Node.js in `~/.local`; no `sudo` needed).
+3. M4 onward requires B-1 (Docker), then B-2 (Debian 13 VMs) for release evidence.
 
 ## Development environment
 
