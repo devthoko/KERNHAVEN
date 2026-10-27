@@ -20,7 +20,7 @@ backup and installer functionality do not exist yet.
 | M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
 | M6 | Container management (F02-01..06) | Implemented, full CI green incl. browser E2E on real Docker (run 40559956035); owner review pending | [M6 evidence](milestones/M6-containers.md#verification-evidence-2026-10-27-branch-m6-containers) |
 | M7 | Compose stacks (F03) | Done on branch `m7-compose` (stacked on M6), CI 40565761279; merge pending owner review | [M7 evidence](milestones/M7-compose.md#verification-evidence-2026-10-27-branch-m7-compose) |
-| M8 | App store and app lifecycle (F04, F05) | Implemented on branch `m8-apps` (stacked on M7), CI pending; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
+| M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
 | M6b, M9–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
