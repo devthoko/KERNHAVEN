@@ -248,7 +248,7 @@ export function UsersPage() {
                               </Button>
                               <Button
                                 variant="ghost"
-                                aria-label={`Reset second factors of ${u.username}`}
+                                aria-label={`Reset MFA of ${u.username}`}
                                 onClick={() =>
                                   api.post(`/users/${u.id}/mfa/reset`).then(
                                     () => done(`Second factors of ${u.username} were reset; password sign-in is on again.`),
