@@ -576,7 +576,9 @@ test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign 
   // Passkey alone.
   await page.getByRole("button", { name: "Sign out" }).first().click();
   await page.getByRole("button", { name: "Sign in with a passkey" }).click();
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  // Signing out on /account returns there after the sign-in (?next=/account).
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 
   // Password, then a recovery code as second step.
   await page.getByRole("button", { name: "Sign out" }).first().click();
@@ -588,5 +590,6 @@ test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign 
   await page.getByRole("button", { name: "Use a recovery code instead" }).click();
   await page.getByLabel("Recovery code").fill(recovery);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 });
