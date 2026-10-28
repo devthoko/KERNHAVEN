@@ -57,19 +57,19 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F04-01 | Catalog sync | Catalog fetched from configured sources; signature verified; unsigned or tampered catalogs are rejected | M8 | Implemented on `m8-apps`; CI pending |
-| AT-F04-02 | Browse and search | Category, text search and app detail pages with required permissions shown | M8 | Implemented on `m8-apps`; CI pending |
-| AT-F04-03 | Multiple sources | Owner can add/remove catalog sources with their own trust keys | M8 | Implemented on `m8-apps`; CI pending |
-| AT-F04-04 | Policy disclosure | Each app shows the privileges it requests before install | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F04-01 | Catalog sync | Catalog fetched from configured sources; signature verified; unsigned or tampered catalogs are rejected | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F04-02 | Browse and search | Category, text search and app detail pages with required permissions shown | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F04-03 | Multiple sources | Owner can add/remove catalog sources with their own trust keys | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F04-04 | Policy disclosure | Each app shows the privileges it requests before install | M8 | Done (CI 40574613677; merge pending owner review) |
 
 ## F05 — App installation, updating and removal
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8 | Partial on `m8-apps` (form, generated secrets, health check; the reverse proxy route needs M12); CI pending |
-| AT-F05-02 | Update | Update with pre-update snapshot; failed health check rolls back automatically | M8 | Implemented on `m8-apps`; CI pending |
-| AT-F05-03 | Remove | Remove with choice to keep or delete data; deletion requires re-authentication | M8 | Implemented on `m8-apps`; CI pending |
-| AT-F05-04 | Interrupted operations | Killing Core or agent mid-install/update resumes or rolls back cleanly on restart | M8 | Implemented on `m8-apps`; CI pending |
+| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8 | Partial (CI 40574613677; form, generated secrets, health check; the reverse proxy route needs M12) |
+| AT-F05-02 | Update | Update with pre-update snapshot; failed health check rolls back automatically | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F05-03 | Remove | Remove with choice to keep or delete data; deletion requires re-authentication | M8 | Done (CI 40574613677; merge pending owner review) |
+| AT-F05-04 | Interrupted operations | Killing Core or agent mid-install/update resumes or rolls back cleanly on restart | M8 | Done (CI 40574613677; merge pending owner review) |
 
 ## F06 — Storage and disk management
 

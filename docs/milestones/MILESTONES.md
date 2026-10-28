@@ -56,7 +56,7 @@ graph TD
 | M6 | Container management | M4, M5 | F02, F01-05 | Implemented on branch `m6-containers` (F02-01..06), CI green, owner review pending — [design](M6-containers.md) |
 | M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Not started |
 | M7 | Compose import, validation, deploy | M6 | F03 | Done on branch `m7-compose` (based on `m6-containers`), CI 40565761279; merge pending owner review — [design](M7-compose.md) |
-| M8 | App store and app lifecycle | M7 | F04, F05 | Implemented on branch `m8-apps` (based on `m7-compose`), CI pending; reverse proxy route of AT-F05-01 waits for M12 — [design](M8-apps.md) |
+| M8 | App store and app lifecycle | M7 | F04, F05 | Done on branch `m8-apps` (based on `m7-compose`), CI 40574613677, merge pending owner review; reverse proxy route of AT-F05-01 waits for M12 — [design](M8-apps.md) |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Done on branch `m9-storage` (based on `m8-apps`), CI 40601258272, merge pending owner review — [design](M9-storage.md) |
 | M10 | File manager | M9 | F07 | Not started |
 | M11 | Passkeys, MFA, step-up auth | M2, M5 | F09 (02–05) | Not started |

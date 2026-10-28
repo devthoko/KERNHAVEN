@@ -1,6 +1,6 @@
 # M8 — App Store and App Lifecycle
 
-Status: Implemented, CI pending
+Status: Implemented (CI 40574613677); merge pending owner review
 Depends on: M7
 Acceptance tests: AT-F04-01 … AT-F04-04, AT-F05-01 … AT-F05-04
 Threats addressed: TH-40 (malicious catalog entries), TH-41 (image changes on
@@ -179,4 +179,4 @@ upload it on the sources page. Increase `serial` for every new catalog.
 | Mutation check: disabling the snapshot restore and loosening the disclosure each make the tests fail | `khv01-dev` | Passed |
 | **Live with real binaries and rootless Docker**: signed catalog via `kernhaven-catalog`; install; update whose service migrates the data and crashes → rolled back, data restored, revision 1 running; **SIGKILL of the Core during the snapshot step** of an update with 200 MB of data → job resumed after restart and succeeded, data intact; remove with wrong password refused, with password removes app, volumes and snapshot | `khv01-dev` | Passed |
 | Manual UI check through the browser (store, disclosure with exception, update review and update, remove dialog, 375 px width without horizontal overflow) | `khv01-dev` demo instance | Passed |
-| CI full suite incl. browser E2E (source with trust key, tampered upload rejected, signed upload, search and category, disclosure, install, update, remove with password, viewer restrictions, 360/768/1440 px) | GitHub Actions | Pending |
+| CI full suite incl. browser E2E (source with trust key, tampered upload rejected, signed upload, search and category, disclosure, install, update, remove with password, viewer restrictions, 360/768/1440 px) | GitHub Actions | Passed (run 40574613677) |
