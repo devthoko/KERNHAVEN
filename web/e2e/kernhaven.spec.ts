@@ -596,8 +596,12 @@ test("AT-F11-01..04, AT-F05-01: publish a route with Kernhaven sign-in through r
   await page.getByRole("button", { name: "Delete whoami.kh.test" }).click();
   await page.getByRole("button", { name: "Delete route" }).click();
   await expect(page.getByText("whoami.kh.test was deleted.")).toBeVisible();
-  await app.goto(appURL);
-  await expect(app.getByText("Not found")).toBeVisible();
+  // Without a route Caddy no longer serves the host at all (no certificate).
+  const after = await app.goto(appURL).then(
+    () => app.textContent("body"),
+    () => "",
+  );
+  expect(after ?? "").not.toContain("hello from upstream");
   await app.close();
 });
 
