@@ -1,0 +1,57 @@
+[Unit]
+Description=Kernhaven file service (file manager below the mount root)
+Documentation=https://github.com/devthoko/KERNHAVEN
+After=local-fs.target
+
+[Service]
+Type=exec
+# Data below the mount root belongs to many users, so the file manager (M10)
+# runs as root — in its own service, separate from the disk service and the
+# Docker agent (ADR-0023). It offers only agent.info and the files.*
+# operations, verifies the Core's grants, and has no network.
+User=root
+Group=kernhaven-agent
+ExecStart=/usr/bin/kernhaven-agent -config /etc/kernhaven/files.toml
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=30s
+
+# /run/kernhaven-files (0750, group kernhaven-agent): the Core user is a
+# member of kernhaven-agent and connects to files.sock (0660).
+RuntimeDirectory=kernhaven-files
+RuntimeDirectoryMode=0750
+UMask=0022
+
+NoNewPrivileges=yes
+# Read and write files of any owner and hand new files to the owner of
+# their folder. No other capability: no mounts, no raw devices.
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_FOWNER
+AmbientCapabilities=
+ProtectSystem=strict
+# The mount root is the only writable path.
+ReadWritePaths=-/srv/kernhaven
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

@@ -13,7 +13,6 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	agentfiles "github.com/devthoko/KERNHAVEN/internal/agent/files"
-	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
@@ -31,13 +30,13 @@ func withRawBody(b []byte) reqOpt {
 
 var pngBytes = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89")
 
-// withFiles starts a Core and a storage service with the file roots "data"
+// withFiles starts a Core and a file service (files role) with the roots "data"
 // (the mount root) and "media", filled with sample files.
 func withFiles(t *testing.T, adjust func(*config.Config)) (*harness, string) {
 	t.Helper()
-	sock := filepath.Join(t.TempDir(), "storage.sock")
+	sock := filepath.Join(t.TempDir(), "files.sock")
 	h := newHarnessWith(t, func(c *config.Config) {
-		c.Agent.StorageSocket = sock
+		c.Agent.FilesSocket = sock
 		if adjust != nil {
 			adjust(c)
 		}
@@ -73,8 +72,7 @@ func withFiles(t *testing.T, adjust func(*config.Config)) (*harness, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := storage.New(&hostTools{lsblk: `{"blockdevices":[]}`}, storage.Config{MountRoot: mount, UnitDir: t.TempDir()})
-	srv := agent.NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, nil, agent.Options{Storage: host, Files: fs})
+	srv := agent.NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, nil, agent.Options{Files: fs})
 	ln, err := agent.Listen(sock)
 	if err != nil {
 		t.Fatal(err)

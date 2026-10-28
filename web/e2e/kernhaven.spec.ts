@@ -441,7 +441,7 @@ test("AT-F07-01..05: file manager — folder, resumable upload, preview, rename,
   await mk.getByRole("button", { name: "Create" }).click();
   await page.getByRole("button", { name: "docs", exact: true }).click();
   await page.getByLabel("Upload").setInputFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("hello <b>e2e</b>") });
-  await expect(page.getByRole("cell", { name: "note.txt" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "note.txt", exact: true })).toBeVisible();
   // Previews are text, never HTML.
   await page.getByRole("button", { name: "View note.txt" }).click();
   const preview = page.getByRole("dialog", { name: "note.txt" });
@@ -457,12 +457,12 @@ test("AT-F07-01..05: file manager — folder, resumable upload, preview, rename,
   await page.getByRole("dialog", { name: "Delete renamed.txt?" }).getByRole("button", { name: "Move to trash" }).click();
   await expect(page.getByText("This folder is empty.")).toBeVisible();
   await page.getByRole("button", { name: "Trash" }).click();
-  await expect(page.getByRole("cell", { name: "docs/renamed.txt" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "docs/renamed.txt", exact: true })).toBeVisible();
   await expectAccessible(page, "trash");
   await page.getByRole("button", { name: "Restore docs/renamed.txt" }).click();
   await expect(page.getByText("Restored docs/renamed.txt.")).toBeVisible();
   await page.getByRole("button", { name: "Back to files" }).click();
-  await expect(page.getByRole("cell", { name: "renamed.txt" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "renamed.txt", exact: true })).toBeVisible();
   await expectAccessible(page, "files");
 });
 

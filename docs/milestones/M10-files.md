@@ -15,14 +15,26 @@ the internet-facing Core access to the file system.
 ## Where files are touched
 
 Files under the mount root belong to many users (apps write as their own
-UIDs), so file operations need root. They run in the **storage service** of
-M9 (root, no network, writable only below the mount root), not in the Core
-and not in the Docker agent. The Core authorizes, audits, keeps upload
-sessions and streams data through; it never opens a data file itself.
+UIDs), so file operations need root. They run in a **file service** of their
+own: the agent binary with `role = "files"` (`deploy/systemd/kernhaven-files.service`,
+`files.toml`), root with only `CAP_CHOWN`, `CAP_DAC_OVERRIDE`,
+`CAP_DAC_READ_SEARCH` and `CAP_FOWNER`, no network, no device access,
+writable only below the mount root. It is a third privilege domain next to
+the Docker agent and the disk service of M9: the file service cannot mount or
+format, the disk service cannot read files, the Docker agent can do neither.
+The Core authorizes, audits, keeps upload sessions and streams data through;
+it never opens a data file itself.
+
+A first version ran the file operations inside the disk service. The CI job
+that runs the real unit as root found that the disk service's capabilities
+do not allow writing into folders of other users, and adding them would have
+raised its systemd exposure above the CI threshold (2.2 > 2.0). Splitting
+the roles keeps both below it (disk service 1.9, file service 1.5) and is the
+better least-privilege design.
 
 ### File roots
 
-The storage service configuration names the roots (`[[file_roots]]`, each
+The file service configuration names the roots (`[[file_roots]]`, each
 `name` and `path`); every path must lie at or below `mount_root`. Without
 configuration there is one root, `data` = `mount_root`. The Core only ever
 sends root **names** and relative paths; it cannot point the service at
@@ -47,7 +59,7 @@ in, so apps keep access to files uploaded for them.
 The agent protocol gains `POST /v1/stream/{op}`: the signed grant and the
 parameters travel in headers (the grant binds operation and parameter hash
 exactly as before), the body carries upload data or the response carries the
-file. Only the storage role offers stream operations (`files.read`,
+file. Only the files role offers stream operations (`files.read`,
 `files.upload.append`). Per-request deadlines are extended for these
 requests only.
 
@@ -141,9 +153,10 @@ download is audited with root and path.
 | `scripts/check.sh` (Go + web; staticcheck, govulncheck, builds) | `khv01-dev` | Passed |
 | `internal/agent/files`: path validation, roots outside the mount root rejected, symlinks to `/etc`, to a file outside, relative and chained escapes, cross-root symlink, writing through a symlink, folder operations and conflicts, copy within/between roots (symlinks skipped, cancellation), trash/restore/purge, resumable uploads (wrong offset, oversized chunk rolled back, incomplete finish, existing target), byte ranges | `khv01-dev` | Passed |
 | Mutation check: replacing `os.Root` with a plain `os.Open` makes the tests read `/etc/passwd` and a secret outside the root — they fail | `khv01-dev` | Passed |
-| Agent allow-lists: storage role adds exactly 11 file operations and 2 stream operations; the Docker role has none | `khv01-dev` | Passed |
+| Agent allow-lists: a separate files role with exactly 11 file operations and 2 stream operations; the storage and Docker roles have none, the files role has no storage operation | `khv01-dev` | Passed |
 | Core through a real storage-role server (`TestFilesPermissions`, `TestFilesConfinement`, `TestFilesDownloadAndPreview`, `TestFilesUpload`, `TestFilesOperations`), contract (92 operations), RBAC | `khv01-dev` | Passed (3 consecutive runs) |
 | Mutation checks: ignoring per-root restrictions and dropping the sandbox CSP each make a test fail | `khv01-dev` | Passed |
 | Live with real binaries: listing, symlink to `/etc` refused (422), download headers, 9 MiB upload in two chunks with a resume query arrives byte-identical; UI check (listing, text preview of HTML shown as text, wrapped actions, 375 px without horizontal overflow) | `khv01-dev` | Passed |
-| CI job `storage`: file operations as root under the real unit on a mounted ext4 loop disk (write into the propagated mount, owner inheritance 1000:1000, trash on the disk, restore, symlink to `/etc` refused for root) | GitHub Actions | Pending |
+| CI job `storage`: file operations as root under the real `kernhaven-files` unit on an ext4 loop disk mounted by the real `kernhaven-storage` unit; neither service offers the other's operations (write into the propagated mount, owner inheritance 1000:1000, trash on the disk, restore, symlink to `/etc` refused for root) | GitHub Actions | Pending |
+| First full CI run (40699924039) | GitHub Actions | Failed: (1) E2E cell selector matched two cells (test fixed); (2) the root job showed the disk service could not write into a disk folder owned by UID 1000 (missing DAC/CHOWN capabilities) — led to the separate file service |
 | CI full suite incl. browser E2E (folder, upload, text preview, rename, trash, restore, axe; viewer without access) | GitHub Actions | Pending |

@@ -28,6 +28,9 @@ socket = "/run/kernhaven/agent.sock"
 # disk management.
 storage_socket = "/run/kernhaven-storage/storage.sock"
 
+# Unix socket of kernhaven-files (file manager, M10); empty disables it.
+files_socket = "/run/kernhaven-files/files.sock"
+
 [auth]
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout

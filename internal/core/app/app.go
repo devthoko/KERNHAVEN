@@ -97,7 +97,16 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		storageClient = agentclient.New(cfg.Agent.StorageSocket, key)
 	}
 	khstorage.New(storageClient, auditLog, ids, jobSvc, runner.Wake).Register(rt)
-	khfiles.New(storageClient, db, auditLog, jobSvc, runner.Wake, cfg.Files, now).Register(rt)
+	// The file manager talks to the separate file service (M10).
+	var filesClient *agentclient.Client
+	if cfg.Agent.FilesSocket != "" {
+		key, err := agentclient.LoadOrCreateKey(cfg.Storage.DataDir)
+		if err != nil {
+			return nil, fmt.Errorf("agent grant key: %w", err)
+		}
+		filesClient = agentclient.New(cfg.Agent.FilesSocket, key)
+	}
+	khfiles.New(filesClient, db, auditLog, jobSvc, runner.Wake, cfg.Files, now).Register(rt)
 	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
 	box, err := secretbox.Open(filepath.Join(cfg.Storage.DataDir, secretbox.KeyFile))
 	if err != nil {

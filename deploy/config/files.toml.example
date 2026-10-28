@@ -1,0 +1,27 @@
+# Kernhaven file service configuration — /etc/kernhaven/files.toml
+# The same binary as the agent, in the files role: it runs as root and only
+# offers file manager operations below mount_root (M10). Unknown keys are
+# rejected.
+
+role = "files"
+
+# Unix socket the Core connects to (directory created by systemd).
+socket = "/run/kernhaven-files/files.sock"
+
+# Only these UIDs may connect (SO_PEERCRED): the Core user (id -u kernhaven).
+allowed_uids = [998]
+
+# The same grant verification key as the agent (copied by the installer).
+grant_public_key = "/etc/kernhaven/agent-grant.pub"
+
+# Must match the storage service: roots lie at or below it.
+mount_root = "/srv/kernhaven"
+
+# File manager roots. Each path must be at or below mount_root. Without any
+# [[file_roots]], mount_root itself is the root "data".
+# [[file_roots]]
+# name = "media"
+# path = "/srv/kernhaven/media"
+
+[log]
+level = "info"   # debug | info | warn | error

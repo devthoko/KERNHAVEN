@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
-	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 )
 
@@ -59,10 +58,10 @@ func fileOperations(f *files.Service) map[string]handler {
 	}
 }
 
-// streamOperations are offered only by the storage role with file roots.
+// streamOperations are offered only by the files role.
 func streamOperations(o Options) map[string]streamHandler {
 	f := o.Files
-	if o.Storage == nil || f == nil {
+	if f == nil || o.Storage != nil {
 		return map[string]streamHandler{}
 	}
 	return map[string]streamHandler{
@@ -98,9 +97,9 @@ func streamOperations(o Options) map[string]streamHandler {
 	}
 }
 
-// StreamOperationNames lists the stream operations of the storage role.
+// StreamOperationNames lists the stream operations of the files role.
 func StreamOperationNames() []string {
-	ops := streamOperations(Options{Storage: &storage.Host{}, Files: &files.Service{}})
+	ops := streamOperations(Options{Files: &files.Service{}})
 	m := map[string]handler{}
 	for n := range ops {
 		m[n] = nil

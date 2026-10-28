@@ -7,7 +7,8 @@ package agent
 // disposable CI runner. The "disk" is a loop device backed by a file.
 //
 //	KH_STORAGE_KEYDIR  directory for the Core grant key (agent-grant.pub is read by the service)
-//	KH_STORAGE_SOCKET  the service's socket
+//	KH_STORAGE_SOCKET  the storage service's socket
+//	KH_FILES_SOCKET    the file service's socket (M10)
 //	KH_STORAGE_LOOP    the loop device, e.g. /dev/loop7
 //	KH_STORAGE_ROOT    the configured mount_root
 
@@ -206,8 +207,19 @@ func TestM10FilesOnDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cl := agentclient.New(mustEnv(t, "KH_STORAGE_SOCKET"), key)
+	// File operations go to the separate file service (M10).
+	cl := agentclient.New(mustEnv(t, "KH_FILES_SOCKET"), key)
 	ctx := context.Background()
+	fdo := func(op string, params, out any) error {
+		return cl.Do(ctx, agentclient.Call{Op: op, Params: params, Actor: "it", RequestID: "it"}, out)
+	}
+	// Neither service offers the other's operations.
+	if err := fdo(agentproto.OpStorageInventory, nil, nil); errCode(err) != agentproto.CodeUnknownOp {
+		t.Fatalf("storage.inventory on the file service: %v", err)
+	}
+	if err := do(agentproto.OpFilesRoots, nil, nil); errCode(err) != agentproto.CodeUnknownOp {
+		t.Fatalf("files.roots on the storage service: %v", err)
+	}
 
 	d := diskByPath(t, inventory(t, do), loop)
 	var res agentproto.StorageFormatResult
@@ -226,7 +238,7 @@ func TestM10FilesOnDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := do(agentproto.OpFilesMkdir, agentproto.FilesPath{Root: "data", Path: "files/docs"}, nil); err != nil {
+	if err := fdo(agentproto.OpFilesMkdir, agentproto.FilesPath{Root: "data", Path: "files/docs"}, nil); err != nil {
 		t.Fatalf("mkdir on the disk: %v", err)
 	}
 	// Upload in two chunks through the stream endpoint.
@@ -241,7 +253,7 @@ func TestM10FilesOnDisk(t *testing.T) {
 			t.Fatalf("append at %d: %v", c.off, err)
 		}
 	}
-	if err := do(agentproto.OpFilesUploadFinish, agentproto.UploadFinish{Root: "data", ID: id, Path: "files/docs/note.txt", Size: 10}, nil); err != nil {
+	if err := fdo(agentproto.OpFilesUploadFinish, agentproto.UploadFinish{Root: "data", ID: id, Path: "files/docs/note.txt", Size: 10}, nil); err != nil {
 		t.Fatalf("finish: %v", err)
 	}
 	fi, err := os.Stat(filepath.Join(disk, "docs", "note.txt"))
@@ -262,24 +274,24 @@ func TestM10FilesOnDisk(t *testing.T) {
 	}
 	// Trash on the mounted disk (a rename across file systems would fail).
 	var item agentproto.TrashItem
-	if err := do(agentproto.OpFilesTrash, agentproto.FilesPath{Root: "data", Path: "files/docs/note.txt"}, &item); err != nil {
+	if err := fdo(agentproto.OpFilesTrash, agentproto.FilesPath{Root: "data", Path: "files/docs/note.txt"}, &item); err != nil {
 		t.Fatalf("trash on the disk: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(disk, ".kernhaven-trash")); err != nil {
 		t.Fatalf("trash is not on the disk: %v", err)
 	}
 	var items []agentproto.TrashItem
-	if err := do(agentproto.OpFilesTrashList, agentproto.FilesPath{Root: "data"}, &items); err != nil || len(items) != 1 {
+	if err := fdo(agentproto.OpFilesTrashList, agentproto.FilesPath{Root: "data"}, &items); err != nil || len(items) != 1 {
 		t.Fatalf("trash list %+v %v", items, err)
 	}
-	if err := do(agentproto.OpFilesTrashRestore, agentproto.FilesTrashID{Root: "data", ID: item.ID}, nil); err != nil {
+	if err := fdo(agentproto.OpFilesTrashRestore, agentproto.FilesTrashID{Root: "data", ID: item.ID}, nil); err != nil {
 		t.Fatalf("restore: %v", err)
 	}
 	// Symlinks cannot leave the root, even for root.
 	if _, err := cl.DoStream(ctx, agentclient.Call{Op: agentproto.OpFilesRead, Actor: "it", RequestID: "it", Params: agentproto.FilesRead{Root: "data", Path: "files/etc-link/shadow"}}, nil); errCode(err) != agentproto.CodeInvalidParams {
 		t.Fatalf("read through a symlink to /etc: %v", err)
 	}
-	if err := do(agentproto.OpFilesMkdir, agentproto.FilesPath{Root: "data", Path: "files/etc-link/kernhaven-escape"}, nil); err == nil {
+	if err := fdo(agentproto.OpFilesMkdir, agentproto.FilesPath{Root: "data", Path: "files/etc-link/kernhaven-escape"}, nil); err == nil {
 		t.Fatal("created a folder through a symlink to /etc")
 	}
 	if _, err := os.Stat("/etc/kernhaven-escape"); err == nil {

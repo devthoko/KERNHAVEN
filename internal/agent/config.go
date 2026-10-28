@@ -29,7 +29,8 @@ type Config struct {
 	AllowedBindRoots []string `toml:"allowed_bind_roots"`
 	// HelperImage is the image for volume copies before app updates (ADR-0021).
 	HelperImage string `toml:"helper_image"`
-	// Role is "docker" (default) or "storage" (M9, runs as root, disks only).
+	// Role is "docker" (default), "storage" (M9, disks and mounts) or "files"
+	// (M10, file access below the mount root). Each runs as its own service.
 	Role string `toml:"role"`
 	// MountRoot is where data disks are mounted (M9).
 	MountRoot string `toml:"mount_root"`
@@ -76,8 +77,8 @@ func LoadConfig(path string) (Config, error) {
 	if _, err := files.New(cfg.FileRoots, cfg.MountRoot); err != nil {
 		errs = append(errs, err)
 	}
-	if cfg.Role != "docker" && cfg.Role != "storage" {
-		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage", cfg.Role))
+	if cfg.Role != "docker" && cfg.Role != "storage" && cfg.Role != "files" {
+		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage, files", cfg.Role))
 	}
 	if !filepath.IsAbs(cfg.MountRoot) || filepath.Clean(cfg.MountRoot) != cfg.MountRoot || cfg.MountRoot == "/" {
 		errs = append(errs, fmt.Errorf("mount_root: %q must be an absolute, clean directory other than /", cfg.MountRoot))

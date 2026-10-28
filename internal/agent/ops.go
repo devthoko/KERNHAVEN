@@ -110,20 +110,22 @@ type Options struct {
 	// Storage selects the storage role (M9): the server then offers only
 	// agent.info and the storage operations, and no Docker operation.
 	Storage *storage.Host
-	// Files serves the file manager (M10) in the storage role.
+	// Files selects the files role (M10): only agent.info, the file
+	// operations and the stream operations. Storage and Files are never set
+	// together; each role runs as its own service with its own capabilities.
 	Files *files.Service
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
 func operations(d Docker, started time.Time, o Options) map[string]handler {
-	if o.Storage != nil {
+	switch {
+	case o.Storage != nil:
 		ops := storageOperations(o.Storage)
 		ops[agentproto.OpAgentInfo] = agentInfo(started)
-		if o.Files != nil {
-			for name, h := range fileOperations(o.Files) {
-				ops[name] = h
-			}
-		}
+		return ops
+	case o.Files != nil:
+		ops := fileOperations(o.Files)
+		ops[agentproto.OpAgentInfo] = agentInfo(started)
 		return ops
 	}
 	ops := map[string]handler{
@@ -186,7 +188,12 @@ func agentInfo(started time.Time) handler {
 
 // StorageOperationNames lists the operations of the storage role (sorted).
 func StorageOperationNames() []string {
-	return sortedNames(operations(nil, time.Time{}, Options{Storage: &storage.Host{}, Files: &files.Service{}}))
+	return sortedNames(operations(nil, time.Time{}, Options{Storage: &storage.Host{}}))
+}
+
+// FilesOperationNames lists the JSON operations of the files role (sorted).
+func FilesOperationNames() []string {
+	return sortedNames(operations(nil, time.Time{}, Options{Files: &files.Service{}}))
 }
 
 // OperationNames lists the allow-listed operations (sorted).

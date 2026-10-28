@@ -59,19 +59,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	info := version.Get()
 	log.Info("starting kernhaven-agent", "version", info.Version, "commit", info.Commit, "role", cfg.Role, "socket", cfg.Socket, "docker_socket", cfg.DockerSocket)
 
-	// The storage role (M9) runs as root and offers only disk operations;
-	// the docker role never gets them.
+	// Each role is a separate privilege domain with its own allow-list: the
+	// storage role (M9) manages disks and mounts, the files role (M10) accesses
+	// files below the mount root, the docker role gets neither.
 	var srv *agent.Server
-	if cfg.Role == "storage" {
+	switch cfg.Role {
+	case "storage":
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{
+			Storage: storage.New(storage.NewExecRunner(), storage.Config{MountRoot: cfg.MountRoot, IncludeLoop: cfg.StorageIncludeLoop})})
+	case "files":
 		fs, err := files.New(cfg.FileRoots, cfg.MountRoot)
 		if err != nil {
 			fmt.Fprintf(stderr, "configuration error: %v\n", err)
 			return exitConfig
 		}
-		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{
-			Storage: storage.New(storage.NewExecRunner(), storage.Config{MountRoot: cfg.MountRoot, IncludeLoop: cfg.StorageIncludeLoop}),
-			Files:   fs})
-	} else {
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Files: fs})
+	default:
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second),
 			agent.Options{AllowedBindRoots: cfg.AllowedBindRoots, HelperImage: cfg.HelperImage})
 	}

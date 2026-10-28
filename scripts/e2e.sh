@@ -9,6 +9,7 @@ WORK=$(mktemp -d)
 cleanup() {
   if [ -n "${AGENT_PID:-}" ]; then kill -TERM "$AGENT_PID" 2>/dev/null || true; wait "$AGENT_PID" 2>/dev/null || true; fi
   if [ -n "${STORAGE_PID:-}" ]; then kill -TERM "$STORAGE_PID" 2>/dev/null || true; wait "$STORAGE_PID" 2>/dev/null || true; fi
+  if [ -n "${FILES_PID:-}" ]; then kill -TERM "$FILES_PID" 2>/dev/null || true; wait "$FILES_PID" 2>/dev/null || true; fi
   if [ -n "${DOCKER_SOCK:-}" ] && command -v docker >/dev/null; then
     DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-web >/dev/null 2>&1 || true
     DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-vol >/dev/null 2>&1 || true
@@ -46,6 +47,7 @@ data_dir = "$WORK/data"
 [agent]
 socket = "$WORK/agent.sock"
 storage_socket = "$WORK/storage.sock"
+files_socket = "$WORK/files.sock"
 CFG
 
 "$WORK/kernhaven-core" -config "$WORK/core.toml" 2> "$WORK/core.log" &
@@ -78,6 +80,10 @@ mount_root = "$WORK/mnt"
 CFG
 "$WORK/kernhaven-agent" -config "$WORK/storage.toml" 2> "$WORK/storage.log" &
 STORAGE_PID=$!
+# File service (M10) without root, on the same mount root.
+sed -e 's/^role = "storage"/role = "files"/' -e 's/storage.sock/files.sock/' "$WORK/storage.toml" > "$WORK/files.toml"
+"$WORK/kernhaven-agent" -config "$WORK/files.toml" 2> "$WORK/files.log" &
+FILES_PID=$!
 
 TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -f4)
 if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exit 1; fi

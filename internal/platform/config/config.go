@@ -71,6 +71,9 @@ type Agent struct {
 	// StorageSocket is the storage service's socket (M9); empty disables
 	// disk management.
 	StorageSocket string `toml:"storage_socket"`
+	// FilesSocket is the file service's socket (M10); empty disables the
+	// file manager.
+	FilesSocket string `toml:"files_socket"`
 }
 
 // Server configures the HTTP listener.
@@ -125,7 +128,7 @@ func Default() Config {
 		Storage: Storage{DataDir: "/var/lib/kernhaven"},
 		Log:     Log{Level: "info"},
 		Files:   Files{MaxUploadBytes: 20 << 30},
-		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock"},
+		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock", FilesSocket: "/run/kernhaven-files/files.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
 			SessionAbsoluteTimeout: Duration{12 * time.Hour},
@@ -189,6 +192,9 @@ func (c Config) Validate() error {
 				errs = append(errs, fmt.Errorf("files.roots.%s: unknown role %q", name, r))
 			}
 		}
+	}
+	if s := c.Agent.FilesSocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
+		errs = append(errs, fmt.Errorf("agent.files_socket: %q must be an absolute, clean path or empty", s))
 	}
 	if s := c.Agent.StorageSocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.storage_socket: %q must be an absolute, clean path or empty", s))

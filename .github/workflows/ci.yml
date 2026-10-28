@@ -129,12 +129,13 @@ jobs:
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
           getent group docker || sudo groupadd docker
       - name: systemd-analyze verify
-        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service
+        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service
       - name: systemd-analyze security (AT-F00-06, threshold 2.0)
         run: |
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-agent.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-storage.service
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-files.service
 
   web:
     name: web UI (typecheck, unit tests, build, audit)
@@ -218,7 +219,7 @@ jobs:
         run: scripts/go-test-ci.sh -count=1 -race -tags integration -v ./internal/agent/ ./internal/agent/docker/
 
   storage:
-    name: storage service as root (loop device, systemd)
+    name: storage and file services as root (loop device, systemd)
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     runs-on: ubuntu-24.04
     steps:
@@ -239,23 +240,24 @@ jobs:
           sudo mkdir -p /etc/kernhaven /srv/kernhaven
           sudo KH_STORAGE_KEYDIR=/etc/kernhaven bin/storage.test -test.run '^TestM9WriteKey$'
           printf 'role = "storage"\nsocket = "/run/kernhaven-storage/storage.sock"\nallowed_uids = [0]\ngrant_public_key = "/etc/kernhaven/agent-grant.pub"\nmount_root = "/srv/kernhaven"\nstorage_include_loop_devices = true\n' | sudo tee /etc/kernhaven/storage.toml
-          sudo cp deploy/systemd/kernhaven-storage.service /etc/systemd/system/
+          printf 'role = "files"\nsocket = "/run/kernhaven-files/files.sock"\nallowed_uids = [0]\ngrant_public_key = "/etc/kernhaven/agent-grant.pub"\nmount_root = "/srv/kernhaven"\n' | sudo tee /etc/kernhaven/files.toml
+          sudo cp deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service /etc/systemd/system/
           sudo systemctl daemon-reload
-          sudo systemctl start kernhaven-storage
-          systemctl is-active kernhaven-storage
+          sudo systemctl start kernhaven-storage kernhaven-files
+          systemctl is-active kernhaven-storage kernhaven-files
       - name: loop device as test disk
         run: |
           truncate -s 600M "$RUNNER_TEMP/disk.img"
           echo "LOOP=$(sudo losetup --find --partscan --show "$RUNNER_TEMP/disk.img")" >> "$GITHUB_ENV"
       - name: storage and file integration tests (AT-F06-01..03, AT-F07-01..03, TH-31, TH-32)
         run: |
-          sudo KH_STORAGE_KEYDIR=/etc/kernhaven KH_STORAGE_SOCKET=/run/kernhaven-storage/storage.sock KH_STORAGE_LOOP="$LOOP" KH_STORAGE_ROOT=/srv/kernhaven \
+          sudo KH_STORAGE_KEYDIR=/etc/kernhaven KH_STORAGE_SOCKET=/run/kernhaven-storage/storage.sock KH_FILES_SOCKET=/run/kernhaven-files/files.sock KH_STORAGE_LOOP="$LOOP" KH_STORAGE_ROOT=/srv/kernhaven \
             bin/storage.test -test.v -test.run '^(TestM9StorageService|TestM10FilesOnDisk)$' 2>&1 | tee storage-test.log
           test "${PIPESTATUS[0]}" -eq 0
       - name: service log on failure
         if: failure()
         run: |
-          sudo journalctl -u kernhaven-storage --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=storage service log::${l}"; done || true
+          sudo journalctl -u kernhaven-storage -u kernhaven-files --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=storage service log::${l}"; done || true
           grep -E -- '--- FAIL|_test.go:[0-9]+:' storage-test.log | head -20 | while IFS= read -r l; do echo "::error title=storage::${l}"; done || true
       - name: clean up
         if: always()
