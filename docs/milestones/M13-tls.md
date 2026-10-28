@@ -1,6 +1,6 @@
 # M13 — TLS Certificate Management
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40773688023); merge pending owner review
 Depends on: M12
 Acceptance tests: AT-F12-01 … AT-F12-03 (AT-F12-04, expiry warnings, is M15)
 Threats addressed: TH-15 … TH-17 (below), TH-11 (Caddy stays configured
@@ -142,4 +142,4 @@ for `proxy.apply` only (certificates); every other operation keeps 64 KiB.
 | UI check: certificates page, mode dialog, 375 px without horizontal overflow | `khv01-dev` | Passed |
 | `TestPortInUseExitCode` failed once in `check.sh` (temporary directory still being written after `run` returned). The maintenance goroutine was not stopped on early returns; it now stops and is waited for before the runner and the database close. The failure did not recur in 20 runs before or after the fix, so the cause is likely but not proven | `khv01-dev` | Fixed (likely cause) |
 | First full CI run (40773066128) | GitHub Actions | Failed: only the secret scan in the lint job — a test and a form placeholder contained a literal PEM private key header. `check.sh` scans tracked files only and the new files were not committed yet locally. The header is now built in code (test) and the placeholder reworded; the scan is unchanged. All other jobs passed, including Pebble on amd64/arm64, the real units and the browser E2E upload |
-| CI full suite: Pebble on amd64/arm64, real units with an own certificate, browser E2E upload | GitHub Actions | pending |
+| CI full suite: Caddy + Pebble (HTTP-01, own certificate, local CA root) and the Core's DNS-01 against Pebble on amd64/arm64, real units as root with an own certificate and the root, browser E2E (root download, upload by file, assignment, issuer of the served certificate checked over TLS, axe on page and dialog) | GitHub Actions | Passed (run 40773688023) |

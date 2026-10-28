@@ -133,9 +133,9 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F12-01 | ACME | Automatic certificates via ACME (HTTP-01 and DNS-01 for supported providers) | M13 | Implemented on `m13-tls` (CI pending; merge pending owner review) |
-| AT-F12-02 | Internal CA | LAN-only hosts use a local CA; root certificate downloadable for client trust | M13 | Implemented on `m13-tls` (CI pending; merge pending owner review) |
-| AT-F12-03 | Custom certificates | Upload certificate and key; validated (chain, key match, expiry) before use | M13 | Implemented on `m13-tls` (CI pending; merge pending owner review) |
+| AT-F12-01 | ACME | Automatic certificates via ACME (HTTP-01 and DNS-01 for supported providers) | M13 | Done (CI 40773688023; merge pending owner review) |
+| AT-F12-02 | Internal CA | LAN-only hosts use a local CA; root certificate downloadable for client trust | M13 | Done (CI 40773688023; merge pending owner review) |
+| AT-F12-03 | Custom certificates | Upload certificate and key; validated (chain, key match, expiry) before use | M13 | Done (CI 40773688023; merge pending owner review) |
 | AT-F12-04 | Expiry monitoring | Expiry warnings at 30/14/3 days | M15 | Not started |
 
 ## F13 — System and container monitoring

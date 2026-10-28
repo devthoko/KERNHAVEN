@@ -25,7 +25,7 @@ functionality do not exist yet.
 | M10 | File manager (F07) | Done on branch `m10-files` (stacked on M9), CI 40701148605, merge pending owner review | [M10 evidence](milestones/M10-files.md#verification-evidence-2026-10-28-branch-m10-files) |
 | M11 | Passkeys, MFA, step-up (F09-02..05) | Done on branch `m11-mfa` (stacked on M10), CI 40719877647, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
 | M12 | Network and reverse proxy (F11, completes AT-F05-01) | Done on branch `m12-network` (stacked on M11), CI 40761331938, merge pending owner review | [M12 evidence](milestones/M12-network.md#verification-evidence-2026-10-28-branch-m12-network) |
-| M13 | TLS certificates (F12-01..03) | Implemented on branch `m13-tls` (stacked on M12), CI pending, merge pending owner review | [M13 evidence](milestones/M13-tls.md#verification-evidence-2026-10-28-branch-m13-tls) |
+| M13 | TLS certificates (F12-01..03) | Done on branch `m13-tls` (stacked on M12), CI 40773688023, merge pending owner review | [M13 evidence](milestones/M13-tls.md#verification-evidence-2026-10-28-branch-m13-tls) |
 | M6b, M14–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
