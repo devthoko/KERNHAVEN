@@ -107,4 +107,5 @@ Step-up replaces the password re-entry of M8 (app removal) and M9 (format).
 | Live with real binaries: TOTP setup with the shown key, recovery codes shown once, sign-out, password step leads to "Confirm it is you" (desktop and 375 px) | `khv01-dev` | Passed |
 | First full CI run (40706483457) | GitHub Actions | Failed: axe `label-content-name-mismatch` on the users page — the "Reset MFA" button was named "Reset second factors of …" (label fixed); all other jobs passed |
 | Second full CI run (40717328320) | GitHub Actions | Failed: the E2E sign-in helper's `Sign in` button selector also matched the new "Sign in with a passkey" button (selector made exact); all other jobs passed |
+| Third full CI run (40717985129) | GitHub Actions | Failed: E2E `AT-F02-02` — the new container's heading did not appear within 5 s after "Create container". The test and the container code path (no exceptions, no step-up) are unchanged since run 40717328320, where it passed; treated as unexplained, re-run without changes |
 | CI full suite incl. browser E2E (TOTP, recovery code, virtual passkey sign-in) | GitHub Actions | pending |
