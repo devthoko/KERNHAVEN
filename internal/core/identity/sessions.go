@@ -206,7 +206,20 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*Principal, e
 	if token == "" || len(token) > 128 {
 		return nil, ErrUnauthenticated
 	}
-	sess, err := scanSession(s.db.QueryRowContext(ctx, `SELECT `+sessionColumns+` FROM sessions s WHERE s.token_hash = ?`, sha256Hex(token)))
+	return s.authenticate(ctx, `s.token_hash = ?`, sha256Hex(token))
+}
+
+// AuthenticateSession is Authenticate for a session referenced by its ID, as
+// the reverse proxy's sign-in gate does (M12). Use counts as activity.
+func (s *Service) AuthenticateSession(ctx context.Context, id string) (*Principal, error) {
+	if id == "" || len(id) > 128 {
+		return nil, ErrUnauthenticated
+	}
+	return s.authenticate(ctx, `s.id = ?`, id)
+}
+
+func (s *Service) authenticate(ctx context.Context, where, arg string) (*Principal, error) {
+	sess, err := scanSession(s.db.QueryRowContext(ctx, `SELECT `+sessionColumns+` FROM sessions s WHERE `+where, arg))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUnauthenticated
 	}

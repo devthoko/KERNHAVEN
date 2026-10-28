@@ -26,6 +26,9 @@ var publicRoutes = map[string]bool{
 	"POST /api/v1/auth/login/mfa/passkey/finish": true,
 	"POST /api/v1/auth/passkey/begin":            true,
 	"POST /api/v1/auth/passkey/finish":           true,
+	// M12: called by Caddy for gated routes; Caddy blocks them on the Kernhaven host.
+	"GET /api/v1/proxy-internal/auth":     true,
+	"GET /api/v1/proxy-internal/callback": true,
 }
 
 // AT-F09-01: every route declares known access; public routes are reviewed.

@@ -66,7 +66,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8 | Partial (CI 40574613677; form, generated secrets, health check; the reverse proxy route needs M12) |
+| AT-F05-01 | Install | Install with configuration form, generated secrets, reverse proxy route and health check | M8/M12 | Implemented: form, generated secrets, health check (M8, CI 40574613677); reverse proxy route on `m12-network` (CI pending) |
 | AT-F05-02 | Update | Update with pre-update snapshot; failed health check rolls back automatically | M8 | Done (CI 40574613677; merge pending owner review) |
 | AT-F05-03 | Remove | Remove with choice to keep or delete data; deletion requires re-authentication | M8 | Done (CI 40574613677; merge pending owner review) |
 | AT-F05-04 | Interrupted operations | Killing Core or agent mid-install/update resumes or rolls back cleanly on restart | M8 | Done (CI 40574613677; merge pending owner review) |
@@ -124,10 +124,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F11-01 | Routes | Create, edit, delete Caddy routes for apps (hostname and path based) | M12 | Not started |
-| AT-F11-02 | Access control | Per-route options: Kernhaven SSO gate, IP allow-list, LAN-only | M12 | Not started |
-| AT-F11-03 | Safe apply | Config is validated by Caddy before apply; failed apply keeps the previous config | M12 | Not started |
-| AT-F11-04 | Network overview | Interfaces, addresses, listening ports and Docker networks shown read-only | M12 | Not started |
+| AT-F11-01 | Routes | Create, edit, delete Caddy routes for apps (hostname and path based) | M12 | Implemented on `m12-network` (CI pending; merge pending owner review) |
+| AT-F11-02 | Access control | Per-route options: Kernhaven SSO gate, IP allow-list, LAN-only | M12 | Implemented on `m12-network` (CI pending; merge pending owner review) |
+| AT-F11-03 | Safe apply | Config is validated by Caddy before apply; failed apply keeps the previous config | M12 | Implemented on `m12-network` (CI pending; merge pending owner review) |
+| AT-F11-04 | Network overview | Interfaces, addresses, listening ports and Docker networks shown read-only | M12 | Implemented on `m12-network` (CI pending; merge pending owner review) |
 
 ## F12 — TLS certificate management
 

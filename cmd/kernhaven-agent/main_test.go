@@ -47,6 +47,13 @@ func TestConfigErrors(t *testing.T) {
 		"unknown key":   "privileged = true\n",
 		"no uids":       "",
 		"relative sock": "",
+		"unknown role":  "role = \"web\"\n",
+		// M12: the proxy role only reaches the Core on loopback and keeps its ports apart.
+		"proxy core address":   "role = \"proxy\"\ncore_address = \"192.168.1.2:8470\"\n",
+		"proxy core hostname":  "role = \"proxy\"\ncore_address = \"localhost:8470\"\n",
+		"proxy same ports":     "role = \"proxy\"\nhttp_port = 443\n",
+		"proxy bad port":       "role = \"proxy\"\nhttps_port = 70000\n",
+		"proxy relative admin": "role = \"proxy\"\ncaddy_admin_socket = \"admin.sock\"\n",
 	}
 	for name, extra := range cases {
 		cfg, dir := writeConfig(t, extra)

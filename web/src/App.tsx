@@ -23,6 +23,8 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { SetupPage } from "./pages/SetupPage";
 import { StoragePage } from "./pages/StoragePage";
 import { FilesPage } from "./pages/FilesPage";
+import { GatePage } from "./pages/GatePage";
+import { ProxyPage } from "./pages/ProxyPage";
 import { UsersPage } from "./pages/UsersPage";
 
 interface RouteDef {
@@ -50,6 +52,8 @@ const routes: RouteDef[] = [
   { pattern: "/networks", title: "Networks", permission: "containers.read", render: () => <NetworksPage /> },
   { pattern: "/storage", title: "Storage", permission: "storage.read", render: () => <StoragePage /> },
   { pattern: "/files", title: "Files", permission: "files.read", render: () => <FilesPage /> },
+  { pattern: "/proxy", title: "Reverse proxy", permission: "network.read", render: () => <ProxyPage /> },
+  { pattern: "/gate", title: "Opening app", render: () => <GatePage /> },
   { pattern: "/jobs", title: "Jobs", permission: "jobs.read", render: () => <JobsPage /> },
   { pattern: "/jobs/:id", title: "Job", permission: "jobs.read", render: (p) => <JobDetailPage id={p.id ?? ""} /> },
   { pattern: "/users", title: "Users", permission: "users.read", render: () => <UsersPage /> },
@@ -59,17 +63,19 @@ const routes: RouteDef[] = [
 
 function Routes() {
   const { state, can } = useSession();
-  const { path, navigate } = useRouter();
+  const { path, search, navigate } = useRouter();
 
   // Keep the URL in line with the session state.
   useEffect(() => {
     if (state.status === "setup" && path !== "/setup") navigate("/setup", { replace: true });
     if (state.status === "anonymous" && path !== "/login") {
-      const next = path === "/setup" ? "/" : path;
+      // Keep the query: the sign-in gate (M12) carries its route in it.
+      const query = search.toString();
+      const next = path === "/setup" ? "/" : query ? `${path}?${query}` : path;
       navigate(`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`, { replace: true });
     }
     if (state.status === "authenticated" && (path === "/login" || path === "/setup")) navigate("/", { replace: true });
-  }, [state.status, path, navigate]);
+  }, [state.status, path, search, navigate]);
 
   if (state.status === "loading") {
     return (

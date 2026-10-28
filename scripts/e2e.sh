@@ -10,6 +10,9 @@ cleanup() {
   if [ -n "${AGENT_PID:-}" ]; then kill -TERM "$AGENT_PID" 2>/dev/null || true; wait "$AGENT_PID" 2>/dev/null || true; fi
   if [ -n "${STORAGE_PID:-}" ]; then kill -TERM "$STORAGE_PID" 2>/dev/null || true; wait "$STORAGE_PID" 2>/dev/null || true; fi
   if [ -n "${FILES_PID:-}" ]; then kill -TERM "$FILES_PID" 2>/dev/null || true; wait "$FILES_PID" 2>/dev/null || true; fi
+  for pid in "${PROXY_PID:-}" "${CADDY_PID:-}" "${SITE_PID:-}"; do
+    if [ -n "$pid" ]; then kill -TERM "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; fi
+  done
   if [ -n "${DOCKER_SOCK:-}" ] && command -v docker >/dev/null; then
     DOCKER_HOST="unix://$DOCKER_SOCK" docker rm -f e2e-web >/dev/null 2>&1 || true
     DOCKER_HOST="unix://$DOCKER_SOCK" docker volume rm e2e-vol >/dev/null 2>&1 || true
@@ -49,6 +52,10 @@ socket = "$WORK/agent.sock"
 storage_socket = "$WORK/storage.sock"
 files_socket = "$WORK/files.sock"
 CFG
+# Reverse proxy (M12) with a real Caddy: KH_E2E_CADDY=/path/to/caddy.
+if [ -n "${KH_E2E_CADDY:-}" ]; then
+  sed -i "/^\[agent\]/a proxy_socket = \"$WORK/proxy.sock\"" "$WORK/core.toml"
+fi
 
 "$WORK/kernhaven-core" -config "$WORK/core.toml" 2> "$WORK/core.log" &
 CORE_PID=$!
@@ -85,6 +92,32 @@ sed -e 's/^role = "storage"/role = "files"/' -e 's/storage.sock/files.sock/' "$W
 "$WORK/kernhaven-agent" -config "$WORK/files.toml" 2> "$WORK/files.log" &
 FILES_PID=$!
 
+if [ -n "${KH_E2E_CADDY:-}" ]; then
+  # A plain upstream for the test route, Caddy with a private admin socket and
+  # high ports, and the proxy service in front of it.
+  mkdir -p "$WORK/site" "$WORK/caddy"
+  echo "hello from upstream" > "$WORK/site/index.html"
+  python3 -m http.server 18490 --bind 127.0.0.1 --directory "$WORK/site" >/dev/null 2>&1 &
+  SITE_PID=$!
+  printf '{"admin":{"listen":"unix/%s/caddy/admin.sock","origins":["kernhaven-proxy"]}}' "$WORK" > "$WORK/caddy/boot.json"
+  HOME="$WORK/caddy" XDG_DATA_HOME="$WORK/caddy/data" XDG_CONFIG_HOME="$WORK/caddy/config" \
+    "$KH_E2E_CADDY" run --config "$WORK/caddy/boot.json" --resume > "$WORK/caddy.log" 2>&1 &
+  CADDY_PID=$!
+  cat > "$WORK/proxy.toml" <<CFG
+role = "proxy"
+socket = "$WORK/proxy.sock"
+allowed_uids = [$(id -u)]
+grant_public_key = "$WORK/data/agent-grant.pub"
+caddy_admin_socket = "$WORK/caddy/admin.sock"
+core_address = "127.0.0.1:$PORT"
+http_port = 18480
+https_port = 18443
+CFG
+  "$WORK/kernhaven-agent" -config "$WORK/proxy.toml" 2> "$WORK/proxy.log" &
+  PROXY_PID=$!
+  export KH_E2E_PROXY=1
+fi
+
 TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -f4)
 if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exit 1; fi
 
@@ -92,6 +125,7 @@ status=0
 (cd web && KH_BASE_URL="http://localhost:$PORT" KH_SETUP_TOKEN="$TOKEN" npx playwright test) || status=$?
 if [ $status -ne 0 ]; then
   echo "--- core log"; tail -50 "$WORK/core.log"
+  if [ -f "$WORK/caddy.log" ]; then echo "--- caddy log"; tail -20 "$WORK/caddy.log"; echo "--- proxy log"; tail -20 "$WORK/proxy.log"; fi
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     # Annotations are readable without repository admin rights.
     msg=$(tail -15 "$WORK/core.log" | sed "s/%/%25/g" | awk 1 ORS="%0A")

@@ -83,6 +83,7 @@ func newHarnessFull(t *testing.T, adjust func(*config.Config), adjustOpts func(*
 	cfg.Storage.DataDir = dir
 	cfg.Server.PublicOrigin = testOrigin
 	cfg.Agent.Socket = ""
+	cfg.Agent.ProxySocket = ""
 	if adjust != nil {
 		adjust(&cfg)
 	}

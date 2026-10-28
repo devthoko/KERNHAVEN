@@ -57,12 +57,16 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2/M11 | Mitigated (AT-F08-03; M11: destructive and security-relevant actions need a step-up within 10 minutes) |
 | TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Mitigated (AT-F08-04) |
 | TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Mitigated (M5: strict CSP without unsafe-inline, React escaping only, dangerouslySetInnerHTML banned in CI; M10: file content only as attachment with sandbox CSP and nosniff, previews as text, images by content sniffing without SVG) |
-| TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation | M1 | Mitigated (AT-F00-01) |
+| TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation; Caddy proxies the Core only for its configured host (M12) | M1/M12 | Mitigated (AT-F00-01) |
 | TH-06 | D | Slowloris / large bodies / request floods | Server timeouts, header/body limits, rate limits | M1/M2 | Partially mitigated (M1: timeouts, body limit; M2: auth rate limits) |
 | TH-07 | I | Error responses leak internals (stack traces, SQL) | Uniform error model; panics recovered and logged with request ID only | M1 | Mitigated (AT-F00-04) |
 | TH-08 | S | Host header / proxy header spoofing (`X-Forwarded-For`) | Trust forwarded headers only from configured proxy (loopback Caddy) | M2 | Mitigated (forwarded header trusted only from loopback proxy; ClientIP tests) |
 | TH-09 | E | Missing authorization on a new route | Deny-by-default router; route permission registry with enumeration test | M2 | Mitigated (AT-F09-01: access required at registration, contract + RBAC matrix tests) |
 | TH-10 | S | First-run setup takeover (someone else creates the owner) | One-time setup token printed to journal, expiring, single-use | M2 | Mitigated (AT-F08-01) |
+| TH-11 | E/T | Core compromise turns Caddy into a file server or open proxy, or moves its admin API to TCP | Caddy configured only by the proxy service, which builds the whole JSON from typed, validated routes; admin socket fixed and reachable only by the proxy service; upstreams only loopback 1024–65535 | M12 | Mitigated (ADR-0025; `internal/proxy` tests, CI job `proxy`) |
+| TH-12 | S | Spoofed identity header to an app behind the sign-in gate | `X-Kernhaven-User` deleted on every route before anything else; set only from the Core's forward-auth answer | M12 | Mitigated (real-Caddy test incl. mutation check) |
+| TH-13 | S/T | Open redirect or code theft in the sign-in gate | Return address bound to the route's host, port and prefix; one-time codes (60 s, hashed, bound to session and route); callback only on the route's host; internal endpoints 404 on the Kernhaven host | M12 | Mitigated (`TestProxyGate` incl. mutation checks) |
+| TH-14 | I | A route exposes a loopback-only service by accident, or an app stays reachable around the proxy | Ports below 1024, the Core's and Caddy's ports refused; LAN-only default for app routes; every change audited and behind step-up; direct app ports remain open (documented) | M12 | Partially mitigated |
 
 ### TB-3 — Core ↔ Agent
 
@@ -126,3 +130,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-28 | M9 | TH-32 mitigated; new privilege domain: root storage service with its own allow-list (ADR-0022); mount points only below the mount root, nosuid,nodev |
 | 2026-10-28 | M10 | TH-31 mitigated for files (os.Root in a separate root file service); TH-04 mitigated for file content; stream endpoint in the agent protocol (ADR-0023) |
 | 2026-10-28 | M11 | TH-01 mitigated (MFA, passkeys, policy); TH-02 extended by step-up; AR-02 rationale corrected (no step-up-bound agent grants yet) |
+| 2026-10-28 | M12 | New TH-11…TH-14 (reverse proxy, sign-in gate); TH-11–TH-13 mitigated, TH-14 partially; fourth privilege domain: proxy service, the only client of Caddy's admin socket (ADR-0025) |

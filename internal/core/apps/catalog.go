@@ -17,6 +17,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/catalog"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 )
 
@@ -46,7 +47,11 @@ type Service struct {
 	stacks  *stacks.Service
 	fetcher *stacks.Fetcher
 	now     func() time.Time
+	routes  *network.Service // web addresses through the reverse proxy (M12)
 }
+
+// SetRoutes connects the reverse proxy routes (M12).
+func (s *Service) SetRoutes(r *network.Service) { s.routes = r }
 
 // New returns the service.
 func New(db *sql.DB, auditLog *audit.Log, st *stacks.Service, fetcher *stacks.Fetcher, now func() time.Time) *Service {

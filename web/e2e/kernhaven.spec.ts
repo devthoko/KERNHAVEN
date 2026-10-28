@@ -478,7 +478,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -529,6 +529,8 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   // M9: viewers do not see disks.
   await expect(nav.getByRole("link", { name: "Storage" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Files" })).toHaveCount(0);
+  // M12: viewers do not see the reverse proxy.
+  await expect(nav.getByRole("link", { name: "Reverse proxy" })).toHaveCount(0);
   // M8: viewers browse the store but cannot install or manage sources.
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
@@ -549,6 +551,55 @@ function totp(secret: string): string {
   const o = h[19]! & 15;
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
+
+const proxy = process.env.KH_E2E_PROXY === "1";
+const appURL = "https://whoami.kh.test:18443/";
+
+test("AT-F11-01..04, AT-F05-01: publish a route with Kernhaven sign-in through real Caddy", async () => {
+  test.skip(!proxy, "needs Caddy (KH_E2E_CADDY)");
+  await page.goto("/proxy");
+  await expect(page.getByRole("heading", { name: "Reverse proxy" })).toBeVisible();
+  await expect(page.getByText("running", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Network interfaces" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Listening ports" }).getByRole("cell", { name: "18443", exact: true }).first()).toBeVisible();
+  await expectAccessible(page, "reverse proxy");
+
+  await page.getByRole("button", { name: "Add a route" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add a route" });
+  await dialog.getByLabel("Host name").fill("whoami.kh.test");
+  await dialog.getByLabel("Port on this server").fill("18490");
+  await dialog.getByLabel("Require Kernhaven sign-in").check();
+  await expectAccessible(page, "route dialog");
+  await dialog.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("whoami.kh.test is published.")).toBeVisible();
+  await expect(page.getByText("configuration in sync")).toBeVisible();
+
+  // The app's host sends the browser through the gate and back with its own cookie.
+  const app = await page.context().newPage();
+  await expect(async () => {
+    await app.goto(appURL);
+    await expect(app.getByText("hello from upstream")).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  expect(new URL(app.url()).host).toBe("whoami.kh.test:18443");
+  const cookies = await page.context().cookies(appURL);
+  expect(cookies.find((c) => c.name.startsWith("kh_gate_"))?.httpOnly).toBe(true);
+
+  // An allow-list without this client turns it away.
+  await page.getByRole("button", { name: "Edit whoami.kh.test" }).click();
+  const edit = page.getByRole("dialog", { name: "Edit whoami.kh.test" });
+  await edit.getByLabel("Allowed networks (optional)").fill("10.0.0.0/8");
+  await edit.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("whoami.kh.test was updated.")).toBeVisible();
+  await app.goto(appURL);
+  await expect(app.getByText("Forbidden")).toBeVisible();
+
+  await page.getByRole("button", { name: "Delete whoami.kh.test" }).click();
+  await page.getByRole("button", { name: "Delete route" }).click();
+  await expect(page.getByText("whoami.kh.test was deleted.")).toBeVisible();
+  await app.goto(appURL);
+  await expect(app.getByText("Not found")).toBeVisible();
+  await app.close();
+});
 
 test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign in with them", async () => {
   // Chrome's virtual authenticator stands in for a platform passkey.

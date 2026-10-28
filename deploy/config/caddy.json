@@ -1,0 +1,1 @@
+{"admin":{"listen":"unix//run/kernhaven-caddy/admin.sock","origins":["kernhaven-proxy"]}}

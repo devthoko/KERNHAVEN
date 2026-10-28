@@ -517,3 +517,62 @@ type UploadFinish struct {
 	Path string `json:"path"`
 	Size int64  `json:"size"`
 }
+
+// ---- M12: reverse proxy and network ----
+
+// ProxyRoute is one published route. The upstream is always 127.0.0.1.
+type ProxyRoute struct {
+	ID           int64    `json:"id"`
+	Host         string   `json:"host"`
+	PathPrefix   string   `json:"path_prefix,omitempty"`
+	StripPrefix  bool     `json:"strip_prefix,omitempty"`
+	UpstreamPort int      `json:"upstream_port"`
+	SSO          bool     `json:"sso,omitempty"`
+	LANOnly      bool     `json:"lan_only,omitempty"`
+	AllowCIDRs   []string `json:"allow_cidrs,omitempty"`
+}
+
+// ProxyApply replaces the complete set of routes. KernhavenHost is the host
+// of the Core's public origin; it is always proxied to the Core.
+type ProxyApply struct {
+	KernhavenHost string       `json:"kernhaven_host"`
+	Routes        []ProxyRoute `json:"routes"`
+}
+
+// ProxyApplied reports a successful load.
+type ProxyApplied struct {
+	Hash      string `json:"hash"`
+	Routes    int    `json:"routes"`
+	HTTPSPort int    `json:"https_port"`
+}
+
+// ProxyStatus describes the running Caddy configuration. Hash is empty when
+// Caddy runs without a configuration from Kernhaven.
+type ProxyStatus struct {
+	Reachable bool   `json:"reachable"`
+	Hash      string `json:"hash"`
+	HTTPSPort int    `json:"https_port"`
+}
+
+// NetworkInterface is a host network interface.
+type NetworkInterface struct {
+	Name      string   `json:"name"`
+	MTU       int      `json:"mtu"`
+	MAC       string   `json:"mac,omitempty"`
+	Up        bool     `json:"up"`
+	Loopback  bool     `json:"loopback"`
+	Addresses []string `json:"addresses"`
+}
+
+// ListeningSocket is a listening TCP or bound UDP socket.
+type ListeningSocket struct {
+	Protocol string `json:"protocol"` // tcp, tcp6, udp, udp6
+	Address  string `json:"address"`
+	Port     int    `json:"port"`
+}
+
+// NetworkOverview is the read-only view of the host network (AT-F11-04).
+type NetworkOverview struct {
+	Interfaces []NetworkInterface `json:"interfaces"`
+	Listening  []ListeningSocket  `json:"listening"`
+}

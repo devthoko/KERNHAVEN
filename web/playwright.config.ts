@@ -14,6 +14,14 @@ export default defineConfig({
     trace: "retain-on-failure",
     // No animations: axe measures final colors, not mid-transition ones.
     contextOptions: { reducedMotion: "reduce" },
+    // Routes of the reverse proxy test (M12): *.kh.test resolves to this
+    // machine, served by Caddy with its internal CA.
+    ignoreHTTPSErrors: true,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], launchOptions: { args: ["--host-resolver-rules=MAP *.kh.test 127.0.0.1"] } },
+    },
+  ],
 });

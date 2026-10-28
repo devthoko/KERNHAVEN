@@ -12,10 +12,12 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
+	"github.com/devthoko/KERNHAVEN/internal/agent/network"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
+	"github.com/devthoko/KERNHAVEN/internal/proxy"
 )
 
 // Docker is the subset of the Docker client the operations use.
@@ -114,6 +116,9 @@ type Options struct {
 	// operations and the stream operations. Storage and Files are never set
 	// together; each role runs as its own service with its own capabilities.
 	Files *files.Service
+	// Proxy selects the proxy role (M12): only agent.info, the Caddy
+	// configuration and the network overview.
+	Proxy *network.Service
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
@@ -125,6 +130,10 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 		return ops
 	case o.Files != nil:
 		ops := fileOperations(o.Files)
+		ops[agentproto.OpAgentInfo] = agentInfo(started)
+		return ops
+	case o.Proxy != nil:
+		ops := proxyOperations(o.Proxy)
 		ops[agentproto.OpAgentInfo] = agentInfo(started)
 		return ops
 	}
@@ -196,6 +205,11 @@ func FilesOperationNames() []string {
 	return sortedNames(operations(nil, time.Time{}, Options{Files: &files.Service{}}))
 }
 
+// ProxyOperationNames lists the operations of the proxy role (sorted).
+func ProxyOperationNames() []string {
+	return sortedNames(operations(nil, time.Time{}, Options{Proxy: &network.Service{}}))
+}
+
 // OperationNames lists the allow-listed operations (sorted).
 func OperationNames() []string {
 	ops := operations(nil, time.Time{}, Options{})
@@ -219,8 +233,12 @@ func errorCode(err error) (string, int) {
 		return agentproto.CodeInvalidParams, 400
 	case errors.As(err, new(*storage.InvalidError)), errors.Is(err, storage.ErrToolMissing):
 		return agentproto.CodeInvalidParams, 400
-	case errors.As(err, new(*files.InvalidError)):
+	case errors.As(err, new(*files.InvalidError)), errors.As(err, new(*proxy.InvalidError)):
 		return agentproto.CodeInvalidParams, 400
+	case errors.As(err, new(*network.RejectedError)):
+		return agentproto.CodeProxyRejected, 422
+	case errors.Is(err, network.ErrUnavailable):
+		return agentproto.CodeProxyUnavailable, 503
 	case errors.Is(err, files.ErrNotFound):
 		return agentproto.CodeNotFound, 404
 	case errors.Is(err, files.ErrExists), errors.As(err, new(*files.OffsetError)):

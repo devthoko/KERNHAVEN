@@ -15,6 +15,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
+	"github.com/devthoko/KERNHAVEN/internal/agent/network"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/platform/logging"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
@@ -61,7 +62,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 	// Each role is a separate privilege domain with its own allow-list: the
 	// storage role (M9) manages disks and mounts, the files role (M10) accesses
-	// files below the mount root, the docker role gets neither.
+	// files below the mount root, the proxy role (M12) configures Caddy, the
+	// docker role gets none of these.
 	var srv *agent.Server
 	switch cfg.Role {
 	case "storage":
@@ -74,6 +76,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return exitConfig
 		}
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Files: fs})
+	case "proxy":
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Proxy: network.New(cfg.ProxySettings())})
 	default:
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second),
 			agent.Options{AllowedBindRoots: cfg.AllowedBindRoots, HelperImage: cfg.HelperImage})

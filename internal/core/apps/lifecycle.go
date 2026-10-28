@@ -15,6 +15,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/catalog"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 )
 
@@ -27,19 +28,21 @@ var (
 
 // App is an installed app.
 type App struct {
-	Name            string    `json:"name"`
-	AppID           string    `json:"app_id"`
-	AppName         string    `json:"app_name"`
-	SourceID        *int64    `json:"source_id"`
-	SourceName      string    `json:"source_name"`
-	Version         string    `json:"version"`
-	LatestVersion   string    `json:"latest_version"`
-	UpdateAvailable bool      `json:"update_available"`
-	Status          string    `json:"status"`
-	StatusMessage   string    `json:"status_message"`
-	Revision        int       `json:"deployed_revision"`
-	WebPort         int       `json:"web_port"`
-	CreatedAt       time.Time `json:"created_at"`
+	Name            string `json:"name"`
+	AppID           string `json:"app_id"`
+	AppName         string `json:"app_name"`
+	SourceID        *int64 `json:"source_id"`
+	SourceName      string `json:"source_name"`
+	Version         string `json:"version"`
+	LatestVersion   string `json:"latest_version"`
+	UpdateAvailable bool   `json:"update_available"`
+	Status          string `json:"status"`
+	StatusMessage   string `json:"status_message"`
+	Revision        int    `json:"deployed_revision"`
+	WebPort         int    `json:"web_port"`
+	// URL is the app's address through the reverse proxy (M12), if it has a route.
+	URL       string    `json:"url,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 
 	stackID   int64
 	latestRev int
@@ -92,6 +95,21 @@ func (s *Service) withWeb(ctx context.Context, a App) App {
 	return a
 }
 
+func (s *Service) appURLs(ctx context.Context) map[string]string {
+	if s.routes == nil {
+		return map[string]string{}
+	}
+	return s.routes.AppURLs(ctx)
+}
+
+// latestWebPort is the web port of the newest revision (after an update).
+func (s *Service) latestWebPort(ctx context.Context, a App) int {
+	if w := a.entry.Web; w != nil {
+		return s.stacks.PublishedPort(ctx, a.stackID, a.latestRev, w.Service, w.Port)
+	}
+	return 0
+}
+
 // List returns the installed apps.
 func (s *Service) List(ctx context.Context) ([]App, error) {
 	rows, err := s.db.QueryContext(ctx, appQuery+` ORDER BY st.name`)
@@ -110,8 +128,10 @@ func (s *Service) List(ctx context.Context) ([]App, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	urls := s.appURLs(ctx)
 	for i := range out {
 		out[i] = s.withWeb(ctx, out[i])
+		out[i].URL = urls[out[i].Name]
 	}
 	return out, nil
 }
@@ -166,6 +186,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppDetail, error) {
 		return AppDetail{}, err
 	}
 	a = s.withWeb(ctx, a)
+	a.URL = s.appURLs(ctx)[a.Name]
 	d := AppDetail{App: a, Versions: []Version{}, Fields: orFields(a.entry.Fields), Homepage: a.entry.Homepage, Summary: a.entry.Summary, Web: a.entry.Web}
 	rows, err := s.db.QueryContext(ctx, `SELECT v.revision, v.version, r.comment, r.created_by_name, r.created_ms
 		FROM app_versions v JOIN stack_revisions r ON r.stack_id = v.stack_id AND r.number = v.revision
@@ -386,6 +407,8 @@ type InstallInput struct {
 	Name              string            `json:"name"`
 	Values            map[string]string `json:"values"`
 	ApproveExceptions bool              `json:"approve_exceptions"`
+	// Route publishes the app's web port under a host name (M12, optional).
+	Route *network.AppRoute `json:"route,omitempty"`
 }
 
 // Install creates the app's stack and queues its deployment (AT-F05-01).

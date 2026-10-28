@@ -6,8 +6,8 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 and M6–M11 are implemented on
-stacked branches up to `m11-mfa`. Network/TLS, backup and installer
+green CI on stacked branches awaiting owner review; M4 and M6–M12 are implemented on
+stacked branches up to `m12-network`. TLS certificate management, backup and installer
 functionality do not exist yet.
 
 | MS | Name | State | Evidence |
@@ -20,11 +20,12 @@ functionality do not exist yet.
 | M4 | Host agent and privilege boundary | Implemented, CI green incl. real Docker on amd64/arm64 (run 40528475951); owner review pending | [M4 evidence](milestones/M4-agent.md#verification-evidence-2026-10-27-branch-m4-agent) |
 | M6 | Container management (F02-01..06) | Implemented, full CI green incl. browser E2E on real Docker (run 40559956035); owner review pending | [M6 evidence](milestones/M6-containers.md#verification-evidence-2026-10-27-branch-m6-containers) |
 | M7 | Compose stacks (F03) | Done on branch `m7-compose` (stacked on M6), CI 40565761279; merge pending owner review | [M7 evidence](milestones/M7-compose.md#verification-evidence-2026-10-27-branch-m7-compose) |
-| M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
+| M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 completed by the reverse proxy route in M12 | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
 | M9 | Storage and disk management (F06-01..03) | Done on branch `m9-storage` (stacked on M8), CI 40601258272, merge pending owner review | [M9 evidence](milestones/M9-storage.md#verification-evidence-2026-10-28-branch-m9-storage) |
 | M10 | File manager (F07) | Done on branch `m10-files` (stacked on M9), CI 40701148605, merge pending owner review | [M10 evidence](milestones/M10-files.md#verification-evidence-2026-10-28-branch-m10-files) |
 | M11 | Passkeys, MFA, step-up (F09-02..05) | Done on branch `m11-mfa` (stacked on M10), CI 40719877647, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
-| M6b, M12–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M12 | Network and reverse proxy (F11, completes AT-F05-01) | Implemented on branch `m12-network` (stacked on M11), CI pending, merge pending owner review | [M12 evidence](milestones/M12-network.md#verification-evidence-2026-10-28-branch-m12-network) |
+| M6b, M13–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -40,7 +41,7 @@ functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files` and `m11-mfa`. Next: M12 reverse proxy (completes AT-F05-01), or M6b streaming.
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa` and `m12-network`. Next: M13 TLS certificates (ACME, internal CA root download), or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

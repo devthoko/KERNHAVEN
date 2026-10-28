@@ -30,3 +30,4 @@ ADR that supersedes the old one.
 | [0022](0022-host-tools-and-mount-units.md) | Fixed host tools for storage, systemd mount units, separate storage service | Accepted |
 | [0023](0023-file-access-and-streaming.md) | File access through os.Root in a separate file service, streamed | Accepted |
 | [0024](0024-webauthn-library-and-totp.md) | go-webauthn for passkeys, TOTP implemented in-house | Accepted |
+| [0025](0025-caddy-configured-by-proxy-service.md) | Caddy in its own unit, configured only by a proxy service from typed routes | Accepted |

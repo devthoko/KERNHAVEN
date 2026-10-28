@@ -1,0 +1,29 @@
+# Kernhaven proxy service configuration — /etc/kernhaven/proxy.toml
+# The same binary as the agent, in the proxy role (M12, ADR-0025): the only
+# process that talks to Caddy's admin API. It builds Caddy's whole
+# configuration from the Core's typed routes. Unknown keys are rejected.
+
+role = "proxy"
+
+# Unix socket the Core connects to (directory created by systemd).
+socket = "/run/kernhaven-proxy/proxy.sock"
+
+# Only these UIDs may connect (SO_PEERCRED): the Core user (id -u kernhaven).
+allowed_uids = [998]
+
+# The same grant verification key as the agent (copied by the installer).
+grant_public_key = "/etc/kernhaven/agent-grant.pub"
+
+# Caddy's admin socket (kernhaven-caddy.service, /etc/kernhaven/caddy.json).
+caddy_admin_socket = "/run/kernhaven-caddy/admin.sock"
+
+# The Core's listen address (core.toml [server] listen); Caddy proxies the
+# Kernhaven host and the sign-in gate there. Loopback only.
+core_address = "127.0.0.1:8470"
+
+# Caddy's ports. Routes can never point to these or to the Core's port.
+http_port = 80
+https_port = 443
+
+[log]
+level = "info"   # debug | info | warn | error

@@ -17,7 +17,7 @@ Status: Draft v0.1 (M0). Decisions are recorded in [ADRs](../adr/README.md).
                     │ kernhaven-agent (kernhaven-agent user, docker group, narrow caps)  │
                     │   ├──▶ Docker Engine (/run/docker.sock)                            │
                     │   ├──▶ systemd (D-Bus, polkit rules for kernhaven-* units only)    │
-                    │   ├──▶ Caddy admin API (unix socket)                               │
+                    │   ├──▶ Caddy admin API (unix socket, proxy role only, ADR-0025)   │
                     │   └──▶ Disks / allow-listed file roots                             │
                     └────────────────────────────────────────────────────────────────────┘
  TB-1: Internet/LAN ↔ Caddy      TB-2: Caddy ↔ Core      TB-3: Core ↔ Agent      TB-4: Agent ↔ host resources
@@ -72,6 +72,10 @@ Go interface to other modules. Modules never read other modules' tables.
 - A third role, the file service (M10, ADR-0023): root with only
   `CHOWN`/`DAC_OVERRIDE`/`DAC_READ_SEARCH`/`FOWNER`, file access below the
   mount root through `os.Root`, streamed transfers.
+- A fourth role, the proxy service (M12, ADR-0025): user `kernhaven-proxy`,
+  no capabilities, no IP traffic; the only client of Caddy's admin socket. It
+  builds Caddy's entire configuration from typed routes and lists interfaces
+  and listening sockets.
 
 - Listens only on a unix socket; accepts connections only from the `kernhaven`
   user (`SO_PEERCRED`).

@@ -4,7 +4,10 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"net"
+	"net/netip"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -13,6 +16,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
+	"github.com/devthoko/KERNHAVEN/internal/proxy"
 )
 
 // DefaultConfigPath is the agent configuration file.
@@ -38,11 +42,22 @@ type Config struct {
 	FileRoots []files.Root `toml:"file_roots"`
 	// StorageIncludeLoop treats loop devices as disks. Only for tests.
 	StorageIncludeLoop bool `toml:"storage_include_loop_devices"`
-	Log                struct {
+	// Proxy role (M12, ADR-0025): Caddy's admin socket, the Core's loopback
+	// address (the Kernhaven route and the sign-in gate) and Caddy's ports.
+	CaddyAdminSocket string `toml:"caddy_admin_socket"`
+	CoreAddress      string `toml:"core_address"`
+	HTTPPort         int    `toml:"http_port"`
+	HTTPSPort        int    `toml:"https_port"`
+	Log              struct {
 		Level string `toml:"level"`
 	} `toml:"log"`
 
 	publicKey ed25519.PublicKey
+}
+
+// ProxySettings returns the proxy role's settings.
+func (c Config) ProxySettings() proxy.Settings {
+	return proxy.Settings{AdminSocket: c.CaddyAdminSocket, CoreAddress: c.CoreAddress, HTTPPort: c.HTTPPort, HTTPSPort: c.HTTPSPort}
 }
 
 // PublicKey returns the loaded grant verification key.
@@ -50,7 +65,8 @@ func (c Config) PublicKey() ed25519.PublicKey { return c.publicKey }
 
 // LoadConfig reads and validates the agent configuration strictly.
 func LoadConfig(path string) (Config, error) {
-	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub", HelperImage: DefaultHelperImage, MountRoot: storage.DefaultMountRoot, Role: "docker"}
+	cfg := Config{Socket: "/run/kernhaven/agent.sock", DockerSocket: "/run/docker.sock", GrantPublicKey: "/etc/kernhaven/agent-grant.pub", HelperImage: DefaultHelperImage, MountRoot: storage.DefaultMountRoot, Role: "docker",
+		CaddyAdminSocket: "/run/kernhaven-caddy/admin.sock", CoreAddress: "127.0.0.1:8470", HTTPPort: 80, HTTPSPort: 443}
 	cfg.Log.Level = "info"
 	md, err := toml.DecodeFile(path, &cfg)
 	if err != nil {
@@ -77,8 +93,12 @@ func LoadConfig(path string) (Config, error) {
 	if _, err := files.New(cfg.FileRoots, cfg.MountRoot); err != nil {
 		errs = append(errs, err)
 	}
-	if cfg.Role != "docker" && cfg.Role != "storage" && cfg.Role != "files" {
-		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage, files", cfg.Role))
+	switch cfg.Role {
+	case "docker", "storage", "files":
+	case "proxy":
+		errs = append(errs, validProxy(cfg)...)
+	default:
+		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage, files, proxy", cfg.Role))
 	}
 	if !filepath.IsAbs(cfg.MountRoot) || filepath.Clean(cfg.MountRoot) != cfg.MountRoot || cfg.MountRoot == "/" {
 		errs = append(errs, fmt.Errorf("mount_root: %q must be an absolute, clean directory other than /", cfg.MountRoot))
@@ -105,4 +125,26 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return cfg, nil
+}
+
+func validProxy(cfg Config) []error {
+	var errs []error
+	if p := cfg.CaddyAdminSocket; !filepath.IsAbs(p) || filepath.Clean(p) != p {
+		errs = append(errs, fmt.Errorf("caddy_admin_socket: %q must be an absolute, clean path", p))
+	}
+	host, port, err := net.SplitHostPort(cfg.CoreAddress)
+	ip, perr := netip.ParseAddr(host)
+	n, nerr := strconv.Atoi(port)
+	if err != nil || perr != nil || !ip.IsLoopback() || nerr != nil || n < 1 || n > 65535 {
+		errs = append(errs, fmt.Errorf("core_address: %q must be a loopback IP address with a port", cfg.CoreAddress))
+	}
+	for name, p := range map[string]int{"http_port": cfg.HTTPPort, "https_port": cfg.HTTPSPort} {
+		if p < 1 || p > 65535 {
+			errs = append(errs, fmt.Errorf("%s: %d is not a port", name, p))
+		}
+	}
+	if cfg.HTTPPort == cfg.HTTPSPort {
+		errs = append(errs, errors.New("http_port and https_port must differ"))
+	}
+	return errs
 }

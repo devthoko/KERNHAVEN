@@ -652,7 +652,7 @@ paths:
     post:
       operationId: installApp
       x-permission: apps.manage
-      description: Creates the app's managed stack from the catalog entry and queues its deployment. Apps that need policy exceptions require policy.exceptions and approve_exceptions. Needs a recent step-up (403 step_up_required, see /auth/step-up) when approve_exceptions is set.
+      description: Creates the app's managed stack from the catalog entry and queues its deployment. Apps that need policy exceptions require policy.exceptions and approve_exceptions. Needs a recent step-up (403 step_up_required, see /auth/step-up) when approve_exceptions or route is set.
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InstallAppInput" } } } }
       responses:
         "202": { $ref: "#/components/responses/AppJob" }
@@ -1066,6 +1066,100 @@ paths:
         "204": { description: Reset }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /network/routes:
+    get:
+      operationId: listProxyRoutes
+      x-permission: network.read
+      description: Reverse proxy routes (M12) and the proxy state; reachability and sync are checked live.
+      responses:
+        "200": { description: Routes, content: { application/json: { schema: { type: object, properties: { routes: { type: array, items: { $ref: "#/components/schemas/ProxyRoute" } }, proxy: { $ref: "#/components/schemas/ProxyState" } } } } } }
+    post:
+      operationId: createProxyRoute
+      x-permission: network.manage
+      description: Publishes a loopback port under a host name and optional path prefix. Caddy loads the complete new configuration first; only if it accepts it is the route stored (otherwise 422 proxy_rejected, the running configuration stays). Needs a recent step-up (403 step_up_required, see /auth/step-up).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProxyRouteInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ProxyRoute" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { description: Invalid input (validation_failed) or refused by Caddy (proxy_rejected), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { description: No proxy service configured or Caddy not reachable (proxy_unavailable), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /network/routes/{id}:
+    put:
+      operationId: updateProxyRoute
+      x-permission: network.manage
+      description: Replaces a route's settings (the app link stays). Applied like createProxyRoute. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProxyRouteInput" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/ProxyRoute" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteProxyRoute
+      x-permission: network.manage
+      description: Removes a route from Caddy, then from the database. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /network/apply:
+    post:
+      operationId: applyProxyRoutes
+      x-permission: network.manage
+      description: Loads the stored routes into Caddy again (after a lost or foreign configuration).
+      responses:
+        "200": { description: Applied, content: { application/json: { schema: { $ref: "#/components/schemas/ProxyState" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /network/overview:
+    get:
+      operationId: getNetworkOverview
+      x-permission: network.read
+      description: Interfaces and listening sockets of the host, read-only (AT-F11-04). Docker networks are listed by /networks.
+      responses:
+        "200": { description: Overview, content: { application/json: { schema: { $ref: "#/components/schemas/NetworkOverview" } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /proxy/gate:
+    post:
+      operationId: openGatedApp
+      x-permission: self.manage
+      description: The sign-in gate (AT-F11-02). Checks the user's role against the route and that rd is a URL on the route's host and prefix, then returns the app's callback URL with a one-time code (60 s). Enrolment-only sessions are refused.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [route_id, rd], additionalProperties: false, properties: { route_id: { type: integer }, rd: { type: string, format: uri } } } } } }
+      responses:
+        "200": { description: Redirect target, content: { application/json: { schema: { type: object, properties: { redirect: { type: string, format: uri } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /proxy-internal/auth:
+    get:
+      operationId: proxyForwardAuth
+      x-permission: public
+      security: []
+      description: Caddy's forward_auth for gated routes (X-Kernhaven-Route names the route). 200 with X-Kernhaven-User for a valid gate cookie of an allowed session, otherwise 302 to the gate page. Caddy answers 404 for this path on the Kernhaven host.
+      responses:
+        "200": { description: Allowed }
+        "302": { description: Sign in first }
+        "403": { description: Unknown route or host }
+  /proxy-internal/callback:
+    get:
+      operationId: proxyGateCallback
+      x-permission: public
+      security: []
+      description: Reached through <route>/.kernhaven/gate on the app's host. Consumes the one-time code, sets the host-only gate cookie and redirects to rd (a path within the route).
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: rd, in: query, schema: { type: string } }
+      responses:
+        "302": { description: Signed in }
+        "400": { description: Invalid or expired code }
+        "403": { description: Unknown route or host }
 components:
   securitySchemes:
     session:
@@ -1097,6 +1191,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$" }
+    RouteID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
     UserID:
       name: id
       in: path
@@ -1334,6 +1433,7 @@ components:
         status_message: { type: string }
         deployed_revision: { type: integer }
         web_port: { type: integer }
+        url: { type: string, description: address through the reverse proxy when the app has a route (M12) }
         created_at: { type: string, format: date-time }
     InstallAppInput:
       type: object
@@ -1345,6 +1445,65 @@ components:
         name: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: defaults to app_id }
         values: { type: object, additionalProperties: { type: string } }
         approve_exceptions: { type: boolean }
+        route:
+          type: object
+          description: Publishes the app's web port (M12); needs step-up. The app is installed even if the route fails (route_error in the response).
+          required: [host]
+          additionalProperties: false
+          properties:
+            host: { type: string }
+            path_prefix: { type: string }
+            lan_only: { type: boolean }
+            sso: { type: boolean }
+    ProxyRoute:
+      type: object
+      properties:
+        id: { type: integer }
+        host: { type: string }
+        path_prefix: { type: string }
+        strip_prefix: { type: boolean }
+        upstream_port: { type: integer, description: port on 127.0.0.1 }
+        app: { type: string }
+        sso: { type: boolean }
+        sso_min_role: { type: string, enum: [owner, admin, operator, viewer] }
+        lan_only: { type: boolean }
+        allow_cidrs: { type: array, items: { type: string } }
+        url: { type: string }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ProxyRouteInput:
+      type: object
+      required: [host, upstream_port]
+      additionalProperties: false
+      properties:
+        host: { type: string, description: lower-case host name or IPv4 address, not the Kernhaven host }
+        path_prefix: { type: string, pattern: "^(/[A-Za-z0-9._~-]+)*$", maxLength: 128 }
+        strip_prefix: { type: boolean }
+        upstream_port: { type: integer, minimum: 1024, maximum: 65535 }
+        sso: { type: boolean }
+        sso_min_role: { type: string, enum: [owner, admin, operator, viewer] }
+        lan_only: { type: boolean }
+        allow_cidrs: { type: array, maxItems: 32, items: { type: string } }
+    ProxyState:
+      type: object
+      properties:
+        configured: { type: boolean }
+        reachable: { type: boolean }
+        in_sync: { type: boolean }
+        applied_at: { type: string, format: date-time }
+        error: { type: string }
+        error_at: { type: string, format: date-time }
+        https_port: { type: integer }
+    NetworkOverview:
+      type: object
+      properties:
+        interfaces:
+          type: array
+          items: { type: object, properties: { name: { type: string }, mtu: { type: integer }, mac: { type: string }, up: { type: boolean }, loopback: { type: boolean }, addresses: { type: array, items: { type: string } } } }
+        listening:
+          type: array
+          items: { type: object, properties: { protocol: { type: string, enum: [tcp, tcp6, udp, udp6] }, address: { type: string }, port: { type: integer } } }
     UpdateAppInput:
       type: object
       additionalProperties: false
@@ -1582,7 +1741,7 @@ components:
   responses:
     AppJob:
       description: Queued
-      content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, job_id: { type: integer } } } } }
+      content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, job_id: { type: integer }, route: { $ref: "#/components/schemas/ProxyRoute" }, route_error: { type: string } } } } }
     Action:
       description: Action result
       content: { application/json: { schema: { type: object, properties: { id: { type: string }, changed: { type: boolean } } } } }

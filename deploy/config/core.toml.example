@@ -31,6 +31,10 @@ storage_socket = "/run/kernhaven-storage/storage.sock"
 # Unix socket of kernhaven-files (file manager, M10); empty disables it.
 files_socket = "/run/kernhaven-files/files.sock"
 
+# Unix socket of kernhaven-proxy (Caddy routes and network overview, M12);
+# empty disables both.
+proxy_socket = "/run/kernhaven-proxy/proxy.sock"
+
 [auth]
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout

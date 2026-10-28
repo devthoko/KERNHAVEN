@@ -127,15 +127,26 @@ jobs:
           sudo install -m 0755 bin/kernhaven-core bin/kernhaven-agent /usr/bin/
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-proxy
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin caddy
           getent group docker || sudo groupadd docker
+      - name: Caddy binary from the distribution archive (not started as a service)
+        run: |
+          sudo apt-get update -qq
+          cd "$RUNNER_TEMP" && apt-get download caddy && dpkg-deb -x caddy_*.deb caddy-pkg
+          echo "KH_CADDY=$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
+          sudo install -m 0755 "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" /usr/bin/caddy
       - name: systemd-analyze verify
-        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service
+        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service deploy/systemd/kernhaven-proxy.service deploy/systemd/kernhaven-caddy.service
       - name: systemd-analyze security (AT-F00-06, threshold 2.0)
         run: |
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-agent.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-storage.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-files.service
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-proxy.service
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-caddy.service
 
   web:
     name: web UI (typecheck, unit tests, build, audit)
@@ -180,10 +191,15 @@ jobs:
       - name: install Chromium for Playwright
         working-directory: web
         run: npx playwright install --with-deps chromium
-      - name: run end-to-end tests (with the runner's Docker Engine)
+      - name: Caddy binary from the distribution archive (not started as a service)
+        run: |
+          sudo apt-get update -qq
+          cd "$RUNNER_TEMP" && apt-get download caddy && dpkg-deb -x caddy_*.deb caddy-pkg
+          "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
+      - name: run end-to-end tests (with the runner's Docker Engine and Caddy)
         env:
           KH_E2E_REQUIRE_DOCKER: "1"
-        run: scripts/e2e.sh
+        run: KH_E2E_CADDY="$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" scripts/e2e.sh
       - name: upload traces on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -217,6 +233,14 @@ jobs:
         env:
           KH_DOCKER_SOCKET: /var/run/docker.sock
         run: scripts/go-test-ci.sh -count=1 -race -tags integration -v ./internal/agent/ ./internal/agent/docker/
+      - name: Caddy binary from the distribution archive (not started as a service)
+        run: |
+          sudo apt-get update -qq
+          cd "$RUNNER_TEMP" && apt-get download caddy && dpkg-deb -x caddy_*.deb caddy-pkg
+          echo "KH_CADDY=$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
+      - name: generated Caddy configuration against real Caddy (AT-F11-01..03)
+        run: scripts/go-test-ci.sh -count=1 -race -tags proxy_integration -v ./internal/agent/network/
 
   storage:
     name: storage and file services as root (loop device, systemd)
@@ -262,6 +286,60 @@ jobs:
       - name: clean up
         if: always()
         run: sudo losetup -d "$LOOP" || true
+
+  proxy:
+    name: proxy and Caddy services with their real units (ports 80/443)
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Caddy binary from the distribution archive (not started as a service)
+        run: |
+          sudo apt-get update -qq
+          cd "$RUNNER_TEMP" && apt-get download caddy && dpkg-deb -x caddy_*.deb caddy-pkg
+          echo "KH_CADDY=$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
+      - name: install the proxy and Caddy services with their real units
+        run: |
+          CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-agent ./cmd/kernhaven-agent
+          go test -c -tags proxy_service -o bin/proxy.test ./internal/agent/network/
+          sudo install -m 0755 bin/kernhaven-agent /usr/bin/
+          sudo install -m 0755 "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" /usr/bin/caddy
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-proxy
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin caddy
+          sudo mkdir -p /etc/kernhaven
+          sudo KH_PROXY_KEYDIR=/etc/kernhaven bin/proxy.test -test.run '^TestM12WriteKey$'
+          sudo install -m 0644 deploy/config/caddy.json /etc/kernhaven/caddy.json
+          sed -e 's/^allowed_uids = .*/allowed_uids = [0]/' deploy/config/proxy.toml.example | sudo tee /etc/kernhaven/proxy.toml
+          sudo cp deploy/systemd/kernhaven-caddy.service deploy/systemd/kernhaven-proxy.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          sudo systemctl start kernhaven-caddy kernhaven-proxy
+          systemctl is-active kernhaven-caddy kernhaven-proxy
+      - name: only the proxy service can reach Caddy's admin socket
+        run: |
+          sudo ls -ld /run/kernhaven-caddy /run/kernhaven-caddy/admin.sock
+          test "$(sudo stat -c %U:%G:%a /run/kernhaven-caddy)" = caddy:kernhaven-proxy:750
+          ! sudo -u nobody curl -s --unix-socket /run/kernhaven-caddy/admin.sock http://kernhaven-proxy/config/
+          ! sudo -u kernhaven-agent curl -s --unix-socket /run/kernhaven-caddy/admin.sock http://kernhaven-proxy/config/
+          ! curl -s -m 2 http://127.0.0.1:2019/config/
+      - name: routes through the real units (AT-F11-01..03)
+        run: |
+          sudo KH_PROXY_KEYDIR=/etc/kernhaven KH_PROXY_SOCKET=/run/kernhaven-proxy/proxy.sock KH_CADDY_ROOT=/var/lib/kernhaven-caddy/data/caddy/pki/authorities/local/root.crt \
+            bin/proxy.test -test.v -test.run '^TestM12ProxyService$' 2>&1 | tee proxy-test.log
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Caddy did not touch the host's trust store
+        run: "! ls /usr/local/share/ca-certificates | grep -i caddy"
+      - name: service log on failure
+        if: failure()
+        run: |
+          sudo journalctl -u kernhaven-caddy -u kernhaven-proxy --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=proxy service log::${l}"; done || true
+          grep -E -- '--- FAIL|_test.go:[0-9]+:' proxy-test.log | head -20 | while IFS= read -r l; do echo "::error title=proxy::${l}"; done || true
 
   fuzz:
     name: fuzz agent protocol (60 s each)

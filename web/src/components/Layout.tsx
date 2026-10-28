@@ -17,6 +17,7 @@ const nav: { to: string; label: string; permission?: Permission }[] = [
   { to: "/networks", label: "Networks", permission: "containers.read" },
   { to: "/storage", label: "Storage", permission: "storage.read" },
   { to: "/files", label: "Files", permission: "files.read" },
+  { to: "/proxy", label: "Reverse proxy", permission: "network.read" },
   { to: "/jobs", label: "Jobs", permission: "jobs.read" },
   { to: "/users", label: "Users", permission: "users.read" },
   { to: "/audit", label: "Audit log", permission: "audit.read" },

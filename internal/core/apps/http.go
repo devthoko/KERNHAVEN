@@ -9,6 +9,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
 )
@@ -192,9 +193,21 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
-		if in.ApproveExceptions {
+		// Publishing a web address is security relevant like approving exceptions (M12).
+		if in.ApproveExceptions || in.Route != nil {
 			if err := identity.CheckStepUp(r.Context()); err != nil {
 				writeErr(w, r, err)
+				return
+			}
+		}
+		if in.Route != nil {
+			// Publishing needs the network permission, not only apps.manage.
+			if p, ok := identity.FromContext(r.Context()); !ok || !p.Has(authz.NetworkManage) {
+				httpserver.WriteError(w, r, http.StatusForbidden, "forbidden", "publishing a web address needs the network.manage permission")
+				return
+			}
+			if err := s.routes.CheckAppRoute(*in.Route); err != nil {
+				network.WriteErr(w, r, err)
 				return
 			}
 		}
@@ -203,7 +216,19 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 			writeErr(w, r, err)
 			return
 		}
-		httpserver.WriteJSON(w, http.StatusAccepted, map[string]any{"app": app, "job_id": job})
+		res := map[string]any{"app": app, "job_id": job}
+		if in.Route != nil {
+			// The app is installed either way; a route failure is reported next to it.
+			app = s.withWeb(r.Context(), app)
+			if app.WebPort == 0 {
+				res["route_error"] = "the app publishes no web port, so no route was created"
+			} else if route, err := s.routes.CreateAppRoute(r.Context(), network.ActorFrom(r), app.Name, app.WebPort, *in.Route); err != nil {
+				res["route_error"] = network.Message(err)
+			} else {
+				res["route"] = route
+			}
+		}
+		httpserver.WriteJSON(w, http.StatusAccepted, res)
 	})
 
 	rt.HandleFunc("GET /api/v1/apps/{name}", read, func(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +256,14 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 			writeErr(w, r, err)
 			return
 		}
-		httpserver.WriteJSON(w, http.StatusAccepted, map[string]any{"app": app, "job_id": job})
+		res := map[string]any{"app": app, "job_id": job}
+		// A new version may publish its web interface on another port.
+		if port := s.latestWebPort(r.Context(), app); port > 0 && s.routes != nil && s.routes.Configured() {
+			if err := s.routes.MoveAppRoutes(r.Context(), network.ActorFrom(r), app.Name, port); err != nil {
+				res["route_error"] = network.Message(err)
+			}
+		}
+		httpserver.WriteJSON(w, http.StatusAccepted, res)
 	})
 
 	rt.HandleFunc("POST /api/v1/apps/{name}/remove", manage, func(w http.ResponseWriter, r *http.Request) {
@@ -258,6 +290,12 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 			writeErr(w, r, err)
 			return
 		}
-		httpserver.WriteJSON(w, http.StatusAccepted, map[string]any{"job_id": job})
+		res := map[string]any{"job_id": job}
+		if s.routes != nil && s.routes.Configured() {
+			if err := s.routes.RemoveAppRoutes(r.Context(), network.ActorFrom(r), name); err != nil {
+				res["route_error"] = network.Message(err)
+			}
+		}
+		httpserver.WriteJSON(w, http.StatusAccepted, res)
 	})
 }

@@ -16,7 +16,10 @@ export function AppDetailPage({ name }: { name: string }) {
   const { navigate, search } = useRouter();
   const { data, error, loading, reload } = useData(() => api.get<InstalledAppDetail>(`/apps/${encodeURIComponent(name)}`), [name], { refreshMs: 3000 });
   const [job, setJob] = useState<number | null>(() => Number(search.get("job")) || null);
-  const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ kind: "success" | "error" | "warning"; text: string } | null>(() => {
+    const routeError = search.get("route_error");
+    return routeError ? { kind: "warning", text: `The app is being installed, but its web address was not published: ${routeError}` } : null;
+  });
   const [updating, setUpdating] = useState(false);
   const [newValues, setNewValues] = useState<Record<string, string> | null>(null);
   const [approve, setApprove] = useState(false);
@@ -71,8 +74,8 @@ export function AppDetailPage({ name }: { name: string }) {
         description={`${data.app_name}${data.version ? ` ${data.version}` : ""} · from ${data.source_name}`}
         actions={
           <>
-            {data.web_port > 0 && data.status === "deployed" && (
-              <a href={webURL(data.web_port)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+            {(data.url || data.web_port > 0) && data.status === "deployed" && (
+              <a href={data.url || webURL(data.web_port)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
                 Open {data.app_name}
               </a>
             )}
@@ -110,6 +113,20 @@ export function AppDetailPage({ name }: { name: string }) {
             </dd>
             <dt className="text-slate-600 dark:text-slate-400">Version</dt>
             <dd>{data.version || "not running yet"}</dd>
+            {data.url && (
+              <>
+                <dt className="text-slate-600 dark:text-slate-400">Address</dt>
+                <dd className="break-all">
+                  {can("network.read") ? (
+                    <Link to="/proxy" className={link}>
+                      {data.url}
+                    </Link>
+                  ) : (
+                    data.url
+                  )}
+                </dd>
+              </>
+            )}
             <dt className="text-slate-600 dark:text-slate-400">Installed</dt>
             <dd>{formatDateTime(data.created_at)}</dd>
             <dt className="text-slate-600 dark:text-slate-400">Stack</dt>

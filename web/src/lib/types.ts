@@ -24,7 +24,9 @@ export type Permission =
   | "storage.manage"
   | "files.read"
   | "files.write"
-  | "security.manage";
+  | "security.manage"
+  | "network.read"
+  | "network.manage";
 
 export interface User {
   id: number;
@@ -422,6 +424,8 @@ export interface InstalledApp {
   status_message: string;
   deployed_revision: number;
   web_port: number;
+  /** Address through the reverse proxy (M12). */
+  url?: string;
   created_at: string;
 }
 
@@ -587,4 +591,49 @@ export interface MFAStatus {
 export interface Ceremony {
   token: string;
   options: { publicKey: Record<string, unknown> };
+}
+
+// ---- M12: reverse proxy and network ----
+
+export interface ProxyRoute {
+  id: number;
+  host: string;
+  path_prefix: string;
+  strip_prefix: boolean;
+  upstream_port: number;
+  app?: string;
+  sso: boolean;
+  sso_min_role: Role;
+  lan_only: boolean;
+  allow_cidrs: string[];
+  url: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProxyRouteInput {
+  host: string;
+  path_prefix: string;
+  strip_prefix: boolean;
+  upstream_port: number;
+  sso: boolean;
+  sso_min_role: Role;
+  lan_only: boolean;
+  allow_cidrs: string[];
+}
+
+export interface ProxyState {
+  configured: boolean;
+  reachable: boolean;
+  in_sync: boolean;
+  applied_at?: string;
+  error?: string;
+  error_at?: string;
+  https_port: number;
+}
+
+export interface NetworkOverview {
+  interfaces: { name: string; mtu: number; mac?: string; up: boolean; loopback: boolean; addresses: string[] }[];
+  listening: { protocol: "tcp" | "tcp6" | "udp" | "udp6"; address: string; port: number }[];
 }

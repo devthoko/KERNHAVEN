@@ -205,6 +205,11 @@ func TestStorageRoleAllowList(t *testing.T) {
 	if got := StreamOperationNames(); !reflect.DeepEqual(got, []string{"files.read", "files.upload.append"}) {
 		t.Fatalf("stream operations = %v", got)
 	}
+	// M12: the proxy role is a fourth privilege domain (Caddy and the network overview).
+	want = []string{"agent.info", "network.overview", "proxy.apply", "proxy.status"}
+	if got := ProxyOperationNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("proxy operations = %v\nwant %v", got, want)
+	}
 }
 
 func TestValidRequestsReachDocker(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	khfiles "github.com/devthoko/KERNHAVEN/internal/core/files"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 	khstorage "github.com/devthoko/KERNHAVEN/internal/core/storage"
 	"github.com/devthoko/KERNHAVEN/internal/core/webui"
@@ -36,6 +37,7 @@ type App struct {
 	Agent    *agentclient.Client // nil when no agent is configured
 	Stacks   *stacks.Service
 	Apps     *apps.Service
+	Network  *network.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -115,7 +117,19 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
 	stackSvc := stacks.New(db, box, agent, auditLog, jobSvc, runner.Wake, stacks.Options{BindRoots: cfg.Containers.AllowedBindRoots, Fetcher: opts.Fetcher, Now: now})
 	stackSvc.Register(rt)
+	// Routes go to the separate proxy service, which alone configures Caddy (M12).
+	var proxyClient *agentclient.Client
+	if cfg.Agent.ProxySocket != "" {
+		key, err := agentclient.LoadOrCreateKey(cfg.Storage.DataDir)
+		if err != nil {
+			return nil, fmt.Errorf("agent grant key: %w", err)
+		}
+		proxyClient = agentclient.New(cfg.Agent.ProxySocket, key)
+	}
+	netSvc := network.New(db, proxyClient, auditLog, ids, cfg.Server.Origin(), cfg.Server.Listen, log, now)
+	netSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
+	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
 	ui := opts.UI
 	if ui == nil {
@@ -132,6 +146,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Agent:    agent,
 		Stacks:   stackSvc,
 		Apps:     appSvc,
+		Network:  netSvc,
 		Runner:   runner,
 		now:      now,
 	}

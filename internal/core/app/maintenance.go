@@ -12,6 +12,8 @@ import (
 const (
 	KindPurgeSessions = "maintenance.purge_sessions"
 	KindPurgeJobs     = "maintenance.purge_jobs"
+	// KindProxyReconcile re-applies the routes when Caddy lost them (M12).
+	KindProxyReconcile = "maintenance.proxy_reconcile"
 
 	jobRetention = 30 * 24 * time.Hour
 )
@@ -41,12 +43,28 @@ func (a *App) registerMaintenance() {
 			}}}, nil
 		},
 	})
+	a.Jobs.Register(jobs.Kind{
+		Name: KindProxyReconcile,
+		Plan: func(json.RawMessage) ([]jobs.Step, error) {
+			return []jobs.Step{{Name: "compare Caddy's configuration with the routes", Run: func(ctx context.Context, sc *jobs.StepContext) error {
+				applied, err := a.Network.Reconcile(ctx)
+				if err == nil && applied {
+					sc.Logf("Caddy ran another configuration; the routes were applied again")
+				}
+				return err
+			}}}, nil
+		},
+	})
 }
 
 // EnqueueMaintenance queues the periodic maintenance jobs; duplicates of a
 // job that is still pending are skipped.
 func (a *App) EnqueueMaintenance(ctx context.Context) error {
-	for _, kind := range []string{KindPurgeSessions, KindPurgeJobs} {
+	kinds := []string{KindPurgeSessions, KindPurgeJobs}
+	if a.Network.Configured() {
+		kinds = append(kinds, KindProxyReconcile)
+	}
+	for _, kind := range kinds {
 		_, err := a.Jobs.Enqueue(ctx, jobs.Request{Kind: kind, Payload: struct{}{}, DedupeKey: kind})
 		if err != nil && err != jobs.ErrDuplicate {
 			return err

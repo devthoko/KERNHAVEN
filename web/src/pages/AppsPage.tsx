@@ -61,8 +61,8 @@ export function AppsPage() {
                   {a.version || "—"} {a.update_available && <Badge tone="blue">update {a.latest_version}</Badge>}
                 </td>
                 <td className={td}>
-                  {a.web_port > 0 && a.status === "deployed" ? (
-                    <a href={webURL(a.web_port)} target="_blank" rel="noopener noreferrer" className={link}>
+                  {(a.url || a.web_port > 0) && a.status === "deployed" ? (
+                    <a href={a.url || webURL(a.web_port)} target="_blank" rel="noopener noreferrer" className={link}>
                       Open <span className="sr-only">{a.name}</span>
                     </a>
                   ) : (
@@ -170,6 +170,7 @@ export function StoreAppPage({ source, app }: { source: string; app: string }) {
   const [approve, setApprove] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [route, setRoute] = useState({ host: "", path_prefix: "", lan_only: true, sso: false });
 
   if (loading && !data) return <Spinner />;
   if (!data) return <Alert>{error ?? "App not found."}</Alert>;
@@ -182,14 +183,16 @@ export function StoreAppPage({ source, app }: { source: string; app: string }) {
     setBusy(true);
     setFailure(null);
     try {
-      const res = await api.post<{ app: InstalledApp; job_id: number }>("/apps", {
+      const res = await api.post<{ app: InstalledApp; job_id: number; route_error?: string }>("/apps", {
         source_id: data.source.id,
         app_id: a.id,
         name: name.trim() || a.id,
         values: changedValues(vals),
         approve_exceptions: approve,
+        ...(route.host.trim() ? { route: { ...route, host: route.host.trim(), path_prefix: route.path_prefix.trim() } } : {}),
       });
-      navigate(`/apps/${res.app.name}?job=${res.job_id}`);
+      const q = new URLSearchParams({ job: String(res.job_id), ...(res.route_error ? { route_error: res.route_error } : {}) });
+      navigate(`/apps/${res.app.name}?${q.toString()}`);
     } catch (err) {
       setFailure(errorMessage(err));
       setBusy(false);
@@ -240,6 +243,34 @@ export function StoreAppPage({ source, app }: { source: string; app: string }) {
                   <FieldInput key={f.name} field={f} value={vals[f.name] ?? ""} onChange={(v) => setValues({ ...vals, [f.name]: v })} />
                 ))}
               </div>
+              {a.web && can("network.manage") && (
+                <fieldset className="space-y-3">
+                  <legend className="text-sm font-medium">Web address (optional)</legend>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label="Host name"
+                      hint="Publishes the app through Kernhaven's reverse proxy, for example notes.home.arpa"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      value={route.host}
+                      onChange={(e) => setRoute({ ...route, host: e.target.value })}
+                    />
+                    <TextField label="Path prefix (optional)" autoCapitalize="none" spellCheck={false} value={route.path_prefix} onChange={(e) => setRoute({ ...route, path_prefix: e.target.value })} />
+                  </div>
+                  {route.host.trim() && (
+                    <div className="space-y-2 text-sm">
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" className="mt-1 size-4" checked={route.lan_only} onChange={(e) => setRoute({ ...route, lan_only: e.target.checked })} />
+                        <span>Only from the local network</span>
+                      </label>
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" className="mt-1 size-4" checked={route.sso} onChange={(e) => setRoute({ ...route, sso: e.target.checked })} />
+                        <span>Require Kernhaven sign-in</span>
+                      </label>
+                    </div>
+                  )}
+                </fieldset>
+              )}
               {d.needs_approval &&
                 (can("policy.exceptions") ? (
                   <label className="flex items-start gap-2 text-sm">

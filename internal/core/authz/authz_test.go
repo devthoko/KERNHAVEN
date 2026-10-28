@@ -24,6 +24,8 @@ func TestRolePermissionMatrix(t *testing.T) {
 		FilesRead:         {Owner, Admin, Operator},
 		FilesWrite:        {Owner, Admin},
 		SecurityManage:    {Owner},
+		NetworkRead:       {Owner, Admin, Operator},
+		NetworkManage:     {Owner, Admin},
 	}
 	for p, roles := range want {
 		granted := map[Role]bool{}
@@ -61,6 +63,21 @@ func TestCanManage(t *testing.T) {
 	for _, c := range cases {
 		if got := CanManage(c.actor, c.target); got != c.want {
 			t.Errorf("CanManage(%s, %s) = %v, want %v", c.actor, c.target, got, c.want)
+		}
+	}
+}
+
+func TestAtLeast(t *testing.T) {
+	cases := []struct {
+		r, min Role
+		want   bool
+	}{
+		{Owner, Viewer, true}, {Viewer, Viewer, true}, {Operator, Admin, false}, {Admin, Admin, true},
+		{Admin, Owner, false}, {Role("root"), Viewer, false}, {Viewer, Role("x"), false}, {Owner, Role(""), false},
+	}
+	for _, c := range cases {
+		if got := c.r.AtLeast(c.min); got != c.want {
+			t.Errorf("%s.AtLeast(%s) = %v", c.r, c.min, got)
 		}
 	}
 }

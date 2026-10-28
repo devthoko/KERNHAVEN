@@ -59,6 +59,10 @@ const (
 	OpFilesTrashPurge   = "files.trash.purge"
 	OpFilesUploadFinish = "files.upload.finish"
 	OpFilesUploadAbort  = "files.upload.abort"
+	// Proxy role (M12): Caddy configuration and network overview.
+	OpProxyApply      = "proxy.apply"
+	OpProxyStatus     = "proxy.status"
+	OpNetworkOverview = "network.overview"
 	// Stream operations (POST /v1/stream/{op}, M10).
 	OpFilesRead         = "files.read"
 	OpFilesUploadAppend = "files.upload.append"
@@ -107,6 +111,10 @@ const (
 	CodeDockerUnavailable = "docker_unavailable"
 	CodePolicyViolation   = "policy_violation"
 	CodeInternal          = "internal_error"
+	// CodeProxyRejected: Caddy refused the configuration; the running one stays.
+	CodeProxyRejected = "proxy_rejected"
+	// CodeProxyUnavailable: Caddy's admin API cannot be reached.
+	CodeProxyUnavailable = "proxy_unavailable"
 )
 
 // ParamsHash is the hex SHA-256 of the exact parameter bytes sent.

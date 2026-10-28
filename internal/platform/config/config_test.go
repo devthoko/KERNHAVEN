@@ -214,4 +214,11 @@ func TestAgentSocketValidation(t *testing.T) {
 			t.Errorf("%q accepted: %v", bad, err)
 		}
 	}
+	cfg.Agent.Socket = ""
+	for _, bad := range []string{"proxy.sock", "/run/kernhaven-proxy/../proxy.sock"} {
+		cfg.Agent.ProxySocket = bad
+		if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "agent.proxy_socket") {
+			t.Errorf("proxy socket %q accepted: %v", bad, err)
+		}
+	}
 }
