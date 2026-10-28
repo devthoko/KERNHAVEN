@@ -1,6 +1,6 @@
 # M12 — Network and Reverse Proxy
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40761331938); merge pending owner review
 Depends on: M4, M5 (and M8 for app routes, M11 for step-up)
 Acceptance tests: AT-F11-01 … AT-F11-04, completes AT-F05-01
 Threats addressed: TH-05 (Core only behind Caddy), TH-08 (forwarded
@@ -189,4 +189,4 @@ See `api/openapi/v1.yaml` (tag `network`).
 | First full CI run (40759728674) | GitHub Actions | Failed: only E2E — the store's `Name` field selector also matched the new `Host name` field (selector made exact). Passed in that run: real units as root (job `proxy`), real Caddy on amd64/arm64, systemd hardening, all other jobs |
 | Second full CI run (40760254534) | GitHub Actions | Failed: only E2E — axe `scrollable-region-focusable`: the wide interfaces table scrolled horizontally but its scroll area could not be reached by keyboard. Fixed in the shared table component (focusable region named after the table) |
 | Third full CI run (40760805510) | GitHub Actions | Failed: only the last E2E step — sign-in through the real gate, the app behind Caddy and the allow-list 403 all passed in the browser; after deleting the route the test expected a 404 page, but Caddy no longer serves the host at all (TLS handshake refused). The test now only checks that the app is gone |
-| CI: real units as root (admin socket only for the proxy service, routes on 443, overview in the sandbox), Caddy integration on amd64/arm64, browser E2E through Caddy | GitHub Actions | pending |
+| CI full suite: real units as root (admin socket reachable only by the proxy service, routes on 443, overview inside the sandbox, trust store untouched), real Caddy on amd64/arm64, browser E2E through Caddy (route published in the UI, Kernhaven sign-in through the gate, app shown, allow-list 403, deleted route no longer served, axe on page and dialog) | GitHub Actions | Passed (run 40761331938) |
