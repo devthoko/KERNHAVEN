@@ -173,7 +173,13 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
  */
 export function Table({ caption, head, children }: { caption: string; head: ReactNode; children: ReactNode }) {
   return (
-    <div className="relative -mx-4 overflow-x-auto sm:mx-0">
+    // Focusable, so keyboard users can scroll wide tables (WCAG 2.1.1).
+    <div
+      className="relative -mx-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-brand-700 sm:mx-0"
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+    >
       <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
         <caption className="sr-only">{caption}</caption>
         <thead className="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">{head}</thead>
