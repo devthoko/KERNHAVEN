@@ -225,7 +225,7 @@ function UploadDialog({ open, onClose, onSaved }: { open: boolean; onClose: () =
           <label htmlFor={keyId} className="block text-sm font-medium">
             Private key (PEM, without passphrase)
           </label>
-          <textarea id={keyId} rows={4} spellCheck={false} className={area} value={key} onChange={(e) => setKey(e.target.value)} placeholder="-----BEGIN PRIVATE KEY-----" />
+          <textarea id={keyId} rows={4} spellCheck={false} className={area} value={key} onChange={(e) => setKey(e.target.value)} placeholder="PEM key (PKCS#8, RSA or EC)" />
           <input type="file" accept=".pem,.key" aria-label="Key file" className="text-xs" onChange={load(setKey)} />
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400">

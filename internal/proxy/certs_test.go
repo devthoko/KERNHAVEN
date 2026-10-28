@@ -38,7 +38,7 @@ func TestParseKeyPair(t *testing.T) {
 		"key in certificate file":    {cert + key, key},
 		"trailing junk":              {cert + "junk", key},
 		"two keys":                   {cert, key + otherKey},
-		"encrypted key":              {cert, "-----BEGIN ENCRYPTED PRIVATE KEY-----\nAAAA\n-----END ENCRYPTED PRIVATE KEY-----\n"},
+		"encrypted key":              {cert, string(pem.EncodeToMemory(&pem.Block{Type: "ENCRYPTED PRIVATE KEY", Bytes: []byte{0}}))},
 		"weak RSA key":               {cert, weakPEM},
 		"oversized":                  {strings.Repeat("a", MaxPEMBytes+1), key},
 		"too long chain":             {cert + strings.Repeat(ca.PEM, MaxChainCerts), key},
