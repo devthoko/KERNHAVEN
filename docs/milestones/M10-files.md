@@ -1,6 +1,6 @@
 # M10 — Web-Based File Manager
 
-Status: Implemented, CI pending
+Status: Implemented (CI 40701148605); merge pending owner review
 Depends on: M9
 Acceptance tests: AT-F07-01 … AT-F07-05
 Threats addressed: TH-31 (path traversal, symlink escapes), TH-04 (XSS through
@@ -157,6 +157,6 @@ download is audited with root and path.
 | Core through a real storage-role server (`TestFilesPermissions`, `TestFilesConfinement`, `TestFilesDownloadAndPreview`, `TestFilesUpload`, `TestFilesOperations`), contract (92 operations), RBAC | `khv01-dev` | Passed (3 consecutive runs) |
 | Mutation checks: ignoring per-root restrictions and dropping the sandbox CSP each make a test fail | `khv01-dev` | Passed |
 | Live with real binaries: listing, symlink to `/etc` refused (422), download headers, 9 MiB upload in two chunks with a resume query arrives byte-identical; UI check (listing, text preview of HTML shown as text, wrapped actions, 375 px without horizontal overflow) | `khv01-dev` | Passed |
-| CI job `storage`: file operations as root under the real `kernhaven-files` unit on an ext4 loop disk mounted by the real `kernhaven-storage` unit; neither service offers the other's operations (write into the propagated mount, owner inheritance 1000:1000, trash on the disk, restore, symlink to `/etc` refused for root) | GitHub Actions | Pending |
+| CI job `storage`: file operations as root under the real `kernhaven-files` unit on an ext4 loop disk mounted by the real `kernhaven-storage` unit; neither service offers the other's operations (write into the propagated mount, owner inheritance 1000:1000, trash on the disk, restore, symlink to `/etc` refused for root) | GitHub Actions | Passed (run 40701148605) |
 | First full CI run (40699924039) | GitHub Actions | Failed: (1) E2E cell selector matched two cells (test fixed); (2) the root job showed the disk service could not write into a disk folder owned by UID 1000 (missing DAC/CHOWN capabilities) — led to the separate file service |
-| CI full suite incl. browser E2E (folder, upload, text preview, rename, trash, restore, axe; viewer without access) | GitHub Actions | Pending |
+| CI full suite incl. browser E2E (folder, upload, text preview, rename, trash, restore, axe; viewer without access) | GitHub Actions | Passed (run 40701148605) |
