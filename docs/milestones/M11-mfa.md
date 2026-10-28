@@ -105,5 +105,6 @@ Step-up replaces the password re-entry of M8 (app removal) and M9 (format).
 | Mutation check: disabling the TOTP `last_step` check lets a code be used twice — `TestTOTP` fails | `khv01-dev` | Passed |
 | Mutation check: without the explicit `CloneWarning` check a replayed passkey assertion signs in — `TestPasskeys` fails. Finding: go-webauthn only flags a counter regression, it does not reject it | `khv01-dev` | Passed |
 | Live with real binaries: TOTP setup with the shown key, recovery codes shown once, sign-out, password step leads to "Confirm it is you" (desktop and 375 px) | `khv01-dev` | Passed |
-| First full CI run (40706483457) | GitHub Actions | Failed: axe `label-content-name-mismatch` on the users page — the "Reset MFA" button was named "Reset second factors of …" (label fixed); all other jobs passed
+| First full CI run (40706483457) | GitHub Actions | Failed: axe `label-content-name-mismatch` on the users page — the "Reset MFA" button was named "Reset second factors of …" (label fixed); all other jobs passed |
+| Second full CI run (40717328320) | GitHub Actions | Failed: the E2E sign-in helper's `Sign in` button selector also matched the new "Sign in with a passkey" button (selector made exact); all other jobs passed |
 | CI full suite incl. browser E2E (TOTP, recovery code, virtual passkey sign-in) | GitHub Actions | pending |

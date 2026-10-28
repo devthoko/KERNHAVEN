@@ -40,7 +40,7 @@ async function login(p: Page, user: { username: string; password: string }) {
   await p.goto("/login");
   await p.getByLabel("Username").fill(user.username);
   await p.getByLabel("Password").fill(user.password);
-  await p.getByRole("button", { name: "Sign in" }).click();
+  await p.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(p.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 }
 
@@ -582,7 +582,7 @@ test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign 
   await page.getByRole("button", { name: "Sign out" }).first().click();
   await page.getByLabel("Username").fill(OWNER.username);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Confirm it is you" })).toBeVisible();
   await expectAccessible(page, "second factor");
   await page.getByRole("button", { name: "Use a recovery code instead" }).click();
