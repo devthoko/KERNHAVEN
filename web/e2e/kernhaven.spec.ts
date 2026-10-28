@@ -570,7 +570,7 @@ test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign 
   await page.getByLabel("Passkey name").fill("E2E key");
   await page.getByRole("button", { name: "Add a passkey" }).click();
   await expect(page.getByText("The passkey was added.")).toBeVisible();
-  await expect(page.getByText("E2E key", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove E2E key" })).toBeVisible();
   await expectAccessible(page, "account security");
 
   // Passkey alone.
