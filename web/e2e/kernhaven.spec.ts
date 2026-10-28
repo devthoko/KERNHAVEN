@@ -385,7 +385,7 @@ test("AT-F04-02, AT-F04-04, AT-F05-01: browse, review the disclosure and install
   await expect(page.getByText("127.0.0.1:18090 → 8080/tcp")).toBeVisible();
   await expect(page.getByText("image not pinned")).toBeVisible();
   await expectAccessible(page, "store app");
-  await page.getByLabel("Name").fill("e2e-app");
+  await page.getByLabel("Name", { exact: true }).fill("e2e-app");
   await page.getByLabel("Title").fill("hello");
   await page.getByRole("button", { name: "Install" }).click();
   await expect(page.getByRole("heading", { name: "e2e-app" })).toBeVisible();
