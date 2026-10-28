@@ -431,6 +431,41 @@ test("AT-F06-01, TH-32: the storage page shows the real disks and finds the syst
   await expectAccessible(page, "storage");
 });
 
+test("AT-F07-01..05: file manager — folder, resumable upload, preview, rename, trash and restore", async () => {
+  await page.goto("/files");
+  await expect(page.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
+  await expect(page.getByText("This folder is empty.")).toBeVisible();
+  await page.getByRole("button", { name: "New folder" }).click();
+  const mk = page.getByRole("dialog", { name: "New folder" });
+  await mk.getByLabel("Name").fill("docs");
+  await mk.getByRole("button", { name: "Create" }).click();
+  await page.getByRole("button", { name: "docs", exact: true }).click();
+  await page.getByLabel("Upload").setInputFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("hello <b>e2e</b>") });
+  await expect(page.getByRole("cell", { name: "note.txt" })).toBeVisible();
+  // Previews are text, never HTML.
+  await page.getByRole("button", { name: "View note.txt" }).click();
+  const preview = page.getByRole("dialog", { name: "note.txt" });
+  await expect(preview.getByText("hello <b>e2e</b>")).toBeVisible();
+  await expectAccessible(page, "file preview");
+  await preview.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("link", { name: "Download note.txt" })).toHaveAttribute("href", /files\/download\?root=data&path=docs%2Fnote\.txt/);
+  await page.getByRole("button", { name: "Rename note.txt" }).click();
+  const rn = page.getByRole("dialog", { name: "Rename note.txt" });
+  await rn.getByLabel("Name").fill("renamed.txt");
+  await rn.getByRole("button", { name: "Rename" }).click();
+  await page.getByRole("button", { name: "Delete renamed.txt" }).click();
+  await page.getByRole("dialog", { name: "Delete renamed.txt?" }).getByRole("button", { name: "Move to trash" }).click();
+  await expect(page.getByText("This folder is empty.")).toBeVisible();
+  await page.getByRole("button", { name: "Trash" }).click();
+  await expect(page.getByRole("cell", { name: "docs/renamed.txt" })).toBeVisible();
+  await expectAccessible(page, "trash");
+  await page.getByRole("button", { name: "Restore docs/renamed.txt" }).click();
+  await expect(page.getByText("Restored docs/renamed.txt.")).toBeVisible();
+  await page.getByRole("button", { name: "Back to files" }).click();
+  await expect(page.getByRole("cell", { name: "renamed.txt" })).toBeVisible();
+  await expectAccessible(page, "files");
+});
+
 test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser }) => {
   const other = await freshLogin(browser, OWNER);
   await page.goto("/account");
@@ -447,7 +482,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -497,6 +532,7 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await expect(viewer.getByRole("button", { name: "New container" })).toHaveCount(0);
   // M9: viewers do not see disks.
   await expect(nav.getByRole("link", { name: "Storage" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Files" })).toHaveCount(0);
   // M8: viewers browse the store but cannot install or manage sources.
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();

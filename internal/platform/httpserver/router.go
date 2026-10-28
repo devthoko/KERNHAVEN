@@ -45,10 +45,11 @@ type Route struct {
 // Router is a method-aware router that answers unmatched requests with the
 // uniform JSON error body (404 or 405).
 type Router struct {
-	mux      *http.ServeMux
-	guard    Guard
-	routes   []Route
-	fallback http.Handler
+	bodyLimits []bodyLimit
+	mux        *http.ServeMux
+	guard      Guard
+	routes     []Route
+	fallback   http.Handler
 }
 
 // SetFallback serves GET and HEAD requests that match no route and are not
@@ -152,4 +153,25 @@ func ClientIP(r *http.Request) string {
 // IsSafeMethod reports whether m is a method without side effects.
 func IsSafeMethod(m string) bool {
 	return m == http.MethodGet || m == http.MethodHead || m == http.MethodOptions
+}
+
+type bodyLimit struct {
+	method, prefix string
+	limit          int64
+}
+
+// AllowBody raises the body limit for requests with method whose path starts
+// with prefix (M10 upload chunks). All other requests keep the default.
+func (rt *Router) AllowBody(method, prefix string, limit int64) {
+	rt.bodyLimits = append(rt.bodyLimits, bodyLimit{method, prefix, limit})
+}
+
+// BodyLimit returns a raised limit for r, if one applies.
+func (rt *Router) BodyLimit(r *http.Request) (int64, bool) {
+	for _, b := range rt.bodyLimits {
+		if r.Method == b.method && strings.HasPrefix(r.URL.Path, b.prefix) {
+			return b.limit, true
+		}
+	}
+	return 0, false
 }

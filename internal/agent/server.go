@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ type Server struct {
 	pub     ed25519.PublicKey
 	allowed map[uint32]bool
 	ops     map[string]handler
+	streams map[string]streamHandler
 	nonces  *nonceCache
 	now     func() time.Time
 }
@@ -38,7 +40,7 @@ func NewServer(log *slog.Logger, pub ed25519.PublicKey, allowedUIDs []uint32, d 
 	for _, u := range allowedUIDs {
 		allowed[u] = true
 	}
-	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now(), o), nonces: newNonceCache(100000), now: time.Now}
+	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now(), o), streams: streamOperations(o), nonces: newNonceCache(100000), now: time.Now}
 }
 
 // Listen creates the unix socket with mode 0660. An existing socket file is
@@ -122,6 +124,7 @@ func errString(err error) string {
 func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/op/{op}", s.handleOp)
+	mux.HandleFunc("POST /v1/stream/{op}", s.handleStream)
 	srv := &http.Server{
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
@@ -177,31 +180,21 @@ func (s *Server) handleOp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Authorization first: nothing about operations is revealed without a valid grant.
-	g, err := agentproto.Verify(s.pub, req.Grant, s.now())
-	if err != nil {
-		s.log.Warn("rejected request: invalid grant", "op", op, "error", err.Error())
-		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, err.Error())
-		return
-	}
 	params := []byte(req.Params)
 	if len(params) == 0 {
 		params = []byte("null")
 	}
-	if g.Op != op || g.ParamsSHA256 != agentproto.ParamsHash(params) {
-		s.log.Warn("rejected request: grant does not match request", "op", op, "grant_op", g.Op, "actor", g.Actor)
-		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, "grant does not cover this operation and parameters")
-		return
-	}
-	if !s.nonces.use(g.Nonce, time.UnixMilli(g.ExpiresAtMS).Add(agentproto.ClockSkew), s.now()) {
-		s.log.Warn("rejected request: replayed grant", "op", op, "actor", g.Actor, "request_id", g.RequestID)
-		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, "grant already used")
+	g, ok := s.authorize(w, op, req.Grant, params)
+	if !ok {
 		return
 	}
 	h, ok := s.ops[op]
 	if !ok {
 		writeErr(w, http.StatusNotFound, agentproto.CodeUnknownOp, "unknown operation")
 		return
+	}
+	if longOps[op] {
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(6 * time.Hour))
 	}
 
 	result, err := h(context.WithValue(r.Context(), actorKey{}, g.Actor), json.RawMessage(params))
@@ -221,4 +214,64 @@ func (s *Server) handleOp(w http.ResponseWriter, r *http.Request) {
 	}
 	s.log.Info("operation succeeded", attrs...)
 	writeJSON(w, http.StatusOK, map[string]any{"result": result})
+}
+
+// authorize verifies the grant for op and params and consumes its nonce.
+// Nothing about operations is revealed without a valid grant.
+func (s *Server) authorize(w http.ResponseWriter, op, grant string, params []byte) (agentproto.Grant, bool) {
+	g, err := agentproto.Verify(s.pub, grant, s.now())
+	if err != nil {
+		s.log.Warn("rejected request: invalid grant", "op", op, "error", err.Error())
+		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, err.Error())
+		return g, false
+	}
+	if g.Op != op || g.ParamsSHA256 != agentproto.ParamsHash(params) {
+		s.log.Warn("rejected request: grant does not match request", "op", op, "grant_op", g.Op, "actor", g.Actor)
+		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, "grant does not cover this operation and parameters")
+		return g, false
+	}
+	if !s.nonces.use(g.Nonce, time.UnixMilli(g.ExpiresAtMS).Add(agentproto.ClockSkew), s.now()) {
+		s.log.Warn("rejected request: replayed grant", "op", op, "actor", g.Actor, "request_id", g.RequestID)
+		writeErr(w, http.StatusUnauthorized, agentproto.CodeInvalidGrant, "grant already used")
+		return g, false
+	}
+	return g, true
+}
+
+// handleStream serves stream operations (M10, ADR-0023): grant and
+// parameters travel in headers, data in the request or response body.
+func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	op := r.PathValue("op")
+	params, err := base64.StdEncoding.DecodeString(r.Header.Get(agentproto.HeaderParams))
+	if err != nil || len(params) == 0 {
+		writeErr(w, http.StatusBadRequest, agentproto.CodeInvalidRequest, "malformed stream request")
+		return
+	}
+	g, ok := s.authorize(w, op, r.Header.Get(agentproto.HeaderGrant), params)
+	if !ok {
+		return
+	}
+	h, ok := s.streams[op]
+	if !ok {
+		writeErr(w, http.StatusNotFound, agentproto.CodeUnknownOp, "unknown operation")
+		return
+	}
+	// Transfers may take long; extend the deadlines for this request only.
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Now().Add(15 * time.Minute))
+	_ = rc.SetWriteDeadline(time.Now().Add(6 * time.Hour))
+	err = h(context.WithValue(r.Context(), actorKey{}, g.Actor), json.RawMessage(params), r.Body, w)
+	attrs := []any{"op", op, "actor", g.Actor, "request_id", g.RequestID, "duration", time.Since(start).String()}
+	if err != nil {
+		code, status := errorCode(err)
+		s.log.Info("operation failed", append(attrs, "code", code, "error", err.Error())...)
+		msg := err.Error()
+		if code == agentproto.CodeInternal {
+			msg = "internal error"
+		}
+		writeErr(w, status, code, msg)
+		return
+	}
+	s.log.Info("operation succeeded", attrs...)
 }

@@ -21,7 +21,9 @@ export type Permission =
   | "apps.manage"
   | "catalog.manage"
   | "storage.read"
-  | "storage.manage";
+  | "storage.manage"
+  | "files.read"
+  | "files.write";
 
 export interface User {
   id: number;
@@ -500,4 +502,56 @@ export interface StorageInventory {
   formattable_fstypes: string[];
   smart_tool: boolean;
   privileged: boolean;
+}
+
+// ---- M10: files ----
+
+export interface FileRootView {
+  name: string;
+  available: boolean;
+  free_bytes: number;
+  total_bytes: number;
+  writable: boolean;
+}
+
+export interface FileEntry {
+  name: string;
+  type: "file" | "dir" | "symlink" | "other";
+  size: number;
+  mod_time: string;
+  mode: string;
+  uid: number;
+  gid: number;
+}
+
+export interface FileListing {
+  path: string;
+  entries: FileEntry[];
+  truncated: boolean;
+}
+
+export interface TrashItem {
+  id: string;
+  path: string;
+  is_dir: boolean;
+  size: number;
+  deleted_at: string;
+  deleted_by: string;
+}
+
+export interface FilePreview {
+  name: string;
+  size: number;
+  kind: "text" | "image" | "binary";
+  text?: string;
+  truncated: boolean;
+}
+
+export interface UploadSession {
+  id: string;
+  root: string;
+  path: string;
+  size: number;
+  received: number;
+  chunk_size: number;
 }

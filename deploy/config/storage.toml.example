@@ -18,3 +18,9 @@ mount_root = "/srv/kernhaven"
 
 [log]
 level = "info"   # debug | info | warn | error
+
+# File manager roots (M10). Each path must be at or below mount_root. Without
+# any [[file_roots]], mount_root itself is the root "data".
+# [[file_roots]]
+# name = "media"
+# path = "/srv/kernhaven/media"

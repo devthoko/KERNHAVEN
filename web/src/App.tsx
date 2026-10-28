@@ -22,6 +22,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SetupPage } from "./pages/SetupPage";
 import { StoragePage } from "./pages/StoragePage";
+import { FilesPage } from "./pages/FilesPage";
 import { UsersPage } from "./pages/UsersPage";
 
 interface RouteDef {
@@ -48,6 +49,7 @@ const routes: RouteDef[] = [
   { pattern: "/volumes", title: "Volumes", permission: "containers.read", render: () => <VolumesPage /> },
   { pattern: "/networks", title: "Networks", permission: "containers.read", render: () => <NetworksPage /> },
   { pattern: "/storage", title: "Storage", permission: "storage.read", render: () => <StoragePage /> },
+  { pattern: "/files", title: "Files", permission: "files.read", render: () => <FilesPage /> },
   { pattern: "/jobs", title: "Jobs", permission: "jobs.read", render: () => <JobsPage /> },
   { pattern: "/jobs/:id", title: "Job", permission: "jobs.read", render: (p) => <JobDetailPage id={p.id ?? ""} /> },
   { pattern: "/users", title: "Users", permission: "users.read", render: () => <UsersPage /> },

@@ -68,7 +68,8 @@ Go interface to other modules. Modules never read other modules' tables.
 - Two roles of the same binary, each with its own unit, socket and allow-list
   (M9, ADR-0022): the Docker agent (`kernhaven-agent` user, `docker` group, no
   capabilities) and the storage service (root with `SYS_ADMIN`/`SYS_RAWIO`
-  only, disk inventory, formatting and mount units, nothing else).
+  only, disk inventory, formatting, mount units and file access below the
+  mount root (M10), nothing else).
 - Listens only on a unix socket; accepts connections only from the `kernhaven`
   user (`SO_PEERCRED`).
 - Every request is a typed operation (`containers.start`, `mounts.create`, …)

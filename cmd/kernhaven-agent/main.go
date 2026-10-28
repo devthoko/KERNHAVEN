@@ -14,6 +14,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
+	"github.com/devthoko/KERNHAVEN/internal/agent/files"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/platform/logging"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
@@ -62,8 +63,14 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	// the docker role never gets them.
 	var srv *agent.Server
 	if cfg.Role == "storage" {
+		fs, err := files.New(cfg.FileRoots, cfg.MountRoot)
+		if err != nil {
+			fmt.Fprintf(stderr, "configuration error: %v\n", err)
+			return exitConfig
+		}
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{
-			Storage: storage.New(storage.NewExecRunner(), storage.Config{MountRoot: cfg.MountRoot, IncludeLoop: cfg.StorageIncludeLoop})})
+			Storage: storage.New(storage.NewExecRunner(), storage.Config{MountRoot: cfg.MountRoot, IncludeLoop: cfg.StorageIncludeLoop}),
+			Files:   fs})
 	} else {
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, docker.New(cfg.DockerSocket, 30*time.Second),
 			agent.Options{AllowedBindRoots: cfg.AllowedBindRoots, HelperImage: cfg.HelperImage})

@@ -48,6 +48,20 @@ const (
 	OpStorageFormat     = "storage.format"
 	OpStorageMount      = "storage.mount"
 	OpStorageUnmount    = "storage.unmount"
+	OpFilesRoots        = "files.roots"
+	OpFilesList         = "files.list"
+	OpFilesMkdir        = "files.mkdir"
+	OpFilesRename       = "files.rename"
+	OpFilesCopy         = "files.copy"
+	OpFilesTrash        = "files.trash"
+	OpFilesTrashList    = "files.trash.list"
+	OpFilesTrashRestore = "files.trash.restore"
+	OpFilesTrashPurge   = "files.trash.purge"
+	OpFilesUploadFinish = "files.upload.finish"
+	OpFilesUploadAbort  = "files.upload.abort"
+	// Stream operations (POST /v1/stream/{op}, M10).
+	OpFilesRead         = "files.read"
+	OpFilesUploadAppend = "files.upload.append"
 )
 
 // Grant limits.
@@ -232,3 +246,11 @@ func readKeyFile(path string, size int) ([]byte, error) {
 	}
 	return b, nil
 }
+
+// Stream operations carry the grant and the base64 parameters in headers;
+// file metadata of a download comes back base64-encoded in HeaderMeta.
+const (
+	HeaderGrant  = "X-Kernhaven-Grant"
+	HeaderParams = "X-Kernhaven-Params"
+	HeaderMeta   = "X-Kernhaven-Meta"
+)

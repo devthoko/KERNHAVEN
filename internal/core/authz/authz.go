@@ -30,6 +30,8 @@ const (
 	ContainersManage  Permission = "containers.manage"
 	StorageRead       Permission = "storage.read"
 	StorageManage     Permission = "storage.manage"
+	FilesRead         Permission = "files.read"
+	FilesWrite        Permission = "files.write"
 	PolicyExceptions  Permission = "policy.exceptions"
 
 	AppsRead      Permission = "apps.read"
@@ -39,10 +41,10 @@ const (
 
 var rolePermissions = map[Role][]Permission{
 	Owner: {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead, JobsRead, JobsManage,
-		ContainersRead, ContainersOperate, ContainersManage, PolicyExceptions, AppsRead, AppsManage, CatalogManage, StorageRead, StorageManage},
+		ContainersRead, ContainersOperate, ContainersManage, PolicyExceptions, AppsRead, AppsManage, CatalogManage, StorageRead, StorageManage, FilesRead, FilesWrite},
 	Admin: {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead, JobsRead, JobsManage,
-		ContainersRead, ContainersOperate, ContainersManage, AppsRead, AppsManage, StorageRead, StorageManage},
-	Operator: {SelfManage, SystemRead, JobsRead, JobsManage, ContainersRead, ContainersOperate, AppsRead, StorageRead},
+		ContainersRead, ContainersOperate, ContainersManage, AppsRead, AppsManage, StorageRead, StorageManage, FilesRead, FilesWrite},
+	Operator: {SelfManage, SystemRead, JobsRead, JobsManage, ContainersRead, ContainersOperate, AppsRead, StorageRead, FilesRead},
 	Viewer:   {SelfManage, SystemRead, JobsRead, ContainersRead, AppsRead},
 }
 

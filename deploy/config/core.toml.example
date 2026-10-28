@@ -32,3 +32,12 @@ storage_socket = "/run/kernhaven-storage/storage.sock"
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout
 setup_token_ttl = "24h"           # 10m..72h
+
+[files]
+# Largest single upload in the file manager (M10), in bytes.
+max_upload_bytes = 21474836480
+# Optional: restrict roles per file root (names from the storage service's
+# file_roots). Lists only narrow what files.read / files.write allow.
+# [files.roots.backups]
+# read = ["owner", "admin"]
+# write = ["owner"]

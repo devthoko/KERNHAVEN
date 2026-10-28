@@ -67,6 +67,8 @@ CFG
 fi
 
 # Storage service (M9) without root: inventory of the real disks, no changes.
+# Its mount root doubles as the file manager root "data" (M10).
+mkdir -p "$WORK/mnt"
 cat > "$WORK/storage.toml" <<CFG
 role = "storage"
 socket = "$WORK/storage.sock"

@@ -84,11 +84,11 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F07-01 | Browse | Browse within configured roots only; path traversal and symlink escapes are rejected | M10 | Not started |
-| AT-F07-02 | Transfer | Upload (resumable, size-limited) and download (streamed) | M10 | Not started |
-| AT-F07-03 | Operations | Create folder, rename, move, copy, delete-to-trash, restore from trash | M10 | Not started |
-| AT-F07-04 | Permissions | Per-role root access; operations audited | M10 | Not started |
-| AT-F07-05 | Preview | Text and image preview; served with `Content-Disposition: attachment` and sandbox CSP for untrusted content | M10 | Not started |
+| AT-F07-01 | Browse | Browse within configured roots only; path traversal and symlink escapes are rejected | M10 | Implemented on `m10-files`; CI pending |
+| AT-F07-02 | Transfer | Upload (resumable, size-limited) and download (streamed) | M10 | Implemented on `m10-files`; CI pending |
+| AT-F07-03 | Operations | Create folder, rename, move, copy, delete-to-trash, restore from trash | M10 | Implemented on `m10-files`; CI pending |
+| AT-F07-04 | Permissions | Per-role root access; operations audited | M10 | Implemented on `m10-files`; CI pending |
+| AT-F07-05 | Preview | Text and image preview; served with `Content-Disposition: attachment` and sandbox CSP for untrusted content | M10 | Implemented on `m10-files`; CI pending |
 
 ## F08 — Secure user and session management
 

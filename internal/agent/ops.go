@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
+	"github.com/devthoko/KERNHAVEN/internal/agent/files"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/platform/version"
@@ -109,6 +110,8 @@ type Options struct {
 	// Storage selects the storage role (M9): the server then offers only
 	// agent.info and the storage operations, and no Docker operation.
 	Storage *storage.Host
+	// Files serves the file manager (M10) in the storage role.
+	Files *files.Service
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
@@ -116,6 +119,11 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 	if o.Storage != nil {
 		ops := storageOperations(o.Storage)
 		ops[agentproto.OpAgentInfo] = agentInfo(started)
+		if o.Files != nil {
+			for name, h := range fileOperations(o.Files) {
+				ops[name] = h
+			}
+		}
 		return ops
 	}
 	ops := map[string]handler{
@@ -178,7 +186,7 @@ func agentInfo(started time.Time) handler {
 
 // StorageOperationNames lists the operations of the storage role (sorted).
 func StorageOperationNames() []string {
-	return sortedNames(operations(nil, time.Time{}, Options{Storage: &storage.Host{}}))
+	return sortedNames(operations(nil, time.Time{}, Options{Storage: &storage.Host{}, Files: &files.Service{}}))
 }
 
 // OperationNames lists the allow-listed operations (sorted).
@@ -204,6 +212,12 @@ func errorCode(err error) (string, int) {
 		return agentproto.CodeInvalidParams, 400
 	case errors.As(err, new(*storage.InvalidError)), errors.Is(err, storage.ErrToolMissing):
 		return agentproto.CodeInvalidParams, 400
+	case errors.As(err, new(*files.InvalidError)):
+		return agentproto.CodeInvalidParams, 400
+	case errors.Is(err, files.ErrNotFound):
+		return agentproto.CodeNotFound, 404
+	case errors.Is(err, files.ErrExists), errors.As(err, new(*files.OffsetError)):
+		return agentproto.CodeConflict, 409
 	case errors.Is(err, storage.ErrNotFound):
 		return agentproto.CodeNotFound, 404
 	case errors.Is(err, storage.ErrBusy):

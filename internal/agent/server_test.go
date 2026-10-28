@@ -192,9 +192,14 @@ func TestOperationAllowList(t *testing.T) {
 // M9: the storage role offers only these operations — no Docker access, and
 // the Docker role offers no storage operation (separate privilege domains).
 func TestStorageRoleAllowList(t *testing.T) {
-	want := []string{"agent.info", "storage.format", "storage.inventory", "storage.mount", "storage.unmount"}
+	want := []string{"agent.info", "files.copy", "files.list", "files.mkdir", "files.rename", "files.roots", "files.trash", "files.trash.list",
+		"files.trash.purge", "files.trash.restore", "files.upload.abort", "files.upload.finish",
+		"storage.format", "storage.inventory", "storage.mount", "storage.unmount"}
 	if got := StorageOperationNames(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("storage operations = %v\nwant %v", got, want)
+	}
+	if got := StreamOperationNames(); !reflect.DeepEqual(got, []string{"files.read", "files.upload.append"}) {
+		t.Fatalf("stream operations = %v", got)
 	}
 }
 

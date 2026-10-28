@@ -749,6 +749,149 @@ paths:
         "204": { description: Unmounted }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /files/roots:
+    get:
+      operationId: listFileRoots
+      x-permission: files.read
+      description: File roots the user may read (with free space and whether the user may write). Roots and their paths are configured in the storage service.
+      responses:
+        "200": { description: Roots, content: { application/json: { schema: { type: object, properties: { roots: { type: array, items: { $ref: "#/components/schemas/FileRoot" } } } } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /files/list:
+    get:
+      operationId: listFiles
+      x-permission: files.read
+      description: Lists a folder (at most 10 000 entries). Paths are relative to the root; traversal and symlink escapes are refused by the storage service (os.Root).
+      parameters: [{ $ref: "#/components/parameters/FileRootQuery" }, { $ref: "#/components/parameters/FilePathQuery" }]
+      responses:
+        "200": { description: Listing, content: { application/json: { schema: { $ref: "#/components/schemas/FileListing" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /files/download:
+    get:
+      operationId: downloadFile
+      x-permission: files.read
+      description: Streams a file as attachment (application/octet-stream, nosniff, sandbox CSP). Audited.
+      parameters: [{ $ref: "#/components/parameters/FileRootQuery" }, { $ref: "#/components/parameters/FilePathQuery" }]
+      responses:
+        "200": { description: File content, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /files/preview:
+    get:
+      operationId: previewFile
+      x-permission: files.read
+      description: First 256 KiB as text if valid UTF-8, or kind image for PNG/JPEG/GIF/WebP recognised by content, else binary.
+      parameters: [{ $ref: "#/components/parameters/FileRootQuery" }, { $ref: "#/components/parameters/FilePathQuery" }]
+      responses:
+        "200": { description: Preview, content: { application/json: { schema: { type: object, properties: { name: { type: string }, size: { type: integer }, kind: { type: string, enum: [text, image, binary] }, text: { type: string }, truncated: { type: boolean } } } } } }
+  /files/image:
+    get:
+      operationId: fileImage
+      x-permission: files.read
+      description: A PNG, JPEG, GIF or WebP image (max 50 MB) with its sniffed type, attachment disposition, nosniff and sandbox CSP. SVG and other content is refused.
+      parameters: [{ $ref: "#/components/parameters/FileRootQuery" }, { $ref: "#/components/parameters/FilePathQuery" }]
+      responses:
+        "200": { description: Image, content: { image/png: { schema: { type: string, format: binary } } } }
+        "415": { $ref: "#/components/responses/Error" }
+  /files/mkdir:
+    post:
+      operationId: createFolder
+      x-permission: files.write
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FileRef" } } } }
+      responses:
+        "200": { description: Created }
+        "409": { $ref: "#/components/responses/Error" }
+  /files/rename:
+    post:
+      operationId: renameFile
+      x-permission: files.write
+      description: Renames or moves within one root; never overwrites.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root, from, to], properties: { root: { type: string }, from: { type: string }, to: { type: string } } } } } }
+      responses:
+        "204": { description: Renamed }
+        "409": { $ref: "#/components/responses/Error" }
+  /files/copy:
+    post:
+      operationId: copyFiles
+      x-permission: files.write
+      description: Queues a recursive copy within or between roots (read access on the source, write access on the target); never overwrites; symlinks are skipped.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root, from, to], properties: { root: { type: string }, from: { type: string }, to_root: { type: string }, to: { type: string } } } } } }
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+  /files/trash:
+    get:
+      operationId: listTrash
+      x-permission: files.read
+      parameters: [{ $ref: "#/components/parameters/FileRootQuery" }]
+      responses:
+        "200": { description: Trash items, newest first, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/TrashItem" } } } } } } }
+    post:
+      operationId: moveToTrash
+      x-permission: files.write
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FileRef" } } } }
+      responses:
+        "200": { description: Moved, content: { application/json: { schema: { $ref: "#/components/schemas/TrashItem" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /files/trash/restore:
+    post:
+      operationId: restoreFromTrash
+      x-permission: files.write
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root, id], properties: { root: { type: string }, id: { type: string } } } } } }
+      responses:
+        "200": { description: Restored, content: { application/json: { schema: { type: object, properties: { path: { type: string } } } } } }
+        "409": { description: Something exists at the original path, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /files/trash/purge:
+    post:
+      operationId: purgeTrash
+      x-permission: files.write
+      description: Queues deleting one trash item (id) or the whole trash of the root (no id).
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root], properties: { root: { type: string }, id: { type: string } } } } } }
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+  /files/uploads:
+    post:
+      operationId: startUpload
+      x-permission: files.write
+      description: Starts a resumable upload of size bytes (at most files.max_upload_bytes) to root/path. Sessions expire after 24 hours.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root, path, size], properties: { root: { type: string }, path: { type: string }, size: { type: integer } } } } } }
+      responses:
+        "201": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /files/uploads/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[a-f0-9]{32}$" } }]
+    get:
+      operationId: getUpload
+      x-permission: files.write
+      description: The session with the bytes received so far, to resume after an interruption.
+      responses:
+        "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: uploadChunk
+      x-permission: files.write
+      description: Appends a chunk (at most 8 MiB) at offset, which must equal the bytes received so far.
+      parameters: [{ name: offset, in: query, required: true, schema: { type: integer, minimum: 0 } }]
+      requestBody: { required: true, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+      responses:
+        "200": { description: Received, content: { application/json: { schema: { type: object, properties: { received: { type: integer } } } } } }
+        "409": { description: Offset does not continue the upload, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "413": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: cancelUpload
+      x-permission: files.write
+      responses:
+        "204": { description: Cancelled }
+  /files/uploads/{id}/finish:
+    post:
+      operationId: finishUpload
+      x-permission: files.write
+      description: Moves the complete upload into place; never overwrites an existing file.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[a-f0-9]{32}$" } }]
+      responses:
+        "200": { description: Done, content: { application/json: { schema: { type: object, properties: { path: { type: string } } } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { description: Incomplete upload, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 components:
   securitySchemes:
     session:
@@ -756,6 +899,15 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    FileRootQuery:
+      name: root
+      in: query
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$" }
+    FilePathQuery:
+      name: path
+      in: query
+      schema: { type: string, maxLength: 4096 }
     SourceID:
       name: id
       in: path
@@ -777,6 +929,55 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    FileRoot:
+      type: object
+      properties:
+        name: { type: string }
+        available: { type: boolean }
+        free_bytes: { type: integer }
+        total_bytes: { type: integer }
+        writable: { type: boolean }
+    FileRef:
+      type: object
+      required: [root, path]
+      properties:
+        root: { type: string }
+        path: { type: string, maxLength: 4096, description: relative to the root }
+    FileListing:
+      type: object
+      properties:
+        path: { type: string }
+        truncated: { type: boolean }
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              type: { type: string, enum: [file, dir, symlink, other] }
+              size: { type: integer }
+              mod_time: { type: string, format: date-time }
+              mode: { type: string }
+              uid: { type: integer }
+              gid: { type: integer }
+    TrashItem:
+      type: object
+      properties:
+        id: { type: string }
+        path: { type: string }
+        is_dir: { type: boolean }
+        size: { type: integer }
+        deleted_at: { type: string, format: date-time }
+        deleted_by: { type: string }
+    UploadSession:
+      type: object
+      properties:
+        id: { type: string }
+        root: { type: string }
+        path: { type: string }
+        size: { type: integer }
+        received: { type: integer }
+        chunk_size: { type: integer }
     ManagedMount:
       type: object
       properties:

@@ -77,3 +77,24 @@ export function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "An unexpected error occurred.";
 }
+
+/** putBinary sends raw bytes (upload chunks) with the CSRF token. */
+export async function putBinary<T>(path: string, body: Blob): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/v1${path}`, {
+      method: "PUT",
+      headers: { Accept: "application/json", "Content-Type": "application/octet-stream", ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}) },
+      credentials: "same-origin",
+      body,
+    });
+  } catch {
+    throw new ApiError(0, "network_error", "The server could not be reached. Check your connection.");
+  }
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = (data as { error?: { code?: string; message?: string; request_id?: string } } | null)?.error;
+    throw new ApiError(res.status, err?.code ?? "http_error", err?.message ?? `Request failed (HTTP ${res.status})`, err?.request_id ?? "");
+  }
+  return data as T;
+}

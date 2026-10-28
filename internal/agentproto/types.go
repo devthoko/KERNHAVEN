@@ -1,5 +1,7 @@
 package agentproto
 
+import "time"
+
 // Parameter and result types of the allow-listed operations. Parameters are
 // decoded strictly by the agent (unknown fields rejected).
 
@@ -403,4 +405,115 @@ type StorageMount struct {
 // StorageUnmount removes the mount unit of Name.
 type StorageUnmount struct {
 	Name string `json:"name"`
+}
+
+// ---- M10: files ----
+
+// FileRoot is a configured file root of the storage service.
+type FileRoot struct {
+	Name       string `json:"name"`
+	Path       string `json:"path"`
+	Available  bool   `json:"available"`
+	FreeBytes  int64  `json:"free_bytes"`
+	TotalBytes int64  `json:"total_bytes"`
+}
+
+// FileEntry is one directory entry.
+type FileEntry struct {
+	Name    string    `json:"name"`
+	Type    string    `json:"type"` // file, dir, symlink, other
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
+	Mode    string    `json:"mode"`
+	UID     uint32    `json:"uid"`
+	GID     uint32    `json:"gid"`
+}
+
+// FilesPath names a path relative to a root ("" is the root itself).
+type FilesPath struct {
+	Root string `json:"root"`
+	Path string `json:"path"`
+}
+
+// FilesListing is the result of files.list.
+type FilesListing struct {
+	Path      string      `json:"path"`
+	Entries   []FileEntry `json:"entries"`
+	Truncated bool        `json:"truncated"`
+}
+
+// FilesRename moves From to To within one root; it never overwrites.
+type FilesRename struct {
+	Root string `json:"root"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// FilesCopy copies From (file or folder) to ToRoot/To; it never overwrites.
+type FilesCopy struct {
+	Root   string `json:"root"`
+	From   string `json:"from"`
+	ToRoot string `json:"to_root"`
+	To     string `json:"to"`
+}
+
+// FilesCopyResult summarises a copy.
+type FilesCopyResult struct {
+	Files           int   `json:"files"`
+	Bytes           int64 `json:"bytes"`
+	SkippedSymlinks int   `json:"skipped_symlinks"`
+}
+
+// TrashItem is something deleted to the trash of a root.
+type TrashItem struct {
+	ID        string    `json:"id"`
+	Path      string    `json:"path"`
+	IsDir     bool      `json:"is_dir"`
+	Size      int64     `json:"size"`
+	DeletedAt time.Time `json:"deleted_at"`
+	DeletedBy string    `json:"deleted_by"`
+}
+
+// FilesTrashID addresses one trash item; an empty ID in files.trash.purge
+// empties the whole trash of the root.
+type FilesTrashID struct {
+	Root string `json:"root"`
+	ID   string `json:"id"`
+}
+
+// FilesRead streams a regular file, optionally a byte range (Limit 0 = all).
+type FilesRead struct {
+	Root   string `json:"root"`
+	Path   string `json:"path"`
+	Offset int64  `json:"offset"`
+	Limit  int64  `json:"limit"`
+}
+
+// FileMeta describes a streamed file (header X-Kernhaven-Meta).
+type FileMeta struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
+}
+
+// UploadAppend appends the request body to the staged upload ID at Offset,
+// which must equal the bytes staged so far.
+type UploadAppend struct {
+	Root   string `json:"root"`
+	ID     string `json:"id"`
+	Path   string `json:"path"`   // target; the staging area is on its file system
+	Offset int64  `json:"offset"` // -1 reports the staged size
+}
+
+// UploadState is the staged size of an upload.
+type UploadState struct {
+	Size int64 `json:"size"`
+}
+
+// UploadFinish moves a complete staged upload to Path (never overwriting).
+type UploadFinish struct {
+	Root string `json:"root"`
+	ID   string `json:"id"`
+	Path string `json:"path"`
+	Size int64  `json:"size"`
 }

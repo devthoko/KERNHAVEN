@@ -9,6 +9,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/devthoko/KERNHAVEN/internal/agent/files"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/policy"
@@ -32,6 +33,8 @@ type Config struct {
 	Role string `toml:"role"`
 	// MountRoot is where data disks are mounted (M9).
 	MountRoot string `toml:"mount_root"`
+	// FileRoots are the file manager's roots (M10), all at or below MountRoot.
+	FileRoots []files.Root `toml:"file_roots"`
 	// StorageIncludeLoop treats loop devices as disks. Only for tests.
 	StorageIncludeLoop bool `toml:"storage_include_loop_devices"`
 	Log                struct {
@@ -69,6 +72,9 @@ func LoadConfig(path string) (Config, error) {
 		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
 			errs = append(errs, fmt.Errorf("allowed_bind_roots: %q must be an absolute, clean directory other than /", r))
 		}
+	}
+	if _, err := files.New(cfg.FileRoots, cfg.MountRoot); err != nil {
+		errs = append(errs, err)
 	}
 	if cfg.Role != "docker" && cfg.Role != "storage" {
 		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage", cfg.Role))

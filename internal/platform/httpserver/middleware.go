@@ -145,8 +145,17 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 
 // withBodyLimit rejects declared oversized bodies immediately and caps the
 // rest with http.MaxBytesReader.
-func withBodyLimit(limit int64, next http.Handler) http.Handler {
+func withBodyLimit(defaultLimit int64, next http.Handler) http.Handler {
+	raised, _ := next.(interface {
+		BodyLimit(*http.Request) (int64, bool)
+	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := defaultLimit
+		if raised != nil {
+			if l, ok := raised.BodyLimit(r); ok {
+				limit = l
+			}
+		}
 		if r.ContentLength > limit {
 			WriteError(w, r, http.StatusRequestEntityTooLarge, "body_too_large",
 				fmt.Sprintf("request body exceeds %d bytes", limit))

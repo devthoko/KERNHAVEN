@@ -39,6 +39,22 @@ type Config struct {
 	Auth       Auth       `toml:"auth"`
 	Agent      Agent      `toml:"agent"`
 	Containers Containers `toml:"containers"`
+	Files      Files      `toml:"files"`
+}
+
+// Files configures the file manager (M10).
+type Files struct {
+	// MaxUploadBytes limits one upload.
+	MaxUploadBytes int64 `toml:"max_upload_bytes"`
+	// Roots optionally restricts roles per file root; lists only narrow
+	// the access the files.read and files.write permissions give.
+	Roots map[string]FileRootAccess `toml:"roots"`
+}
+
+// FileRootAccess lists the roles that may read and write one root.
+type FileRootAccess struct {
+	Read  []string `toml:"read"`
+	Write []string `toml:"write"`
 }
 
 // Containers configures container management (M6).
@@ -108,6 +124,7 @@ func Default() Config {
 		},
 		Storage: Storage{DataDir: "/var/lib/kernhaven"},
 		Log:     Log{Level: "info"},
+		Files:   Files{MaxUploadBytes: 20 << 30},
 		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
@@ -160,6 +177,18 @@ func (c Config) Validate() error {
 	}
 	if s := c.Agent.Socket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.socket: %q must be an absolute, clean path or empty", s))
+	}
+	if n := c.Files.MaxUploadBytes; n < 1 || n > 1<<42 {
+		errs = append(errs, fmt.Errorf("files.max_upload_bytes: %d is outside 1..%d", n, int64(1)<<42))
+	}
+	for name, a := range c.Files.Roots {
+		for _, r := range append(append([]string{}, a.Read...), a.Write...) {
+			switch r {
+			case "owner", "admin", "operator", "viewer":
+			default:
+				errs = append(errs, fmt.Errorf("files.roots.%s: unknown role %q", name, r))
+			}
+		}
 	}
 	if s := c.Agent.StorageSocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.storage_socket: %q must be an absolute, clean path or empty", s))

@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,6 +133,77 @@ func (cl *Client) Do(ctx context.Context, c Call, out any) error {
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(data, &env); err != nil {
+		return fmt.Errorf("agent: malformed response: %w", err)
+	}
+	if out == nil {
+		return nil
+	}
+	return json.Unmarshal(env.Result, out)
+}
+
+// Stream is the response of a stream operation. The caller closes Body.
+type Stream struct {
+	Meta []byte // decoded X-Kernhaven-Meta, if any
+	Body io.ReadCloser
+}
+
+// DoStream runs a stream operation (M10): grant and parameters travel in
+// headers, body (may be nil) is sent as the request body.
+func (cl *Client) DoStream(ctx context.Context, c Call, body io.Reader) (*Stream, error) {
+	params := []byte("null")
+	if c.Params != nil {
+		var err error
+		if params, err = json.Marshal(c.Params); err != nil {
+			return nil, err
+		}
+	}
+	now := cl.now()
+	grant, err := agentproto.Sign(cl.key, agentproto.Grant{
+		Op: c.Op, ParamsSHA256: agentproto.ParamsHash(params), Actor: c.Actor, RequestID: c.RequestID,
+		Nonce: agentproto.NewNonce(), IssuedAtMS: now.UnixMilli(), ExpiresAtMS: now.Add(30 * time.Second).UnixMilli(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if body == nil {
+		body = http.NoBody
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://agent/v1/stream/"+c.Op, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(agentproto.HeaderGrant, grant)
+	req.Header.Set(agentproto.HeaderParams, base64.StdEncoding.EncodeToString(params))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	resp, err := cl.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		var eb agentproto.ErrorBody
+		_ = json.Unmarshal(data, &eb)
+		return nil, &Error{Status: resp.StatusCode, Code: eb.Error.Code, Message: eb.Error.Message}
+	}
+	s := &Stream{Body: resp.Body}
+	if m := resp.Header.Get(agentproto.HeaderMeta); m != "" {
+		s.Meta, _ = base64.StdEncoding.DecodeString(m)
+	}
+	return s, nil
+}
+
+// DoStreamJSON runs a stream operation whose response is a JSON result.
+func (cl *Client) DoStreamJSON(ctx context.Context, c Call, body io.Reader, out any) error {
+	s, err := cl.DoStream(ctx, c, body)
+	if err != nil {
+		return err
+	}
+	defer s.Body.Close()
+	var env struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.NewDecoder(io.LimitReader(s.Body, 1<<20)).Decode(&env); err != nil {
 		return fmt.Errorf("agent: malformed response: %w", err)
 	}
 	if out == nil {
