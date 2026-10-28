@@ -23,7 +23,7 @@ functionality do not exist yet.
 | M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
 | M9 | Storage and disk management (F06-01..03) | Done on branch `m9-storage` (stacked on M8), CI 40601258272, merge pending owner review | [M9 evidence](milestones/M9-storage.md#verification-evidence-2026-10-28-branch-m9-storage) |
 | M10 | File manager (F07) | Done on branch `m10-files` (stacked on M9), CI 40701148605, merge pending owner review | [M10 evidence](milestones/M10-files.md#verification-evidence-2026-10-28-branch-m10-files) |
-| M11 | Passkeys, MFA, step-up (F09-02..05) | Implemented on branch `m11-mfa` (stacked on M10), CI pending, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
+| M11 | Passkeys, MFA, step-up (F09-02..05) | Done on branch `m11-mfa` (stacked on M10), CI 40719877647, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
 | M6b, M12–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers

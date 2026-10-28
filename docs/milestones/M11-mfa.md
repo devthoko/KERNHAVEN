@@ -1,6 +1,6 @@
 # M11 — Passkeys, MFA and Step-Up Authentication
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40719877647); merge pending owner review
 Depends on: M2, M5
 Acceptance tests: AT-F09-02 … AT-F09-05
 Threats addressed: TH-01 (credential stuffing, brute force), TH-02 (session
@@ -110,4 +110,4 @@ Step-up replaces the password re-entry of M8 (app removal) and M9 (format).
 | Third full CI run (40717985129) | GitHub Actions | Failed: E2E `AT-F02-02` — the new container's heading did not appear within 5 s after "Create container". The test and the container code path (no exceptions, no step-up) are unchanged since run 40717328320, where it passed; treated as unexplained, re-run without changes |
 | Fourth full CI run (40718605650) | GitHub Actions | Failed: 23 of 24 E2E tests passed (including `AT-F02-02`); in the M11 test the TOTP setup and the passkey registration with the virtual authenticator succeeded, but the check for the passkey's name matched it twice (visible and in the remove button's screen-reader text) — the test now checks the "Remove E2E key" button |
 | Fifth full CI run (40719195663) | GitHub Actions | Failed: the browser passkey sign-in succeeded (`/auth/passkey/finish` 200), but the test expected the dashboard; the app correctly returned to `/account` (`?next=` after signing out there) — the test now expects the account page |
-| CI full suite incl. browser E2E (TOTP, recovery code, virtual passkey sign-in) | GitHub Actions | pending |
+| CI full suite incl. browser E2E (TOTP setup with a code computed from the shown key, recovery codes, passkey registration and usernameless sign-in with Chrome's virtual authenticator, password + recovery code sign-in, axe on the security card and second-factor screen) | GitHub Actions | Passed (run 40719877647) |

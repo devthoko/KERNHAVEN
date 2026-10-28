@@ -59,7 +59,7 @@ graph TD
 | M8 | App store and app lifecycle | M7 | F04, F05 | Done on branch `m8-apps` (based on `m7-compose`), CI 40574613677, merge pending owner review; reverse proxy route of AT-F05-01 waits for M12 — [design](M8-apps.md) |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Done on branch `m9-storage` (based on `m8-apps`), CI 40601258272, merge pending owner review — [design](M9-storage.md) |
 | M10 | File manager | M9 | F07 | Done on branch `m10-files` (based on `m9-storage`), CI 40701148605, merge pending owner review — [design](M10-files.md) |
-| M11 | Passkeys, MFA, step-up auth | M2, M5 | F09 (02–05) | Implemented on branch `m11-mfa` (based on `m10-files`), CI pending, merge pending owner review — [design](M11-mfa.md) |
+| M11 | Passkeys, MFA, step-up auth | M2, M5 | F09 (02–05) | Done on branch `m11-mfa` (based on `m10-files`), CI 40719877647, merge pending owner review — [design](M11-mfa.md) |
 | M12 | Network and reverse proxy | M4, M5 | F11 | Not started |
 | M13 | TLS certificate management | M12 | F12 (01–03) | Not started |
 | M14 | System and container monitoring | M6 | F13 | Not started |
