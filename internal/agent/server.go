@@ -167,7 +167,12 @@ func writeErr(w http.ResponseWriter, status int, code, msg string) {
 func (s *Server) handleOp(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	op := r.PathValue("op")
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, agentproto.MaxRequestBytes))
+	// Only an operation this server offers may use a larger limit.
+	limit := int64(agentproto.MaxRequestBytes)
+	if _, ok := s.ops[op]; ok {
+		limit = agentproto.RequestLimit(op)
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		writeErr(w, http.StatusRequestEntityTooLarge, agentproto.CodeInvalidRequest, "request too large")
 		return

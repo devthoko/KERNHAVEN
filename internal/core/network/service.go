@@ -108,6 +108,7 @@ type Service struct {
 	now      func() time.Time
 	log      *slog.Logger
 	mu       sync.Mutex // serializes changes, so the route set sent to Caddy is the one committed
+	tls      TLSSource  // stored TLS settings (M13); nil: internal CA for every host
 }
 
 // New returns the service. origin is the Core's public origin, listen its
@@ -258,13 +259,26 @@ func conflict(routes []Route, r Route) bool {
 }
 
 // push sends the complete route set to the proxy service.
-func (s *Service) push(ctx context.Context, a Actor, routes []Route) (agentproto.ProxyApplied, error) {
+// TLS comes from tlsSrc, or the stored settings when it is nil (M13).
+func (s *Service) push(ctx context.Context, a Actor, routes []Route, tlsSrc TLSSource) (agentproto.ProxyApplied, error) {
 	if s.client == nil {
 		return agentproto.ProxyApplied{}, ErrUnavailable
 	}
 	in := agentproto.ProxyApply{KernhavenHost: s.khHost, Routes: make([]agentproto.ProxyRoute, len(routes))}
+	hosts := map[string]bool{s.khHost: true}
 	for i, r := range routes {
 		in.Routes[i] = toProto(r)
+		hosts[r.Host] = true
+	}
+	if tlsSrc == nil {
+		tlsSrc = s.tls
+	}
+	if tlsSrc != nil {
+		t, err := tlsSrc(ctx, hosts)
+		if err != nil {
+			return agentproto.ProxyApplied{}, err
+		}
+		in.TLSHosts, in.Certificates, in.ACME = t.Hosts, t.Certificates, t.ACME
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
@@ -317,7 +331,7 @@ func routeDetails(r Route) []string {
 // change applies next to Caddy and, only if Caddy accepted it, runs write and
 // the audit entry in one transaction. Failures are audited too.
 func (s *Service) change(ctx context.Context, a Actor, action string, r Route, next []Route, write func(tx *sql.Tx) error) error {
-	res, err := s.push(ctx, a, next)
+	res, err := s.push(ctx, a, next, nil)
 	if err != nil {
 		_ = s.audit.Record(context.WithoutCancel(ctx), s.event(a, action, "route:"+strconv.FormatInt(r.ID, 10), err, routeDetails(r)...))
 		return err
@@ -437,7 +451,7 @@ func (s *Service) remove(ctx context.Context, a Actor, drop func(Route) bool) er
 	if next == nil {
 		next = []Route{}
 	}
-	res, err := s.push(ctx, a, next)
+	res, err := s.push(ctx, a, next, nil)
 	if err != nil {
 		for _, r := range gone {
 			_ = s.audit.Record(context.WithoutCancel(ctx), s.event(a, "network.route_delete", "route:"+strconv.FormatInt(r.ID, 10), err, routeDetails(r)...))
@@ -470,7 +484,7 @@ func (s *Service) Apply(ctx context.Context, a Actor) error {
 	if err != nil {
 		return err
 	}
-	res, err := s.push(ctx, a, routes)
+	res, err := s.push(ctx, a, routes, nil)
 	_ = s.audit.Record(context.WithoutCancel(ctx), s.event(a, "network.apply", "proxy", err, "routes", strconv.Itoa(len(routes))))
 	if err != nil {
 		return err

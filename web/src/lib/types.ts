@@ -637,3 +637,47 @@ export interface NetworkOverview {
   interfaces: { name: string; mtu: number; mac?: string; up: boolean; loopback: boolean; addresses: string[] }[];
   listening: { protocol: "tcp" | "tcp6" | "udp" | "udp6"; address: string; port: number }[];
 }
+
+// ---- M13: certificates ----
+
+export type TLSMode = "internal" | "acme" | "dns" | "custom";
+
+export interface HostTLS {
+  host: string;
+  kernhaven: boolean;
+  lan_only: boolean;
+  routes: number;
+  mode: TLSMode;
+  certificate_id?: number;
+  effective: TLSMode;
+  error?: string;
+  error_at?: string;
+}
+
+export interface StoredCertificate {
+  id: number;
+  source: "upload" | "dns";
+  names: string[];
+  issuer: string;
+  not_before: string;
+  not_after: string;
+  sha256: string;
+  hosts: string[];
+  created_by: string;
+  created_at: string;
+}
+
+export interface TLSSettings {
+  email: string;
+  ca: "production" | "staging";
+  agreed_at?: string;
+  dns_provider: "" | "cloudflare";
+  dns_configured: boolean;
+}
+
+export interface TLSOverview {
+  hosts: HostTLS[];
+  certificates: StoredCertificate[];
+  settings: TLSSettings;
+  root_sha256?: string;
+}

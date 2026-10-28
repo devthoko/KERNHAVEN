@@ -26,6 +26,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
 	"github.com/devthoko/KERNHAVEN/internal/proxy"
+	"github.com/devthoko/KERNHAVEN/internal/proxy/certtest"
 )
 
 func mustEnv(t *testing.T, k string) string {
@@ -129,4 +130,32 @@ func TestM12ProxyService(t *testing.T) {
 	if !found {
 		t.Fatalf("443 not among %+v", ov.Listening)
 	}
+
+	// M13: the local CA's root through the unit's sandbox, and an own certificate for app.test.
+	var ca agentproto.ProxyCA
+	if err := do(agentproto.OpProxyCA, nil, &ca); err != nil || len(ca.SHA256) != 64 {
+		t.Fatalf("root: %+v %v", ca, err)
+	}
+	own := certtest.NewCA(t, "Own Root", nil)
+	cert, certKey := own.Issue(t, certtest.Leaf{Names: []string{"app.test"}})
+	if err := do(agentproto.OpProxyApply, agentproto.ProxyApply{KernhavenHost: "kh.test",
+		Routes:       []agentproto.ProxyRoute{{ID: 1, Host: "app.test", UpstreamPort: port}},
+		Certificates: []agentproto.TLSCertificate{{ID: 9, CertificatePEM: cert + own.PEM, KeyPEM: certKey}},
+		TLSHosts:     []agentproto.TLSHost{{Host: "app.test", Mode: agentproto.TLSLoaded, CertificateID: 9}},
+	}, nil); err != nil {
+		t.Fatalf("apply with certificate: %v", err)
+	}
+	ownPool := x509.NewCertPool()
+	ownPool.AddCert(own.Cert)
+	var conn *tls.Conn
+	for i := 0; i < 50; i++ {
+		if conn, err = tls.Dial("tcp", "127.0.0.1:443", &tls.Config{ServerName: "app.test", RootCAs: ownPool}); err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("own certificate not served: %v", err)
+	}
+	conn.Close()
 }

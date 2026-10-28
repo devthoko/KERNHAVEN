@@ -113,7 +113,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		defer cancel()
 		core.Runner.Stop(sctx)
 	}()
-	go scheduleMaintenance(ctx, core, log)
+	// Maintenance stops (and is waited for) before the runner and the
+	// database, also when startup fails below.
+	mctx, stopMaintenance := context.WithCancel(ctx)
+	maintenanceDone := make(chan struct{})
+	go func() {
+		defer close(maintenanceDone)
+		scheduleMaintenance(mctx, core, log)
+	}()
+	defer func() {
+		stopMaintenance()
+		<-maintenanceDone
+	}()
 
 	ln, err := net.Listen("tcp", cfg.Server.Listen)
 	if err != nil {

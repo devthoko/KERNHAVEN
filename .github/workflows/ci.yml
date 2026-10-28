@@ -239,8 +239,15 @@ jobs:
           cd "$RUNNER_TEMP" && apt-get download caddy && dpkg-deb -x caddy_*.deb caddy-pkg
           echo "KH_CADDY=$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" >> "$GITHUB_ENV"
           "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
-      - name: generated Caddy configuration against real Caddy (AT-F11-01..03)
+      - name: Pebble ACME test server (test tool only, pinned; ADR-0026)
+        run: |
+          GOBIN="$RUNNER_TEMP/pebble" go install github.com/letsencrypt/pebble/v2/cmd/pebble@v2.10.1 github.com/letsencrypt/pebble/v2/cmd/pebble-challtestsrv@v2.10.1
+          echo "KH_PEBBLE=$RUNNER_TEMP/pebble/pebble" >> "$GITHUB_ENV"
+          echo "KH_CHALLTESTSRV=$RUNNER_TEMP/pebble/pebble-challtestsrv" >> "$GITHUB_ENV"
+      - name: generated Caddy configuration against real Caddy and Pebble (AT-F11-01..03, AT-F12-01..03)
         run: scripts/go-test-ci.sh -count=1 -race -tags proxy_integration -v ./internal/agent/network/
+      - name: DNS-01 through the Core against Pebble (AT-F12-01)
+        run: scripts/go-test-ci.sh -count=1 -race -tags acme_integration -v -run '^TestDNS01AgainstPebble$' ./internal/core/app/
 
   storage:
     name: storage and file services as root (loop device, systemd)

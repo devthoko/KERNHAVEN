@@ -2,17 +2,20 @@
 package app
 
 import (
+	"crypto/x509"
 	"database/sql"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
 	"github.com/devthoko/KERNHAVEN/internal/core/apps"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/devthoko/KERNHAVEN/internal/core/certs"
 	"github.com/devthoko/KERNHAVEN/internal/core/containers"
 	khfiles "github.com/devthoko/KERNHAVEN/internal/core/files"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
@@ -38,6 +41,7 @@ type App struct {
 	Stacks   *stacks.Service
 	Apps     *apps.Service
 	Network  *network.Service
+	Certs    *certs.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -52,6 +56,8 @@ type Options struct {
 	UI fs.FS
 	// Fetcher overrides the Compose URL fetcher (tests).
 	Fetcher *stacks.Fetcher
+	// TLS overrides the DNS-01 issuer, DNS providers and trusted roots (tests).
+	TLS certs.Config
 }
 
 // New builds the Core from an open database and validated config.
@@ -128,6 +134,23 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}
 	netSvc := network.New(db, proxyClient, auditLog, ids, cfg.Server.Origin(), cfg.Server.Listen, log, now)
 	netSvc.Register(rt)
+	tlsCfg := opts.TLS
+	tlsCfg.Propagation = cfg.TLS.DNSPropagation.Duration
+	if cfg.TLS.ACMEDirectoryForTests != "" {
+		tlsCfg.ACMEDirectory = cfg.TLS.ACMEDirectoryForTests
+	}
+	if p := cfg.TLS.ACMERootForTests; p != "" {
+		pem, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("tls.acme_ca_root_for_tests: %w", err)
+		}
+		tlsCfg.ACMERoots = x509.NewCertPool()
+		if !tlsCfg.ACMERoots.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("tls.acme_ca_root_for_tests: no PEM certificate in %s", p)
+		}
+	}
+	certSvc := certs.New(db, box, netSvc, auditLog, jobSvc, runner.Wake, tlsCfg, log, now)
+	certSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
@@ -147,6 +170,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Stacks:   stackSvc,
 		Apps:     appSvc,
 		Network:  netSvc,
+		Certs:    certSvc,
 		Runner:   runner,
 		now:      now,
 	}

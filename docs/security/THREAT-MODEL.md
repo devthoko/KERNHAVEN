@@ -67,6 +67,9 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-12 | S | Spoofed identity header to an app behind the sign-in gate | `X-Kernhaven-User` deleted on every route before anything else; set only from the Core's forward-auth answer | M12 | Mitigated (real-Caddy test incl. mutation check) |
 | TH-13 | S/T | Open redirect or code theft in the sign-in gate | Return address bound to the route's host, port and prefix; one-time codes (60 s, hashed, bound to session and route); callback only on the route's host; internal endpoints 404 on the Kernhaven host | M12 | Mitigated (`TestProxyGate` incl. mutation checks) |
 | TH-14 | I | A route exposes a loopback-only service by accident, or an app stays reachable around the proxy | Ports below 1024, the Core's and Caddy's ports refused; LAN-only default for app routes; every change audited and behind step-up; direct app ports remain open (documented) | M12 | Partially mitigated |
+| TH-15 | I | Theft of private keys, the ACME account key or DNS credentials | Encrypted with the Core's key (ADR-0019); never in API responses or logs; keys reach only the proxy service, only for Caddy | M13 | Mitigated (`TestTLS`, mutation check) |
+| TH-16 | T | A wrong, broken or foreign certificate is served | Validated in the Core (chain, key, validity, purpose, signatures) and again in the proxy service (parse, key, host); one certificate per host selected by SNI | M13 | Mitigated (`TestValidateUpload`, `TestBuildTLS`, real Caddy) |
+| TH-17 | S/T | The Core points Caddy at a foreign ACME CA or obtains certificates for foreign names | CA chosen by the proxy service from Let's Encrypt only; ACME only for hosts with routes; DNS-01 only in zones the token can edit; every issuance audited | M13 | Mitigated |
 
 ### TB-3 — Core ↔ Agent
 
@@ -131,3 +134,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-28 | M10 | TH-31 mitigated for files (os.Root in a separate root file service); TH-04 mitigated for file content; stream endpoint in the agent protocol (ADR-0023) |
 | 2026-10-28 | M11 | TH-01 mitigated (MFA, passkeys, policy); TH-02 extended by step-up; AR-02 rationale corrected (no step-up-bound agent grants yet) |
 | 2026-10-28 | M12 | New TH-11…TH-14 (reverse proxy, sign-in gate); TH-11–TH-13 mitigated, TH-14 partially; fourth privilege domain: proxy service, the only client of Caddy's admin socket (ADR-0025) |
+| 2026-10-28 | M13 | New TH-15…TH-17 (certificates); TB-6 now includes Let's Encrypt and the Cloudflare API, both fixed endpoints (ADR-0026) |

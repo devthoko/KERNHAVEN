@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -48,7 +49,11 @@ type Config struct {
 	CoreAddress      string `toml:"core_address"`
 	HTTPPort         int    `toml:"http_port"`
 	HTTPSPort        int    `toml:"https_port"`
-	Log              struct {
+	// ACMECA and ACMECARoot replace Let's Encrypt with a test CA (Pebble).
+	// Only for tests; production uses the fixed directories (ADR-0026).
+	ACMECA     string `toml:"acme_ca_for_tests"`
+	ACMECARoot string `toml:"acme_ca_root_for_tests"`
+	Log        struct {
 		Level string `toml:"level"`
 	} `toml:"log"`
 
@@ -57,7 +62,8 @@ type Config struct {
 
 // ProxySettings returns the proxy role's settings.
 func (c Config) ProxySettings() proxy.Settings {
-	return proxy.Settings{AdminSocket: c.CaddyAdminSocket, CoreAddress: c.CoreAddress, HTTPPort: c.HTTPPort, HTTPSPort: c.HTTPSPort}
+	return proxy.Settings{AdminSocket: c.CaddyAdminSocket, CoreAddress: c.CoreAddress, HTTPPort: c.HTTPPort, HTTPSPort: c.HTTPSPort,
+		ACMECA: c.ACMECA, ACMECARoot: c.ACMECARoot}
 }
 
 // PublicKey returns the loaded grant verification key.
@@ -145,6 +151,12 @@ func validProxy(cfg Config) []error {
 	}
 	if cfg.HTTPPort == cfg.HTTPSPort {
 		errs = append(errs, errors.New("http_port and https_port must differ"))
+	}
+	if u, err := url.Parse(cfg.ACMECA); cfg.ACMECA != "" && (err != nil || u.Scheme != "https" || u.Host == "") {
+		errs = append(errs, fmt.Errorf("acme_ca_for_tests: %q must be an https URL", cfg.ACMECA))
+	}
+	if p := cfg.ACMECARoot; p != "" && (!filepath.IsAbs(p) || filepath.Clean(p) != p) {
+		errs = append(errs, fmt.Errorf("acme_ca_root_for_tests: %q must be an absolute, clean path", p))
 	}
 	return errs
 }

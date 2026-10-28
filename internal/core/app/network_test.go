@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net"
@@ -23,6 +24,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/proxy"
+	"github.com/devthoko/KERNHAVEN/internal/proxy/certtest"
 )
 
 // fakeCaddy stands in for Caddy's admin API: it keeps the last loaded
@@ -33,6 +35,7 @@ type fakeCaddy struct {
 	config []byte
 	loads  int
 	fail   string
+	root   string // PEM of the local CA's root (M13)
 }
 
 func (f *fakeCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +50,9 @@ func (f *fakeCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.config, _ = io.ReadAll(r.Body)
+	case r.URL.Path == "/pki/ca/local":
+		b, _ := json.Marshal(map[string]string{"id": "local", "root_certificate": f.root})
+		_, _ = w.Write(b)
 	case r.URL.Path == "/config/":
 		if f.config == nil {
 			_, _ = io.WriteString(w, "null")
@@ -85,15 +91,24 @@ func serveAgent(t *testing.T, h *harness, sock string, d agent.Docker, opts agen
 // of a fake Caddy; docker additionally starts the Docker agent.
 func withProxy(t *testing.T, docker bool) (*harness, *fakeCaddy, *memDocker) {
 	t.Helper()
+	return withProxyOpts(t, docker, nil, nil)
+}
+
+// withProxyOpts also adjusts the configuration and options (M13).
+func withProxyOpts(t *testing.T, docker bool, adjust func(*config.Config), adjustOpts func(*Options)) (*harness, *fakeCaddy, *memDocker) {
+	t.Helper()
 	dir := t.TempDir()
 	proxySock, dockerSock, adminSock := filepath.Join(dir, "proxy.sock"), filepath.Join(dir, "agent.sock"), filepath.Join(dir, "admin.sock")
-	h := newHarnessWith(t, func(c *config.Config) {
+	h := newHarnessFull(t, func(c *config.Config) {
 		c.Agent.ProxySocket = proxySock
 		if docker {
 			c.Agent.Socket = dockerSock
 		}
-	})
-	fake := &fakeCaddy{}
+		if adjust != nil {
+			adjust(c)
+		}
+	}, adjustOpts)
+	fake := &fakeCaddy{root: certtest.NewCA(t, "Caddy Local Authority - Test Root", nil).PEM}
 	ln, err := net.Listen("unix", adminSock)
 	if err != nil {
 		t.Fatal(err)

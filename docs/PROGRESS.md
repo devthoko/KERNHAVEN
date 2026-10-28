@@ -6,8 +6,8 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 and M6–M12 are implemented on
-stacked branches up to `m12-network`. TLS certificate management, backup and installer
+green CI on stacked branches awaiting owner review; M4 and M6–M13 are implemented on
+stacked branches up to `m13-tls`. Monitoring, backup and installer
 functionality do not exist yet.
 
 | MS | Name | State | Evidence |
@@ -25,7 +25,8 @@ functionality do not exist yet.
 | M10 | File manager (F07) | Done on branch `m10-files` (stacked on M9), CI 40701148605, merge pending owner review | [M10 evidence](milestones/M10-files.md#verification-evidence-2026-10-28-branch-m10-files) |
 | M11 | Passkeys, MFA, step-up (F09-02..05) | Done on branch `m11-mfa` (stacked on M10), CI 40719877647, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
 | M12 | Network and reverse proxy (F11, completes AT-F05-01) | Done on branch `m12-network` (stacked on M11), CI 40761331938, merge pending owner review | [M12 evidence](milestones/M12-network.md#verification-evidence-2026-10-28-branch-m12-network) |
-| M6b, M13–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M13 | TLS certificates (F12-01..03) | Implemented on branch `m13-tls` (stacked on M12), CI pending, merge pending owner review | [M13 evidence](milestones/M13-tls.md#verification-evidence-2026-10-28-branch-m13-tls) |
+| M6b, M14–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -41,7 +42,7 @@ functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa` and `m12-network`. Next: M13 TLS certificates (ACME, internal CA root download), or M6b streaming.
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa`, `m12-network` and `m13-tls`. Next: M14 monitoring, or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

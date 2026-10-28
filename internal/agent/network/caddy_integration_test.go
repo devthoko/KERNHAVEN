@@ -25,6 +25,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/proxy"
+	"github.com/devthoko/KERNHAVEN/internal/proxy/certtest"
 )
 
 func freePort(t *testing.T) int {
@@ -275,5 +276,99 @@ func TestCaddyRoutes(t *testing.T) {
 	}
 	if r := get(t, c, base("app.test")+"/x"); r.status != 200 {
 		t.Errorf("after restart: %+v", r)
+	}
+}
+
+// served returns the leaf Caddy presents for host, verified against roots.
+func served(t *testing.T, port int, host string, roots *x509.CertPool) (*x509.Certificate, error) {
+	t.Helper()
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}, "tcp", fmt.Sprintf("127.0.0.1:%d", port), &tls.Config{ServerName: host, RootCAs: roots})
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	return conn.ConnectionState().PeerCertificates[0], nil
+}
+
+func waitServed(t *testing.T, port int, host string, roots *x509.CertPool) *x509.Certificate {
+	t.Helper()
+	var err error
+	for i := 0; i < 300; i++ {
+		var c *x509.Certificate
+		if c, err = served(t, port, host, roots); err == nil {
+			return c
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("%s: %v", host, err)
+	return nil
+}
+
+// AT-F12-01..03 at the Caddy level: an ACME certificate through HTTP-01,
+// exactly the uploaded certificate for its host, the local CA's root.
+func TestCaddyTLS(t *testing.T) {
+	dir := t.TempDir()
+	t.Cleanup(func() {
+		if t.Failed() {
+			for _, f := range []string{"caddy.log", "pebble.log", "pebble-challtestsrv.log"} {
+				b, _ := os.ReadFile(filepath.Join(dir, f))
+				if len(b) > 6000 {
+					b = b[len(b)-6000:]
+				}
+				t.Logf("--- %s\n%s", f, b)
+			}
+		}
+	})
+	httpsPort, httpPort := freePort(t), freePort(t)
+	pb := certtest.StartPebble(t, dir, httpPort, httpsPort)
+	directory, tlsRoot, issuing := pb.Directory, pb.TLSRootFile, pb.Issuing
+	startCaddy(t, dir)
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "backend") }))
+	defer backend.Close()
+	port := backend.Listener.Addr().(*net.TCPAddr).Port
+
+	own := certtest.NewCA(t, "Own Root", nil)
+	cert, key := own.Issue(t, certtest.Leaf{Names: []string{"custom.test"}})
+	s := New(proxy.Settings{AdminSocket: filepath.Join(dir, "admin.sock"), CoreAddress: "127.0.0.1:9", HTTPPort: httpPort, HTTPSPort: httpsPort,
+		ACMECA: directory, ACMECARoot: tlsRoot})
+	ctx := context.Background()
+	_, err := s.Apply(ctx, agentproto.ProxyApply{KernhavenHost: "kh.test",
+		Routes:       []agentproto.ProxyRoute{{ID: 1, Host: "acme.test", UpstreamPort: port}, {ID: 2, Host: "custom.test", UpstreamPort: port}},
+		ACME:         &agentproto.ACMESettings{Email: "admin@example.org", CA: agentproto.ACMEStaging},
+		Certificates: []agentproto.TLSCertificate{{ID: 3, CertificatePEM: cert + own.PEM, KeyPEM: key}},
+		TLSHosts: []agentproto.TLSHost{
+			{Host: "acme.test", Mode: agentproto.TLSACME},
+			{Host: "custom.test", Mode: agentproto.TLSLoaded, CertificateID: 3},
+		}})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	// AT-F12-01: Caddy obtained acme.test from the ACME CA through HTTP-01/TLS-ALPN-01.
+	leaf := waitServed(t, httpsPort, "acme.test", issuing)
+	if !strings.Contains(leaf.Issuer.CommonName, "Pebble") {
+		t.Fatalf("acme.test issued by %s", leaf.Issuer)
+	}
+	// AT-F12-03: exactly the uploaded certificate for its host.
+	ownPool := x509.NewCertPool()
+	ownPool.AddCert(own.Cert)
+	leaf = waitServed(t, httpsPort, "custom.test", ownPool)
+	if leaf.Subject.CommonName != "leaf" || leaf.Issuer.CommonName != "Own Root" {
+		t.Fatalf("custom.test served %s from %s", leaf.Subject, leaf.Issuer)
+	}
+	// AT-F12-02: the Kernhaven host uses the local CA, whose root the proxy service hands out.
+	ca, err := s.CA(ctx)
+	if err != nil || len(ca.SHA256) != 64 {
+		t.Fatalf("ca: %+v %v", ca, err)
+	}
+	local := x509.NewCertPool()
+	if !local.AppendCertsFromPEM([]byte(ca.RootPEM)) {
+		t.Fatal("root not PEM")
+	}
+	if leaf = waitServed(t, httpsPort, "kh.test", local); !strings.Contains(leaf.Issuer.CommonName, "Caddy Local Authority") {
+		t.Fatalf("kh.test issued by %s", leaf.Issuer)
+	}
+	if _, err := served(t, httpsPort, "custom.test", local); err == nil {
+		t.Fatal("custom.test served with a local CA certificate")
 	}
 }

@@ -21,7 +21,9 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
+	"github.com/devthoko/KERNHAVEN/internal/agent/network"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
+	"github.com/devthoko/KERNHAVEN/internal/proxy"
 )
 
 // fakeDocker records calls; tests that expect rejection before Docker set
@@ -110,10 +112,15 @@ type env struct {
 
 func start(t *testing.T, allowed []uint32) *env {
 	t.Helper()
+	return startOpts(t, allowed, Options{})
+}
+
+func startOpts(t *testing.T, allowed []uint32, o Options) *env {
+	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	fd := &fakeDocker{t: t}
 	logs := &syncBuffer{}
-	srv := NewServer(slog.New(slog.NewJSONHandler(logs, nil)), pub, allowed, fd, Options{})
+	srv := NewServer(slog.New(slog.NewJSONHandler(logs, nil)), pub, allowed, fd, o)
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := Listen(sock)
 	if err != nil {
@@ -206,7 +213,7 @@ func TestStorageRoleAllowList(t *testing.T) {
 		t.Fatalf("stream operations = %v", got)
 	}
 	// M12: the proxy role is a fourth privilege domain (Caddy and the network overview).
-	want = []string{"agent.info", "network.overview", "proxy.apply", "proxy.status"}
+	want = []string{"agent.info", "network.overview", "proxy.apply", "proxy.ca", "proxy.status"}
 	if got := ProxyOperationNames(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("proxy operations = %v\nwant %v", got, want)
 	}
@@ -323,6 +330,21 @@ func TestInvalidParamsRejected(t *testing.T) {
 	}
 	if r, _ := e.post("docker.info", []byte(`{"grant":"x","params":{},"extra":1}`)); r.status != 400 {
 		t.Errorf("unknown envelope field: %d", r.status)
+	}
+	// M13: only proxy.apply on the proxy role may carry certificates (2 MiB).
+	big := bytes.Repeat([]byte("a"), 512<<10)
+	if r, _ := e.post(agentproto.OpProxyApply, big); r.status != 413 {
+		t.Errorf("proxy.apply on the docker role: %d", r.status)
+	}
+	p := startOpts(t, self(), Options{Proxy: network.New(proxy.Settings{})})
+	if r, _ := p.post(agentproto.OpProxyApply, big); r.status != 400 {
+		t.Errorf("512 KiB proxy.apply on the proxy role: %d (want the envelope error, not 413)", r.status)
+	}
+	if r, _ := p.post(agentproto.OpProxyApply, bytes.Repeat([]byte("a"), agentproto.MaxApplyBytes+1)); r.status != 413 {
+		t.Errorf("oversized proxy.apply: %d", r.status)
+	}
+	if r, _ := p.post(agentproto.OpProxyStatus, big); r.status != 413 {
+		t.Errorf("other proxy operation: %d", r.status)
 	}
 }
 

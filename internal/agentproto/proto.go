@@ -63,6 +63,7 @@ const (
 	OpProxyApply      = "proxy.apply"
 	OpProxyStatus     = "proxy.status"
 	OpNetworkOverview = "network.overview"
+	OpProxyCA         = "proxy.ca"
 	// Stream operations (POST /v1/stream/{op}, M10).
 	OpFilesRead         = "files.read"
 	OpFilesUploadAppend = "files.upload.append"
@@ -73,6 +74,8 @@ const (
 	MaxGrantLifetime = 60 * time.Second
 	ClockSkew        = 5 * time.Second
 	MaxRequestBytes  = 64 << 10
+	// MaxApplyBytes bounds proxy.apply, which carries certificates (M13).
+	MaxApplyBytes = 2 << 20
 )
 
 // Grant authorizes one operation with exactly one parameter document.
@@ -116,6 +119,14 @@ const (
 	// CodeProxyUnavailable: Caddy's admin API cannot be reached.
 	CodeProxyUnavailable = "proxy_unavailable"
 )
+
+// RequestLimit is the request size limit of op on a server that offers it.
+func RequestLimit(op string) int64 {
+	if op == OpProxyApply {
+		return MaxApplyBytes
+	}
+	return MaxRequestBytes
+}
 
 // ParamsHash is the hex SHA-256 of the exact parameter bytes sent.
 func ParamsHash(params []byte) string {

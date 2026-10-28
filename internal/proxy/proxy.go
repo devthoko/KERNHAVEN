@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/mail"
 	"net/netip"
 	"regexp"
 	"sort"
@@ -165,6 +166,30 @@ type Settings struct {
 	CoreAddress string // loopback host:port of the Core
 	HTTPPort    int
 	HTTPSPort   int
+	// ACMECA replaces Let's Encrypt's directories and ACMECARoot is a PEM
+	// file Caddy trusts for it — only for tests against Pebble (M13).
+	ACMECA     string
+	ACMECARoot string
+}
+
+// ACMEDirectories are the CAs the Core may choose (ADR-0026).
+var ACMEDirectories = map[string]string{
+	agentproto.ACMEProduction: "https://acme-v02.api.letsencrypt.org/directory",
+	agentproto.ACMEStaging:    "https://acme-staging-v02.api.letsencrypt.org/directory",
+}
+
+// ACMEDirectory returns the directory URL for ca.
+func (s Settings) ACMEDirectory(ca string) string {
+	if s.ACMECA != "" {
+		return s.ACMECA
+	}
+	return ACMEDirectories[ca]
+}
+
+// ValidEmail is a plain check of an ACME contact address.
+func ValidEmail(e string) bool {
+	a, err := mail.ParseAddress(e)
+	return err == nil && a.Address == e && a.Name == "" && len(e) <= 254 && strings.Count(e, "@") == 1
 }
 
 // CorePort returns the port of the Core address.
@@ -176,6 +201,86 @@ func (s Settings) CorePort() int {
 
 // Validate checks a complete route set against the settings.
 func Validate(a agentproto.ProxyApply, s Settings) error {
+	_, err := validate(a, s)
+	return err
+}
+
+func validate(a agentproto.ProxyApply, s Settings) (map[int64]KeyPair, error) {
+	if err := validateRoutes(a, s); err != nil {
+		return nil, err
+	}
+	return validateTLS(a)
+}
+
+// validateTLS checks the TLS part (M13): known hosts, one entry per host,
+// ACME only for public DNS names, certificates that parse, match their key
+// and cover their host.
+func validateTLS(a agentproto.ProxyApply) (map[int64]KeyPair, error) {
+	hosts := map[string]bool{a.KernhavenHost: true}
+	lan := map[string]bool{}
+	for _, r := range a.Routes {
+		hosts[r.Host] = true
+		lan[r.Host] = lan[r.Host] || r.LANOnly
+	}
+	if len(a.Certificates) > MaxCertificates {
+		return nil, invalid("at most %d certificates", MaxCertificates)
+	}
+	certs := map[int64]KeyPair{}
+	for _, c := range a.Certificates {
+		if c.ID <= 0 || certs[c.ID].Leaf != nil {
+			return nil, invalid("certificate ids must be positive and unique")
+		}
+		kp, err := ParseKeyPair(c.CertificatePEM, c.KeyPEM)
+		if err != nil {
+			return nil, invalid("certificate %d: %v", c.ID, err)
+		}
+		certs[c.ID] = kp
+	}
+	if a.ACME != nil {
+		if !ValidEmail(a.ACME.Email) {
+			return nil, invalid("ACME e-mail %q is not valid", a.ACME.Email)
+		}
+		if _, ok := ACMEDirectories[a.ACME.CA]; !ok {
+			return nil, invalid("ACME CA must be production or staging")
+		}
+	}
+	seen := map[string]bool{}
+	for _, t := range a.TLSHosts {
+		if !hosts[t.Host] {
+			return nil, invalid("TLS settings for %q, which has no route", t.Host)
+		}
+		if seen[t.Host] {
+			return nil, invalid("duplicate TLS settings for %q", t.Host)
+		}
+		seen[t.Host] = true
+		switch t.Mode {
+		case agentproto.TLSInternal:
+		case agentproto.TLSACME:
+			if _, err := netip.ParseAddr(t.Host); err == nil || t.Host == "localhost" || strings.HasSuffix(t.Host, ".localhost") {
+				return nil, invalid("%s: ACME needs a public host name", t.Host)
+			}
+			if lan[t.Host] {
+				return nil, invalid("%s has a LAN-only route; HTTP-01 needs the host to be reachable from the internet (use DNS-01 or the internal CA)", t.Host)
+			}
+			if a.ACME == nil {
+				return nil, invalid("%s: ACME settings are missing", t.Host)
+			}
+		case agentproto.TLSLoaded:
+			kp, ok := certs[t.CertificateID]
+			if !ok {
+				return nil, invalid("%s: certificate %d is missing", t.Host, t.CertificateID)
+			}
+			if !Covers(kp.Leaf, t.Host) {
+				return nil, invalid("%s: certificate %d does not cover this host", t.Host, t.CertificateID)
+			}
+		default:
+			return nil, invalid("%s: unknown TLS mode %q", t.Host, t.Mode)
+		}
+	}
+	return certs, nil
+}
+
+func validateRoutes(a agentproto.ProxyApply, s Settings) error {
 	if err := ValidKernhavenHost(a.KernhavenHost); err != nil {
 		return invalid("kernhaven host: %v", err)
 	}
@@ -208,7 +313,7 @@ type obj = map[string]any
 
 // Build validates a and returns the complete Caddy JSON configuration.
 func Build(a agentproto.ProxyApply, s Settings) ([]byte, error) {
-	if err := Validate(a, s); err != nil {
+	if _, err := validate(a, s); err != nil {
 		return nil, err
 	}
 	core := []any{obj{"dial": s.CoreAddress}}
@@ -232,6 +337,45 @@ func Build(a agentproto.ProxyApply, s Settings) ([]byte, error) {
 		routes = append(routes, route(r, core))
 	}
 	routes = append(routes, obj{"handle": []any{notFound()}})
+	server := obj{"listen": []any{":" + strconv.Itoa(s.HTTPSPort)}, "routes": routes}
+	tlsApp := obj{}
+	var acmeHosts, certHosts, connPolicies, loaded []any
+	used := map[int64]bool{}
+	for _, t := range sortedTLS(a.TLSHosts) {
+		switch t.Mode {
+		case agentproto.TLSACME:
+			acmeHosts = append(acmeHosts, t.Host)
+		case agentproto.TLSLoaded:
+			certHosts = append(certHosts, t.Host)
+			tag := "kh-cert-" + strconv.FormatInt(t.CertificateID, 10)
+			// Exactly this certificate for this host, whatever else is cached.
+			connPolicies = append(connPolicies, obj{"match": obj{"sni": []any{t.Host}}, "certificate_selection": obj{"any_tag": []any{tag}}})
+			if !used[t.CertificateID] {
+				used[t.CertificateID] = true
+				for _, c := range a.Certificates {
+					if c.ID == t.CertificateID {
+						loaded = append(loaded, obj{"certificate": c.CertificatePEM, "key": c.KeyPEM, "tags": []any{tag}})
+					}
+				}
+			}
+		}
+	}
+	if len(certHosts) > 0 {
+		server["automatic_https"] = obj{"skip_certificates": certHosts}
+		server["tls_connection_policies"] = append(connPolicies, obj{})
+		tlsApp["certificates"] = obj{"load_pem": loaded}
+	}
+	// The local CA for every host without another issuer; never installed
+	// into the host's trust store.
+	policies := []any{obj{"issuers": []any{obj{"module": "internal"}}}}
+	if len(acmeHosts) > 0 {
+		issuer := obj{"module": "acme", "ca": s.ACMEDirectory(a.ACME.CA), "email": a.ACME.Email}
+		if s.ACMECARoot != "" {
+			issuer["trusted_roots_pem_files"] = []any{s.ACMECARoot}
+		}
+		policies = append([]any{obj{"subjects": acmeHosts, "issuers": []any{issuer}}}, policies...)
+	}
+	tlsApp["automation"] = obj{"policies": policies}
 	cfg := obj{
 		// The admin API stays on the unix socket whatever is loaded.
 		"admin": obj{"listen": "unix/" + s.AdminSocket, "origins": []any{AdminHost}, "config": obj{"persist": true}},
@@ -239,14 +383,19 @@ func Build(a agentproto.ProxyApply, s Settings) ([]byte, error) {
 			"http": obj{
 				"http_port":  s.HTTPPort,
 				"https_port": s.HTTPSPort,
-				"servers":    obj{"kernhaven": obj{"listen": []any{":" + strconv.Itoa(s.HTTPSPort)}, "routes": routes}},
+				"servers":    obj{"kernhaven": server},
 			},
-			// Internal CA only (ACME is M13), never installed into the host's trust store.
-			"tls": obj{"automation": obj{"policies": []any{obj{"issuers": []any{obj{"module": "internal"}}}}}},
+			"tls": tlsApp,
 			"pki": obj{"certificate_authorities": obj{"local": obj{"install_trust": false}}},
 		},
 	}
 	return json.Marshal(cfg)
+}
+
+func sortedTLS(in []agentproto.TLSHost) []agentproto.TLSHost {
+	out := append([]agentproto.TLSHost(nil), in...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Host < out[j].Host })
+	return out
 }
 
 func notFound() obj {

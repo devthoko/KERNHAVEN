@@ -7,8 +7,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -143,6 +146,33 @@ func (s *Service) Status(ctx context.Context) (agentproto.ProxyStatus, error) {
 		}
 	}
 	return st, nil
+}
+
+// CA returns the root certificate of Caddy's local CA (AT-F12-02).
+func (s *Service) CA(ctx context.Context) (agentproto.ProxyCA, error) {
+	code, body, err := s.do(ctx, http.MethodGet, "/pki/ca/local", nil)
+	if err != nil {
+		return agentproto.ProxyCA{}, err
+	}
+	if code != http.StatusOK {
+		return agentproto.ProxyCA{}, &RejectedError{Msg: caddyMessage(body, code)}
+	}
+	var ca struct {
+		Root string `json:"root_certificate"`
+	}
+	if err := json.Unmarshal(body, &ca); err != nil {
+		return agentproto.ProxyCA{}, err
+	}
+	b, _ := pem.Decode([]byte(ca.Root))
+	if b == nil || b.Type != "CERTIFICATE" {
+		return agentproto.ProxyCA{}, &RejectedError{Msg: "caddy returned no root certificate"}
+	}
+	c, err := x509.ParseCertificate(b.Bytes)
+	if err != nil || !c.IsCA {
+		return agentproto.ProxyCA{}, &RejectedError{Msg: "caddy returned an invalid root certificate"}
+	}
+	sum := sha256.Sum256(c.Raw)
+	return agentproto.ProxyCA{RootPEM: string(pem.EncodeToMemory(b)), SHA256: hex.EncodeToString(sum[:])}, nil
 }
 
 // Overview lists interfaces and listening sockets (AT-F11-04).

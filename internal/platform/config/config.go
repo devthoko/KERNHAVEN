@@ -40,6 +40,17 @@ type Config struct {
 	Agent      Agent      `toml:"agent"`
 	Containers Containers `toml:"containers"`
 	Files      Files      `toml:"files"`
+	TLS        TLS        `toml:"tls"`
+}
+
+// TLS configures certificates (M13).
+type TLS struct {
+	// DNSPropagation is the wait after creating a DNS-01 TXT record (0..10m).
+	DNSPropagation Duration `toml:"dns_propagation"`
+	// ACMEDirectoryForTests and ACMERootForTests replace Let's Encrypt with a
+	// test CA (Pebble) and a PEM file of roots to trust for it.
+	ACMEDirectoryForTests string `toml:"acme_directory_for_tests"`
+	ACMERootForTests      string `toml:"acme_ca_root_for_tests"`
 }
 
 // Files configures the file manager (M10).
@@ -131,6 +142,7 @@ func Default() Config {
 		Storage: Storage{DataDir: "/var/lib/kernhaven"},
 		Log:     Log{Level: "info"},
 		Files:   Files{MaxUploadBytes: 20 << 30},
+		TLS:     TLS{DNSPropagation: Duration{time.Minute}},
 		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock", FilesSocket: "/run/kernhaven-files/files.sock", ProxySocket: "/run/kernhaven-proxy/proxy.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
@@ -183,6 +195,15 @@ func (c Config) Validate() error {
 	}
 	if s := c.Agent.Socket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.socket: %q must be an absolute, clean path or empty", s))
+	}
+	if d := c.TLS.DNSPropagation.Duration; d < 0 || d > 10*time.Minute {
+		errs = append(errs, fmt.Errorf("tls.dns_propagation: %s is not within 0s..10m", d))
+	}
+	if u, err := url.Parse(c.TLS.ACMEDirectoryForTests); c.TLS.ACMEDirectoryForTests != "" && (err != nil || u.Scheme != "https" || u.Host == "") {
+		errs = append(errs, fmt.Errorf("tls.acme_directory_for_tests: %q must be an https URL", c.TLS.ACMEDirectoryForTests))
+	}
+	if p := c.TLS.ACMERootForTests; p != "" && (!filepath.IsAbs(p) || filepath.Clean(p) != p) {
+		errs = append(errs, fmt.Errorf("tls.acme_ca_root_for_tests: %q must be an absolute, clean path", p))
 	}
 	if n := c.Files.MaxUploadBytes; n < 1 || n > 1<<42 {
 		errs = append(errs, fmt.Errorf("files.max_upload_bytes: %d is outside 1..%d", n, int64(1)<<42))

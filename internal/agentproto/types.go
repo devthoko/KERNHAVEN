@@ -532,11 +532,54 @@ type ProxyRoute struct {
 	AllowCIDRs   []string `json:"allow_cidrs,omitempty"`
 }
 
-// ProxyApply replaces the complete set of routes. KernhavenHost is the host
-// of the Core's public origin; it is always proxied to the Core.
+// ProxyApply replaces the complete set of routes and their TLS settings.
+// KernhavenHost is the host of the Core's public origin; it is always
+// proxied to the Core. Hosts without a TLSHost entry use the internal CA.
 type ProxyApply struct {
-	KernhavenHost string       `json:"kernhaven_host"`
-	Routes        []ProxyRoute `json:"routes"`
+	KernhavenHost string           `json:"kernhaven_host"`
+	Routes        []ProxyRoute     `json:"routes"`
+	TLSHosts      []TLSHost        `json:"tls_hosts,omitempty"`
+	Certificates  []TLSCertificate `json:"certificates,omitempty"`
+	ACME          *ACMESettings    `json:"acme,omitempty"`
+}
+
+// TLS modes of a host in the proxy configuration (M13).
+const (
+	TLSInternal = "internal"    // Caddy's local CA
+	TLSACME     = "acme"        // Caddy's ACME issuer (HTTP-01, TLS-ALPN-01)
+	TLSLoaded   = "certificate" // a certificate from Certificates (uploaded or DNS-01)
+)
+
+// TLSHost selects how a host gets its certificate.
+type TLSHost struct {
+	Host          string `json:"host"`
+	Mode          string `json:"mode"`
+	CertificateID int64  `json:"certificate_id,omitempty"`
+}
+
+// TLSCertificate is a certificate chain with its unencrypted key (PEM).
+type TLSCertificate struct {
+	ID             int64  `json:"id"`
+	CertificatePEM string `json:"certificate_pem"`
+	KeyPEM         string `json:"key_pem"`
+}
+
+// ACME CAs the Core may choose; the proxy service maps them to directories.
+const (
+	ACMEProduction = "production"
+	ACMEStaging    = "staging"
+)
+
+// ACMESettings configure Caddy's ACME issuer.
+type ACMESettings struct {
+	Email string `json:"email"`
+	CA    string `json:"ca"`
+}
+
+// ProxyCA is the root certificate of Caddy's local CA.
+type ProxyCA struct {
+	RootPEM string `json:"root_pem"`
+	SHA256  string `json:"sha256"`
 }
 
 // ProxyApplied reports a successful load.

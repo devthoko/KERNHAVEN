@@ -161,10 +161,10 @@ See `api/openapi/v1.yaml` (tag `network`).
   not close the direct port: LAN-only and Kernhaven sign-in protect only the
   address through Caddy. The UI says so; binding app ports to 127.0.0.1 is a
   follow-up.
-- Certificates come from Caddy's internal CA; browsers warn until its root is
-  trusted. ACME, the root download and custom certificates are M13. After a
-  load Caddy issues certificates in the background, so the first request to
-  a new host can fail for a moment.
+- In M12 certificates come from Caddy's internal CA; ACME, the root download
+  and custom certificates followed in M13. After a load Caddy issues
+  certificates in the background, so the first request to a new host can
+  fail for a moment.
 - Caddy enables HTTP/3 on the HTTPS port (UDP); the unit allows it.
 - The SSO gate passes the user name only (`X-Kernhaven-User`); apps that
   should trust it must be configured to, and must not be reachable around

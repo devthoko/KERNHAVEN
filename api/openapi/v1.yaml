@@ -1160,6 +1160,76 @@ paths:
         "302": { description: Signed in }
         "400": { description: Invalid or expired code }
         "403": { description: Unknown route or host }
+  /tls:
+    get:
+      operationId: getTLS
+      x-permission: network.read
+      description: Hosts with their TLS mode, stored certificates (never keys), ACME settings (never credentials) and the internal root's SHA-256 fingerprint (M13).
+      responses:
+        "200": { description: TLS overview, content: { application/json: { schema: { $ref: "#/components/schemas/TLSOverview" } } } }
+  /tls/root.crt:
+    get:
+      operationId: downloadRootCA
+      x-permission: self.manage
+      description: The root certificate of Caddy's local CA as a PEM download (AT-F12-02).
+      responses:
+        "200": { description: PEM file, content: { application/x-pem-file: { schema: { type: string } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /tls/settings:
+    put:
+      operationId: setTLSSettings
+      x-permission: network.manage
+      description: ACME contact, Let's Encrypt production or staging, the subscriber agreement and the DNS provider. cloudflare_token is write-only (null keeps it). Applied to Caddy before it is stored. Needs a recent step-up.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TLSSettingsInput" } } } }
+      responses:
+        "200": { description: Settings, content: { application/json: { schema: { $ref: "#/components/schemas/TLSSettings" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /tls/hosts/{host}:
+    put:
+      operationId: setHostTLS
+      x-permission: network.manage
+      description: Sets a host's mode (internal, acme, dns, custom). acme needs a public host name without LAN-only routes; dns queues a DNS-01 job (job_id); custom needs a certificate that covers the host. Applied to Caddy before it is stored. Needs a recent step-up.
+      parameters: [{ name: host, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [mode], additionalProperties: false, properties: { mode: { type: string, enum: [internal, acme, dns, custom] }, certificate_id: { type: integer } } } } } }
+      responses:
+        "200": { description: Host, content: { application/json: { schema: { type: object, properties: { host: { $ref: "#/components/schemas/HostTLS" }, job_id: { type: integer } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /tls/hosts/{host}/renew:
+    post:
+      operationId: renewHostCertificate
+      x-permission: network.manage
+      description: Queues DNS-01 issuance for a dns host now. Needs a recent step-up.
+      parameters: [{ name: host, in: path, required: true, schema: { type: string } }]
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tls/certificates:
+    post:
+      operationId: uploadCertificate
+      x-permission: network.manage
+      description: Uploads a PEM chain (leaf first) and an unencrypted PEM key. Validated before it is stored (AT-F12-03) — key match and strength, validity for at least a day, server authentication, no SHA-1/MD5, a chain to a system root or to a root included in the upload. The key is stored encrypted and never returned. Needs a recent step-up.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [certificate_pem, key_pem], additionalProperties: false, properties: { certificate_pem: { type: string, maxLength: 65536 }, key_pem: { type: string, maxLength: 65536 } } } } } }
+      responses:
+        "201": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/StoredCertificate" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tls/certificates/{id}:
+    delete:
+      operationId: deleteCertificate
+      x-permission: network.manage
+      description: Deletes a certificate that no host uses (409 otherwise). Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -1495,6 +1565,55 @@ components:
         error: { type: string }
         error_at: { type: string, format: date-time }
         https_port: { type: integer }
+    TLSSettings:
+      type: object
+      properties:
+        email: { type: string }
+        ca: { type: string, enum: [production, staging] }
+        agreed_at: { type: string, format: date-time }
+        dns_provider: { type: string, enum: ["", cloudflare] }
+        dns_configured: { type: boolean }
+    TLSSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        email: { type: string }
+        ca: { type: string, enum: [production, staging] }
+        agree_tos: { type: boolean }
+        dns_provider: { type: string, enum: ["", cloudflare] }
+        cloudflare_token: { type: [string, "null"], description: write-only }
+    HostTLS:
+      type: object
+      properties:
+        host: { type: string }
+        kernhaven: { type: boolean }
+        lan_only: { type: boolean }
+        routes: { type: integer }
+        mode: { type: string, enum: [internal, acme, dns, custom] }
+        certificate_id: { type: integer }
+        effective: { type: string, description: what Caddy uses; a dns host uses the internal CA until its first certificate }
+        error: { type: string }
+        error_at: { type: string, format: date-time }
+    StoredCertificate:
+      type: object
+      properties:
+        id: { type: integer }
+        source: { type: string, enum: [upload, dns] }
+        names: { type: array, items: { type: string } }
+        issuer: { type: string }
+        not_before: { type: string, format: date-time }
+        not_after: { type: string, format: date-time }
+        sha256: { type: string }
+        hosts: { type: array, items: { type: string } }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+    TLSOverview:
+      type: object
+      properties:
+        hosts: { type: array, items: { $ref: "#/components/schemas/HostTLS" } }
+        certificates: { type: array, items: { $ref: "#/components/schemas/StoredCertificate" } }
+        settings: { $ref: "#/components/schemas/TLSSettings" }
+        root_sha256: { type: string }
     NetworkOverview:
       type: object
       properties:

@@ -20,5 +20,8 @@ func proxyOperations(s *network.Service) map[string]handler {
 		agentproto.OpNetworkOverview: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
 			return s.Overview(ctx)
 		}),
+		agentproto.OpProxyCA: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
+			return s.CA(ctx)
+		}),
 	}
 }

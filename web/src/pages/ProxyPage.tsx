@@ -78,7 +78,12 @@ function StatusCard({ st, manage, onApplied }: { st: ProxyState; manage: boolean
           </Alert>
         )}
         <p className="text-slate-600 dark:text-slate-400">
-          Caddy serves every route with HTTPS on port {st.https_port}, using its own certificate authority. Browsers warn until that authority is trusted.
+          Caddy serves every route with HTTPS on port {st.https_port}. Certificates come from Kernhaven&apos;s own certificate authority unless you choose another source
+          under{" "}
+          <Link to="/certificates" className={link}>
+            Certificates
+          </Link>
+          .
         </p>
       </div>
     </Card>

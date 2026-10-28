@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { createHmac, generateKeyPairSync, sign as cryptoSign } from "node:crypto";
+import { connect } from "node:tls";
 
 // One ordered journey through a fresh instance (setup → owner → viewer).
 // The owner signs in once and the session is reused: the login rate limit
@@ -478,7 +479,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -529,8 +530,9 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   // M9: viewers do not see disks.
   await expect(nav.getByRole("link", { name: "Storage" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Files" })).toHaveCount(0);
-  // M12: viewers do not see the reverse proxy.
+  // M12/M13: viewers do not see the reverse proxy or certificates.
   await expect(nav.getByRole("link", { name: "Reverse proxy" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Certificates" })).toHaveCount(0);
   // M8: viewers browse the store but cannot install or manage sources.
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
@@ -603,6 +605,67 @@ test("AT-F11-01..04, AT-F05-01: publish a route with Kernhaven sign-in through r
   );
   expect(after ?? "").not.toContain("hello from upstream");
   await app.close();
+});
+
+test("AT-F12-02, AT-F12-03: root download, upload and assign an own certificate", async () => {
+  test.skip(!proxy || !process.env.KH_E2E_CERT_DIR, "needs Caddy and openssl");
+  const dir = process.env.KH_E2E_CERT_DIR!;
+  // A route for the host first.
+  await page.goto("/proxy");
+  await page.getByRole("button", { name: "Add a route" }).click();
+  const routeDialog = page.getByRole("dialog", { name: "Add a route" });
+  await routeDialog.getByLabel("Host name").fill("custom.kh.test");
+  await routeDialog.getByLabel("Port on this server").fill("18490");
+  await routeDialog.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("custom.kh.test is published.")).toBeVisible();
+
+  await page.goto("/certificates");
+  await expect(page.getByRole("heading", { name: "Certificates", exact: true })).toBeVisible();
+  await expect(page.getByText(/Check the fingerprint on the device/)).toBeVisible();
+  const root = await page.request.get("/api/v1/tls/root.crt");
+  expect(root.status()).toBe(200);
+  expect(await root.text()).toContain("BEGIN CERTIFICATE");
+  await expectAccessible(page, "certificates");
+
+  await page.getByRole("button", { name: "Upload a certificate" }).click();
+  const up = page.getByRole("dialog", { name: "Upload a certificate" });
+  await up.getByLabel("Certificate file").setInputFiles(`${dir}/chain.pem`);
+  await up.getByLabel("Key file").setInputFiles(`${dir}/leaf.key`);
+  await expect(up.getByLabel(/Certificate chain/)).toHaveValue(/BEGIN CERTIFICATE/);
+  await expect(up.getByLabel(/Private key/)).toHaveValue(/PRIVATE KEY/);
+  await expectAccessible(page, "upload dialog");
+  await up.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText(/The certificate for custom.kh.test was stored/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Change custom.kh.test" }).click();
+  const hd = page.getByRole("dialog", { name: "Certificate for custom.kh.test" });
+  await hd.getByLabel(/Own certificate/).check();
+  await hd.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText("custom.kh.test uses Own certificate.")).toBeVisible();
+
+  // Caddy now presents exactly the uploaded certificate for this host.
+  const issuer = () =>
+    new Promise<string>((resolve, reject) => {
+      const s = connect({ host: "127.0.0.1", port: 18443, servername: "custom.kh.test", rejectUnauthorized: false }, () => {
+        const cn = s.getPeerCertificate().issuer.CN;
+        s.end();
+        resolve(Array.isArray(cn) ? cn.join(",") : (cn ?? ""));
+      });
+      s.on("error", reject);
+    });
+  await expect(async () => expect(await issuer()).toBe("Kernhaven E2E Own CA")).toPass({ timeout: 10_000 });
+
+  // Back to the internal CA; the certificate can then be deleted, and the route too.
+  await page.getByRole("button", { name: "Change custom.kh.test" }).click();
+  await hd.getByLabel(/Kernhaven CA/).check();
+  await hd.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText("custom.kh.test uses Kernhaven CA.")).toBeVisible();
+  await page.getByRole("button", { name: "Delete custom.kh.test" }).click();
+  await expect(page.getByText("The certificate was deleted.")).toBeVisible();
+  await page.goto("/proxy");
+  await page.getByRole("button", { name: "Delete custom.kh.test" }).click();
+  await page.getByRole("button", { name: "Delete route" }).click();
+  await expect(page.getByText("custom.kh.test was deleted.")).toBeVisible();
 });
 
 test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign in with them", async () => {

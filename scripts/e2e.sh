@@ -116,6 +116,15 @@ CFG
   "$WORK/kernhaven-agent" -config "$WORK/proxy.toml" 2> "$WORK/proxy.log" &
   PROXY_PID=$!
   export KH_E2E_PROXY=1
+  # An own CA and a certificate for custom.kh.test (M13 upload test).
+  C="$WORK/certs"; mkdir -p "$C"
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout "$C/ca.key" -out "$C/ca.crt" -days 30 \
+    -subj "/CN=Kernhaven E2E Own CA" -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign 2>/dev/null
+  openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout "$C/leaf.key" -out "$C/leaf.csr" -subj "/CN=custom.kh.test" 2>/dev/null
+  printf 'subjectAltName=DNS:custom.kh.test\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n' > "$C/ext.cnf"
+  openssl x509 -req -in "$C/leaf.csr" -CA "$C/ca.crt" -CAkey "$C/ca.key" -CAcreateserial -days 20 -out "$C/leaf.crt" -extfile "$C/ext.cnf" 2>/dev/null
+  cat "$C/leaf.crt" "$C/ca.crt" > "$C/chain.pem"
+  export KH_E2E_CERT_DIR="$C"
 fi
 
 TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -f4)

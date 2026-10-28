@@ -14,6 +14,8 @@ const (
 	KindPurgeJobs     = "maintenance.purge_jobs"
 	// KindProxyReconcile re-applies the routes when Caddy lost them (M12).
 	KindProxyReconcile = "maintenance.proxy_reconcile"
+	// KindTLSRenew queues DNS-01 renewals 30 days before expiry (M13).
+	KindTLSRenew = "maintenance.tls_renew"
 
 	jobRetention = 30 * 24 * time.Hour
 )
@@ -55,6 +57,18 @@ func (a *App) registerMaintenance() {
 			}}}, nil
 		},
 	})
+	a.Jobs.Register(jobs.Kind{
+		Name: KindTLSRenew,
+		Plan: func(json.RawMessage) ([]jobs.Step, error) {
+			return []jobs.Step{{Name: "queue DNS-01 certificates that expire within 30 days", Run: func(ctx context.Context, sc *jobs.StepContext) error {
+				n, err := a.Certs.EnqueueRenewals(ctx)
+				if err == nil {
+					sc.Logf("queued %d renewals", n)
+				}
+				return err
+			}}}, nil
+		},
+	})
 }
 
 // EnqueueMaintenance queues the periodic maintenance jobs; duplicates of a
@@ -62,7 +76,7 @@ func (a *App) registerMaintenance() {
 func (a *App) EnqueueMaintenance(ctx context.Context) error {
 	kinds := []string{KindPurgeSessions, KindPurgeJobs}
 	if a.Network.Configured() {
-		kinds = append(kinds, KindProxyReconcile)
+		kinds = append(kinds, KindProxyReconcile, KindTLSRenew)
 	}
 	for _, kind := range kinds {
 		_, err := a.Jobs.Enqueue(ctx, jobs.Request{Kind: kind, Payload: struct{}{}, DedupeKey: kind})

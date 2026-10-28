@@ -22,6 +22,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SetupPage } from "./pages/SetupPage";
 import { StoragePage } from "./pages/StoragePage";
+import { CertificatesPage } from "./pages/CertificatesPage";
 import { FilesPage } from "./pages/FilesPage";
 import { GatePage } from "./pages/GatePage";
 import { ProxyPage } from "./pages/ProxyPage";
@@ -53,6 +54,7 @@ const routes: RouteDef[] = [
   { pattern: "/storage", title: "Storage", permission: "storage.read", render: () => <StoragePage /> },
   { pattern: "/files", title: "Files", permission: "files.read", render: () => <FilesPage /> },
   { pattern: "/proxy", title: "Reverse proxy", permission: "network.read", render: () => <ProxyPage /> },
+  { pattern: "/certificates", title: "Certificates", permission: "network.read", render: () => <CertificatesPage /> },
   { pattern: "/gate", title: "Opening app", render: () => <GatePage /> },
   { pattern: "/jobs", title: "Jobs", permission: "jobs.read", render: () => <JobsPage /> },
   { pattern: "/jobs/:id", title: "Job", permission: "jobs.read", render: (p) => <JobDetailPage id={p.id ?? ""} /> },
