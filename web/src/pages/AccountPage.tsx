@@ -1,3 +1,4 @@
+import { SecurityCard } from "../components/Security";
 import { useState, type FormEvent } from "react";
 import { Alert, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
@@ -141,6 +142,9 @@ export function AccountPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PasswordCard />
         <AppearanceCard />
+        <div className="lg:col-span-2">
+          <SecurityCard />
+        </div>
         <div className="lg:col-span-2">
           <SessionsCard />
         </div>

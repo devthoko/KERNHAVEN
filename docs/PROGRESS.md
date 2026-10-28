@@ -1,13 +1,13 @@
 # Kernhaven 1.0 — Progress Checkpoint
 
-Last updated: 2026-10-27. This file is the resumption point for development
+Last updated: 2026-10-28. This file is the resumption point for development
 sessions. It states only verified facts; see the linked evidence.
 
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 and M6–M10 are implemented on
-stacked branches up to `m10-files`. Network/TLS, backup and installer
+green CI on stacked branches awaiting owner review; M4 and M6–M11 are implemented on
+stacked branches up to `m11-mfa`. Network/TLS, backup and installer
 functionality do not exist yet.
 
 | MS | Name | State | Evidence |
@@ -23,7 +23,8 @@ functionality do not exist yet.
 | M8 | App store and app lifecycle (F04, F05) | Done on branch `m8-apps` (stacked on M7), CI 40574613677, merge pending owner review; AT-F05-01 partial (reverse proxy route in M12) | [M8 evidence](milestones/M8-apps.md#verification-evidence-2026-10-27-branch-m8-apps) |
 | M9 | Storage and disk management (F06-01..03) | Done on branch `m9-storage` (stacked on M8), CI 40601258272, merge pending owner review | [M9 evidence](milestones/M9-storage.md#verification-evidence-2026-10-28-branch-m9-storage) |
 | M10 | File manager (F07) | Done on branch `m10-files` (stacked on M9), CI 40701148605, merge pending owner review | [M10 evidence](milestones/M10-files.md#verification-evidence-2026-10-28-branch-m10-files) |
-| M6b, M11–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M11 | Passkeys, MFA, step-up (F09-02..05) | Implemented on branch `m11-mfa` (stacked on M10), CI pending, merge pending owner review | [M11 evidence](milestones/M11-mfa.md#verification-evidence-2026-10-28-branch-m11-mfa) |
+| M6b, M12–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -39,7 +40,7 @@ functionality do not exist yet.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage` and `m10-files`. Next: M11 passkeys, MFA and step-up (replaces password re-authentication), M12 reverse proxy (completes AT-F05-01), or M6b streaming.
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files` and `m11-mfa`. Next: M12 reverse proxy (completes AT-F05-01), or M6b streaming.
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

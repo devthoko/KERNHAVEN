@@ -47,7 +47,7 @@ export function StoragePage() {
   const [format, setFormat] = useState<DiskInfo | null>(null);
   const [mount, setMount] = useState<FileSystemInfo | null>(null);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ fstype: "ext4", label: "data", confirm: "", password: "", name: "" });
+  const [form, setForm] = useState({ fstype: "ext4", label: "data", confirm: "", name: "" });
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   const unmount = async (name: string) => {
@@ -107,7 +107,7 @@ export function StoragePage() {
                   <Button
                     variant="danger"
                     onClick={() => {
-                      setForm({ ...form, fstype: data.formattable_fstypes.includes("ext4") ? "ext4" : (data.formattable_fstypes[0] ?? ""), confirm: "", password: "" });
+                      setForm({ ...form, fstype: data.formattable_fstypes.includes("ext4") ? "ext4" : (data.formattable_fstypes[0] ?? ""), confirm: "" });
                       setDialogError(null);
                       setFormat(d);
                     }}
@@ -226,7 +226,6 @@ export function StoragePage() {
                   fstype: form.fstype,
                   label: form.label,
                   confirm: form.confirm,
-                  password: form.password,
                 });
                 setFormat(null);
                 setNotice({ kind: "success", text: `Formatting ${format.name}.`, job: res.job_id });
@@ -247,12 +246,11 @@ export function StoragePage() {
             </SelectField>
             <TextField label="Label" hint="1-12 letters, digits, _ or -" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
             <TextField label={`Type "${format.name}" to confirm`} autoCapitalize="none" spellCheck={false} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
-            <TextField label="Your password" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setFormat(null)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="danger" busy={busy} disabled={form.confirm !== format.name || form.password === "" || !form.fstype}>
+              <Button type="submit" variant="danger" busy={busy} disabled={form.confirm !== format.name || !form.fstype}>
                 Erase and format
               </Button>
             </div>

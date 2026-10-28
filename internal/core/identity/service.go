@@ -13,7 +13,10 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/go-webauthn/webauthn/webauthn"
+
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
+	"github.com/devthoko/KERNHAVEN/internal/platform/secretbox"
 )
 
 // Config configures the service.
@@ -25,6 +28,8 @@ type Config struct {
 	// session cookie is Secure.
 	Origin string
 	Hash   HashParams
+	// Box encrypts TOTP secrets (ADR-0019); required for MFA.
+	Box *secretbox.Box
 }
 
 // Account lockout parameters (AT-F08-02).
@@ -47,6 +52,7 @@ type Service struct {
 	limiter   *limiter
 	hashSem   chan struct{}
 	dummyHash string
+	wa        *webauthn.WebAuthn
 }
 
 // New creates the service. now may be nil (time.Now).
@@ -66,6 +72,11 @@ func New(db *sql.DB, auditLog *audit.Log, cfg Config, log *slog.Logger, now func
 		limiter: newLimiter(10, 6*time.Second, now),
 		hashSem: make(chan struct{}, 2),
 	}
+	wa, err := newWebAuthn(cfg.Origin)
+	if err != nil {
+		return nil, err
+	}
+	s.wa = wa
 	h, err := hashPassword(cfg.Hash, randomToken(16))
 	if err != nil {
 		return nil, err
@@ -104,6 +115,12 @@ type Session struct {
 	AbsoluteExpiresAt time.Time `json:"absolute_expires_at"`
 	IP                string    `json:"ip"`
 	UserAgent         string    `json:"user_agent"`
+	// MFAAt is when a second factor or passkey was verified (zero: password only).
+	MFAAt time.Time `json:"mfa_at,omitempty"`
+	// StepUpAt is the last strong authentication (sign-in or step-up, M11).
+	StepUpAt time.Time `json:"-"`
+	// EnrollmentOnly sessions may only enrol a second factor (MFA policy).
+	EnrollmentOnly bool `json:"enrollment_only"`
 }
 
 // Principal is an authenticated user with the session used.

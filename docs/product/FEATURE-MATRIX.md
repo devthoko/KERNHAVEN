@@ -106,10 +106,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
 | AT-F09-01 | RBAC | Every API route declares a permission; a test enumerates all routes and fails if any route lacks one | M2 | Done (CI 40510127374; merge pending owner review) |
-| AT-F09-02 | Passkeys | WebAuthn registration and login; passkey-only accounts supported | M11 | Not started |
-| AT-F09-03 | TOTP | TOTP enrolment with recovery codes; replay of a used code is rejected | M11 | Not started |
-| AT-F09-04 | Step-up auth | Destructive and security-relevant actions require recent re-authentication | M11 | Not started |
-| AT-F09-05 | MFA policy | Owner can require MFA for roles; policy downgrades are audited and need step-up | M11 | Not started |
+| AT-F09-02 | Passkeys | WebAuthn registration and login; passkey-only accounts supported | M11 | Implemented on `m11-mfa` (CI pending; merge pending owner review) |
+| AT-F09-03 | TOTP | TOTP enrolment with recovery codes; replay of a used code is rejected | M11 | Implemented on `m11-mfa` (CI pending; merge pending owner review) |
+| AT-F09-04 | Step-up auth | Destructive and security-relevant actions require recent re-authentication | M11 | Implemented on `m11-mfa` (CI pending; merge pending owner review) |
+| AT-F09-05 | MFA policy | Owner can require MFA for roles; policy downgrades are audited and need step-up | M11 | Implemented on `m11-mfa` (CI pending; merge pending owner review) |
 
 ## F10 — Security dashboard and audit logging
 

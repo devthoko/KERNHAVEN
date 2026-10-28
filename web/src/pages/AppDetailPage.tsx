@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { appStatusTone, changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -23,7 +23,6 @@ export function AppDetailPage({ name }: { name: string }) {
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [deleteData, setDeleteData] = useState(false);
-  const [password, setPassword] = useState("");
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   if (loading && !data) return <Spinner />;
@@ -52,7 +51,7 @@ export function AppDetailPage({ name }: { name: string }) {
     setBusy(true);
     setRemoveError(null);
     try {
-      await api.post(`/apps/${name}/remove`, { delete_data: deleteData, password: deleteData ? password : "" });
+      await api.post(`/apps/${name}/remove`, { delete_data: deleteData });
       navigate("/apps");
     } catch (err) {
       setRemoveError(errorMessage(err));
@@ -238,12 +237,11 @@ export function AppDetailPage({ name }: { name: string }) {
               <span>Delete the data permanently, including snapshots.</span>
             </label>
           </fieldset>
-          {deleteData && <TextField label="Your password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setRemoving(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="danger" busy={busy} disabled={deleteData && password === ""}>
+            <Button type="submit" variant="danger" busy={busy}>
               {deleteData ? "Remove app and data" : "Remove app"}
             </Button>
           </div>

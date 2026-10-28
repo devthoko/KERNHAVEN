@@ -14,6 +14,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
+	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
 )
@@ -229,6 +230,11 @@ func (s *Service) Register(rt *httpserver.Router) {
 		q := s.req(w, r)
 		var in agentproto.FilesTrashID
 		if httpserver.DecodeJSON(w, r, &in) != nil || !q.check(in.Root, true, "") {
+			return
+		}
+		// Emptying the trash deletes for good (AT-F09-04).
+		if err := identity.CheckStepUp(r.Context()); err != nil {
+			httpserver.WriteError(w, r, http.StatusForbidden, "step_up_required", err.Error())
 			return
 		}
 		enqueue(q, KindPurge, in.Root, "", in, "files:purge:"+in.Root+":"+in.ID)

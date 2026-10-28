@@ -81,6 +81,16 @@ function Routes() {
   if (state.status === "setup") return <SetupPage />;
   if (state.status === "anonymous") return <LoginPage expired={state.reason === "expired"} />;
 
+  // MFA required by policy but not set up: only the own account (M11).
+  if (state.session.mfa_enrollment_required) {
+    document.title = "Set up a second factor · Kernhaven";
+    return (
+      <Layout>
+        <AccountPage />
+      </Layout>
+    );
+  }
+
   for (const r of routes) {
     const params = matchPath(r.pattern, path);
     if (!params) continue;

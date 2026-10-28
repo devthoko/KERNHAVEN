@@ -246,6 +246,18 @@ export function UsersPage() {
                               <Button variant="ghost" aria-label={`Reset password of ${u.username}`} onClick={() => setDialog({ kind: "password", user: u })}>
                                 Password
                               </Button>
+                              <Button
+                                variant="ghost"
+                                aria-label={`Reset second factors of ${u.username}`}
+                                onClick={() =>
+                                  api.post(`/users/${u.id}/mfa/reset`).then(
+                                    () => done(`Second factors of ${u.username} were reset; password sign-in is on again.`),
+                                    (err) => setNotice(errorMessage(err)),
+                                  )
+                                }
+                              >
+                                Reset MFA
+                              </Button>
                               <Button variant="ghost" className="text-red-700 dark:text-red-400" aria-label={`Delete ${u.username}`} onClick={() => setDialog({ kind: "delete", user: u })}>
                                 Delete
                               </Button>
@@ -274,6 +286,52 @@ export function UsersPage() {
       <Dialog open={dialog.kind === "delete"} title="Delete user" onClose={close}>
         {dialog.kind === "delete" && <DeleteUserForm user={dialog.user} onDone={() => done(`User ${dialog.user.username} deleted.`)} />}
       </Dialog>
+      {can("security.manage") && <MFAPolicyCard />}
     </>
+  );
+}
+
+/** MFAPolicyCard lets the owner require a second factor per role (AT-F09-05). */
+function MFAPolicyCard() {
+  const { data, reload } = useData(() => api.get<{ required: Record<Role, boolean> }>("/auth/mfa-policy"), []);
+  const [draft, setDraft] = useState<Record<Role, boolean> | null>(null);
+  const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+  const current = draft ?? data.required;
+  const save = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.put("/auth/mfa-policy", { required: current });
+      setMessage({ kind: "success", text: "The MFA policy was saved." });
+      setDraft(null);
+      await reload();
+    } catch (err) {
+      setMessage({ kind: "error", text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Require a second factor" className="mt-4">
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+          Users of these roles must set up an authenticator app or a passkey before they can use Kernhaven. Removing a role is recorded as a downgrade.
+        </legend>
+        {message && <Alert kind={message.kind}>{message.text}</Alert>}
+        <div className="flex flex-wrap gap-4">
+          {ROLES.map((r) => (
+            <label key={r} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="size-4" checked={!!current[r]} onChange={(e) => setDraft({ ...current, [r]: e.target.checked })} />
+              {roleLabel(r)}
+            </label>
+          ))}
+        </div>
+        <Button busy={busy} disabled={!draft} onClick={save}>
+          Save policy
+        </Button>
+      </fieldset>
+    </Card>
   );
 }

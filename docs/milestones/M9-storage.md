@@ -11,7 +11,7 @@ Threats addressed: TH-32 (formatting or unmounting the system disk), TH-31
 See every disk with its partitions, file systems, usage and SMART health;
 mount data disks persistently below an allow-listed root; format a disk that
 is provably not in use. Destructive actions are impossible on the system disk,
-need a typed confirmation and the user's password, and are journaled.
+need a typed confirmation and a recent step-up (M11), and are journaled.
 
 ## Where the work happens: a separate storage service
 
@@ -66,9 +66,8 @@ Read-only devices, optical drives, zram and loop devices are never offered
 ## Format (AT-F06-03)
 
 Request: device path, the disk's identity as the user saw it (serial or WWN
-and size), file system, label, typed confirmation (the device name) and the
-user's password. The Core checks confirmation and password (audited
-re-authentication, as in M8), then runs a journaled job that is never retried
+and size), file system, label, typed confirmation (the device name). The Core checks the confirmation and
+requires a recent step-up (M11; originally the user's password, as in M8), then runs a journaled job that is never retried
 automatically. The storage service re-reads
 the inventory, refuses unless the device is still a free disk **with the same
 identity and size** (a disk swapped between page load and confirmation is not
@@ -123,7 +122,7 @@ To use a mounted disk in containers, add the mount root to the containers'
 |---|---|
 | `GET /api/v1/storage` | `storage.read` (owner, admin, operator) |
 | `POST /api/v1/storage/mounts`, `DELETE /api/v1/storage/mounts/{name}` | `storage.manage` (owner, admin) |
-| `POST /api/v1/storage/format` | `storage.manage` + password + typed confirmation |
+| `POST /api/v1/storage/format` | `storage.manage` + step-up (M11; originally password) + typed confirmation |
 
 ## Privileges
 
@@ -138,7 +137,7 @@ as root"; the storage page then says so instead of offering actions.
 |---|---|
 | AT-F06-01 | `internal/agent/storage`: parsing of recorded `lsblk` output (this dev server, NVMe+SATA with LVM, RAID member, USB disk, old util-linux with string numbers), SMART parsing (passed, failed, unsupported); Core `TestStorageInventory`; E2E storage page |
 | AT-F06-02 | unit file content and escaping (compared with `systemd-escape`), `systemctl` calls, rollback of a failed mount, busy unmount keeps the unit, refusal of foreign units and names; Core `TestStorageMounts`; CI job `storage`: mount through systemd, write to the disk, unit enabled, busy unmount refused, unmount |
-| AT-F06-03 | 11 refusals in `TestFormatRefusals` (system disk, LVM member, mounted elsewhere, Kernhaven mount, swapped serial, changed size, unknown device, path traversal, bad label, missing or unknown mkfs) before any tool runs; Core `TestStorageFormat` (confirmation, password, system disk refused by the service, audit, operator forbidden); CI job `storage`: the runner's real system disk refused, loop device formatted with ext4, xfs and btrfs under the real unit's sandbox |
+| AT-F06-03 | 11 refusals in `TestFormatRefusals` (system disk, LVM member, mounted elsewhere, Kernhaven mount, swapped serial, changed size, unknown device, path traversal, bad label, missing or unknown mkfs) before any tool runs; Core `TestStorageFormat` (confirmation, password — step-up since M11 —, system disk refused by the service, audit, operator forbidden); CI job `storage`: the runner's real system disk refused, loop device formatted with ext4, xfs and btrfs under the real unit's sandbox |
 
 ## Known limitations
 
@@ -155,8 +154,8 @@ as root"; the storage page then says so instead of offering actions.
   threshold 2.0) and exercised as root on a CI runner; Debian 13 VMs (B-2) are
   still needed for release evidence. On the development server it runs only
   without root (inventory).
-- Re-authentication for formatting uses the password; passkey step-up follows
-  in M11.
+- Re-authentication for formatting used the password; M11 replaced it with
+  step-up (passkey or password plus second factor).
 
 ## Verification evidence (2026-10-28, branch `m9-storage`)
 

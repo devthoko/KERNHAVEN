@@ -17,6 +17,12 @@ export class ApiError extends Error {
 
 let csrfToken: string | null = null;
 let unauthenticatedHandler: (() => void) | null = null;
+let stepUpHandler: (() => Promise<boolean>) | null = null;
+
+/** setStepUpHandler registers the dialog that confirms the user when an action answers step_up_required (M11). */
+export function setStepUpHandler(handler: (() => Promise<boolean>) | null): void {
+  stepUpHandler = handler;
+}
 
 export function setCsrfToken(token: string | null): void {
   csrfToken = token;
@@ -28,7 +34,7 @@ export function onUnauthenticated(handler: (() => void) | null): void {
 
 const SAFE_METHODS = new Set(["GET", "HEAD"]);
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (!SAFE_METHODS.has(method) && csrfToken) headers["X-CSRF-Token"] = csrfToken;
@@ -58,6 +64,10 @@ export async function request<T>(method: string, path: string, body?: unknown): 
       err?.request_id ?? "",
     );
     if (res.status === 401 && apiErr.code === "unauthenticated") unauthenticatedHandler?.();
+    // Sensitive actions need a recent confirmation: ask once, then repeat.
+    if (res.status === 403 && apiErr.code === "step_up_required" && stepUpHandler && !retried) {
+      if (await stepUpHandler()) return request<T>(method, path, body, true);
+    }
     throw apiErr;
   }
   return data as T;

@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, onUnauthenticated, setCsrfToken } from "./api";
 import { applyTheme } from "./theme";
-import type { Permission, Preferences, Role, SessionInfo, Theme } from "./types";
+import type { Ceremony, LoginResponse, Permission, Preferences, Role, SessionInfo, Theme } from "./types";
+import { getPasskey } from "./webauthn";
+
+/** MFAChallenge is the second sign-in step after the password (M11). */
+export interface MFAChallenge {
+  token: string;
+  methods: NonNullable<LoginResponse["methods"]>;
+}
 
 type State =
   | { status: "loading" }
@@ -12,7 +19,12 @@ type State =
 interface SessionValue {
   state: State;
   theme: Theme;
-  login: (username: string, password: string) => Promise<void>;
+  /** login returns a challenge when the account has a second factor. */
+  login: (username: string, password: string) => Promise<MFAChallenge | null>;
+  completeMFA: (token: string, input: { code?: string; recovery_code?: string }) => Promise<void>;
+  mfaWithPasskey: (token: string) => Promise<void>;
+  loginWithPasskey: () => Promise<void>;
+  refresh: () => Promise<void>;
   completeSetup: (input: { token: string; username: string; display_name: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   setTheme: (theme: Theme) => Promise<void>;
@@ -63,7 +75,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return {
       state,
       theme,
-      login: async (username, password) => enter(await api.post<SessionInfo>("/auth/login", { username, password })),
+      login: async (username, password) => {
+        const res = await api.post<LoginResponse>("/auth/login", { username, password });
+        if (res.mfa_required && res.mfa_token) return { token: res.mfa_token, methods: res.methods ?? [] };
+        await enter(res as SessionInfo);
+        return null;
+      },
+      completeMFA: async (token, input) => enter(await api.post<SessionInfo>("/auth/login/mfa", { mfa_token: token, ...input })),
+      mfaWithPasskey: async (token) => {
+        const c = await api.post<Ceremony>("/auth/login/mfa/passkey/begin", { mfa_token: token });
+        const credential = await getPasskey(c.options);
+        await enter(await api.post<SessionInfo>("/auth/login/mfa/passkey/finish", { mfa_token: token, token: c.token, credential }));
+      },
+      loginWithPasskey: async () => {
+        const c = await api.post<Ceremony>("/auth/passkey/begin");
+        const credential = await getPasskey(c.options);
+        await enter(await api.post<SessionInfo>("/auth/passkey/finish", { token: c.token, credential }));
+      },
+      refresh: async () => enter(await api.get<SessionInfo>("/auth/session")),
       completeSetup: async (input) => enter(await api.post<SessionInfo>("/setup", input)),
       logout: async () => {
         try {

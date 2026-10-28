@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
@@ -106,7 +107,7 @@ func TestStorageInventory(t *testing.T) {
 	}
 }
 
-// AT-F06-03, TH-32: confirmation, password and the agent's own checks.
+// AT-F06-03, TH-32, AT-F09-04: confirmation, step-up and the agent's own checks.
 func TestStorageFormat(t *testing.T) {
 	h, tools, _ := withStorage(t)
 	owner := h.setupOwner()
@@ -122,12 +123,15 @@ func TestStorageFormat(t *testing.T) {
 		}
 		return m
 	}
-	if r := owner.do("POST", "/api/v1/storage/format", with("confirm", "sdb", "password", strongPassword)); r.Code != 422 || r.errorCode() != "confirmation_required" {
+	if r := owner.do("POST", "/api/v1/storage/format", with("confirm", "sdb")); r.Code != 422 || r.errorCode() != "confirmation_required" {
 		t.Fatalf("wrong confirmation: %d %s", r.Code, r.Body)
 	}
-	if r := owner.do("POST", "/api/v1/storage/format", with("confirm", "sda", "password", "not the password")); r.Code != 403 || r.errorCode() != "reauthentication_failed" {
-		t.Fatalf("wrong password: %d %s", r.Code, r.Body)
+	h.clock.Advance(11 * time.Minute)
+	if r := owner.do("POST", "/api/v1/storage/format", with("confirm", "sda")); r.Code != 403 || r.errorCode() != "step_up_required" {
+		t.Fatalf("without step-up: %d %s", r.Code, r.Body)
 	}
+	owner.do("POST", "/api/v1/auth/step-up", map[string]string{"password": "not the password"}).expect(401)
+	owner.do("POST", "/api/v1/auth/step-up", map[string]string{"password": strongPassword}).expect(204)
 	if tools.ran("sfdisk") {
 		t.Fatal("disk touched before confirmation")
 	}
@@ -136,24 +140,24 @@ func TestStorageFormat(t *testing.T) {
 		JobID int64 `json:"job_id"`
 	}
 	owner.do("POST", "/api/v1/storage/format", map[string]any{"path": "/dev/nvme0n1", "serial": "S5GXNX0R1", "wwn": "eui.002538b111b2", "size_bytes": 512110190592,
-		"fstype": "ext4", "label": "x", "confirm": "nvme0n1", "password": strongPassword}).expect(202).json(&res)
+		"fstype": "ext4", "label": "x", "confirm": "nvme0n1"}).expect(202).json(&res)
 	j := h.waitJob(res.JobID, jobs.Failed)
 	if !strings.Contains(j.Error, "holds the operating system") || tools.ran("sfdisk") {
 		t.Fatalf("system disk job: %s", j.Error)
 	}
-	owner.do("POST", "/api/v1/storage/format", with("confirm", "sda", "password", strongPassword)).expect(202).json(&res)
+	owner.do("POST", "/api/v1/storage/format", with("confirm", "sda")).expect(202).json(&res)
 	h.waitJob(res.JobID, jobs.Succeeded)
 	if !tools.ran("mkfs.ext4 -F -q -E nodiscard -L media /dev/sda1") {
 		t.Fatalf("mkfs not run: %v", tools.calls)
 	}
 	if auditCount(t, h, "storage.format", "failure") != 1 || auditCount(t, h, "storage.format", "success") != 2 ||
 		auditCount(t, h, "storage.format.result", "failure") != 1 || auditCount(t, h, "storage.format.result", "success") != 1 ||
-		auditCount(t, h, "auth.reauth", "failure") != 1 {
+		auditCount(t, h, "auth.step_up", "failure") != 1 {
 		t.Fatal("format not audited")
 	}
 	// Admins may format; operators may not.
 	h.createUser(owner, "operator1", authz.Operator)
-	if r := h.loginAs("operator1").do("POST", "/api/v1/storage/format", with("confirm", "sda", "password", strongPassword)); r.Code != 403 {
+	if r := h.loginAs("operator1").do("POST", "/api/v1/storage/format", with("confirm", "sda")); r.Code != 403 {
 		t.Fatalf("operator: %d", r.Code)
 	}
 }

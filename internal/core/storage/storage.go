@@ -100,8 +100,8 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, agentclient.ErrUnavailable):
 		httpserver.WriteError(w, r, http.StatusServiceUnavailable, "storage_unavailable", "the storage service is not running or not reachable")
-	case errors.Is(err, identity.ErrInvalidCredentials):
-		httpserver.WriteError(w, r, http.StatusForbidden, "reauthentication_failed", "the password is not correct")
+	case errors.Is(err, identity.ErrStepUpRequired):
+		httpserver.WriteError(w, r, http.StatusForbidden, "step_up_required", err.Error())
 	case errors.As(err, &rl):
 		httpserver.WriteError(w, r, http.StatusTooManyRequests, "rate_limited", rl.Error())
 	case errors.Is(err, jobs.ErrDuplicate):
@@ -148,8 +148,7 @@ func (s *Service) record(r *http.Request, action, target string, err error, kv .
 type FormatRequest struct {
 	agentproto.StorageFormat
 	// Confirm must be the disk's name (for example "sdb").
-	Confirm  string `json:"confirm"`
-	Password string `json:"password"`
+	Confirm string `json:"confirm"`
 }
 
 // Register adds the storage routes.
@@ -179,7 +178,7 @@ func (s *Service) Register(rt *httpserver.Router) {
 			return
 		}
 		p, _ := identity.FromContext(r.Context())
-		if err := s.ids.Reauthenticate(r.Context(), p, identity.MetaFrom(r), in.Password, "storage.format", target); err != nil {
+		if err := identity.CheckStepUp(r.Context()); err != nil {
 			writeErr(w, r, err)
 			return
 		}

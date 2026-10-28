@@ -63,3 +63,26 @@ describe("api client", () => {
     await expect(api.get("/jobs")).rejects.toMatchObject({ code: "network_error" });
   });
 });
+
+describe("step-up", () => {
+  it("asks once and repeats the request", async () => {
+    const { setStepUpHandler, api } = await import("./api");
+    let calls = 0;
+    const fetchMock = vi.fn(async () => {
+      calls++;
+      if (calls === 1) return new Response(JSON.stringify({ error: { code: "step_up_required", message: "confirm" } }), { status: 403, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const handler = vi.fn(async () => true);
+    setStepUpHandler(handler);
+    await expect(api.post("/x")).resolves.toEqual({ ok: true });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(calls).toBe(2);
+    setStepUpHandler(async () => false);
+    calls = 0;
+    await expect(api.post("/x")).rejects.toMatchObject({ code: "step_up_required" });
+    setStepUpHandler(null);
+    vi.unstubAllGlobals();
+  });
+});

@@ -98,6 +98,12 @@ type CreateUserInput struct {
 
 // CreateUser creates an account on behalf of p.
 func (s *Service) CreateUser(ctx context.Context, p *Principal, m Meta, in CreateUserInput) (User, error) {
+	// Creating owners and admins is security-relevant (AT-F09-04).
+	if in.Role == authz.Owner || in.Role == authz.Admin {
+		if err := s.RequireStepUp(p); err != nil {
+			return User{}, err
+		}
+	}
 	in.Username = strings.TrimSpace(in.Username)
 	if err := validateUsername(in.Username); err != nil {
 		return User{}, err
@@ -162,6 +168,11 @@ type UpdateUserInput struct {
 
 // UpdateUser changes display name, role or disabled state of user id.
 func (s *Service) UpdateUser(ctx context.Context, p *Principal, m Meta, id int64, in UpdateUserInput) (User, error) {
+	if in.Role != nil || in.Disabled != nil {
+		if err := s.RequireStepUp(p); err != nil {
+			return User{}, err
+		}
+	}
 	if in.DisplayName != nil {
 		if err := validateDisplayName(*in.DisplayName); err != nil {
 			return User{}, err
@@ -267,6 +278,9 @@ func countEnabledOwners(ctx context.Context, tx *sql.Tx) (int, error) {
 
 // DeleteUser removes user id and its sessions.
 func (s *Service) DeleteUser(ctx context.Context, p *Principal, m Meta, id int64) error {
+	if err := s.RequireStepUp(p); err != nil {
+		return err
+	}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		target, err := s.getUser(ctx, tx, id)
 		if err != nil {
@@ -291,6 +305,9 @@ func (s *Service) DeleteUser(ctx context.Context, p *Principal, m Meta, id int64
 
 // ResetPassword sets a new password for another user and ends their sessions.
 func (s *Service) ResetPassword(ctx context.Context, p *Principal, m Meta, id int64, password string) error {
+	if err := s.RequireStepUp(p); err != nil {
+		return err
+	}
 	target, err := s.GetUser(ctx, id)
 	if err != nil {
 		return err

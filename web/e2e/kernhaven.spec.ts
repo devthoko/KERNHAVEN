@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { generateKeyPairSync, sign as cryptoSign } from "node:crypto";
+import { createHmac, generateKeyPairSync, sign as cryptoSign } from "node:crypto";
 
 // One ordered journey through a fresh instance (setup → owner → viewer).
 // The owner signs in once and the session is reused: the login rate limit
@@ -407,15 +407,11 @@ test("AT-F05-02: update with a snapshot of the data", async () => {
   await expect(page.getByRole("table", { name: "Versions" }).getByRole("row")).toHaveCount(3);
 });
 
-test("AT-F05-03: remove the app and its data after re-entering the password", async () => {
+test("AT-F05-03: remove the app and its data (step-up, still fresh after sign-in)", async () => {
   test.skip(!docker, "needs the agent with Docker");
   await page.getByRole("button", { name: "Remove" }).click();
   const dialog = page.getByRole("dialog", { name: "Remove e2e-app?" });
   await dialog.getByLabel(/Delete the data permanently/).check();
-  await dialog.getByLabel("Your password").fill("not my password at all");
-  await dialog.getByRole("button", { name: "Remove app and data" }).click();
-  await expect(dialog.getByText("the password is not correct")).toBeVisible();
-  await dialog.getByLabel("Your password").fill(OWNER.password);
   await dialog.getByRole("button", { name: "Remove app and data" }).click();
   await expect(page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
   await expect(page.getByText("No apps installed yet.")).toBeVisible({ timeout: 120_000 });
@@ -538,4 +534,59 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
   await expect(viewer.getByRole("button", { name: "Add source" })).toHaveCount(0);
   await viewer.context().close();
+});
+
+// ---- M11: runs last, because afterwards the owner has a second factor ----
+
+function totp(secret: string): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const c of secret.replace(/\s/g, "")) bits += alphabet.indexOf(c).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
+  const msg = Buffer.alloc(8);
+  msg.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)));
+  const h = createHmac("sha1", key).update(msg).digest();
+  const o = h[19]! & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign in with them", async () => {
+  // Chrome's virtual authenticator stands in for a platform passkey.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
+  });
+
+  await page.goto("/account");
+  await page.getByRole("button", { name: "Set up an authenticator app" }).click();
+  const secret = (await page.getByLabel("Setup key").innerText()).trim();
+  await page.getByLabel("Code from the app").fill(totp(secret));
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await expect(page.getByRole("list", { name: "Recovery codes" }).getByRole("listitem")).toHaveCount(10);
+  const recovery = (await page.getByRole("list", { name: "Recovery codes" }).getByRole("listitem").first().innerText()).trim();
+  await page.getByRole("button", { name: "I saved them" }).click();
+
+  await page.getByLabel("Passkey name").fill("E2E key");
+  await page.getByRole("button", { name: "Add a passkey" }).click();
+  await expect(page.getByText("The passkey was added.")).toBeVisible();
+  await expect(page.getByText("E2E key", { exact: true })).toBeVisible();
+  await expectAccessible(page, "account security");
+
+  // Passkey alone.
+  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+
+  // Password, then a recovery code as second step.
+  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await page.getByLabel("Username").fill(OWNER.username);
+  await page.getByLabel("Password").fill(OWNER.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Confirm it is you" })).toBeVisible();
+  await expectAccessible(page, "second factor");
+  await page.getByRole("button", { name: "Use a recovery code instead" }).click();
+  await page.getByLabel("Recovery code").fill(recovery);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 });

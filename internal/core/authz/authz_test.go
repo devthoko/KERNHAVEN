@@ -23,6 +23,7 @@ func TestRolePermissionMatrix(t *testing.T) {
 		StorageManage:     {Owner, Admin},
 		FilesRead:         {Owner, Admin, Operator},
 		FilesWrite:        {Owner, Admin},
+		SecurityManage:    {Owner},
 	}
 	for p, roles := range want {
 		granted := map[Role]bool{}

@@ -80,7 +80,7 @@ version and configuration stay consistent.
 |---|---|
 | Install (AT-F05-01) | Validate values against the fields; generate missing generated values; `password` fields become secret stack variables (encrypted, write-only); create the managed stack with revision 1; queue the deploy job, which pulls images, creates networks and volumes, starts services in dependency order and waits until they are running and healthy. |
 | Update (AT-F05-02) | Offered when the catalog version differs from the installed one. The update page shows the version change, changed images and the new disclosure. A new stack revision is deployed with a **pre-update snapshot**: after the old containers are removed, every volume of the stack is copied to a snapshot volume. If any later step fails — including the health check — the job removes the new containers, **restores the volumes from the snapshots** and starts the previous revision again. |
-| Remove (AT-F05-03) | Containers and networks are removed and the app disappears. Keeping data keeps the volumes (and snapshots); deleting data removes them and requires the user to re-enter their password. |
+| Remove (AT-F05-03) | Containers and networks are removed and the app disappears. Keeping data keeps the volumes (and snapshots); deleting data removes them and requires a recent step-up (M11; originally password re-entry). |
 | Interrupted operations (AT-F05-04) | Every step is journaled (M3). After a crash of the Core the job resumes at the interrupted step; steps are idempotent (copying clears the target first, creating replaces the container of the same name). After a crash of the agent the step fails and is retried, or the job compensates. |
 
 The installed version is not stored separately: it is the version recorded for
@@ -129,7 +129,7 @@ job simply starts the copy again.
 | AT-F04-04 | `TestCatalogBrowseAndDisclosure` (ports, volumes, capabilities, exceptions, never-allowed Docker socket); E2E disclosure before install |
 | AT-F05-01 | `TestAppInstall` (form validation, generated secrets encrypted and write-only, exceptions need the owner, health check); E2E |
 | AT-F05-02 | `TestAppUpdateRollback` (snapshot taken, failing health check restores volume content and previous revision, installed version unchanged); agent `volumes.copy` tests incl. real Docker; E2E |
-| AT-F05-03 | `TestAppRemove` (keep vs delete data, re-authentication, audit); E2E |
+| AT-F05-03 | `TestAppRemove` (keep vs delete data, step-up since M11, audit); E2E |
 | AT-F05-04 | `TestAppInterrupted` (Core stopped during install and update, new instance resumes or rolls back); live SIGKILL test with real binaries |
 
 ## Publishing a catalog
@@ -159,8 +159,8 @@ upload it on the sources page. Increase `serial` for every new catalog.
   update and removed only with "delete data".
 - The app stops during an update (containers are removed before the
   snapshot); there is no zero-downtime update.
-- Re-authentication for deleting data uses the password; passkey step-up
-  follows in M11.
+- Re-authentication for deleting data used the password; M11 replaced it
+  with step-up (passkey or password plus second factor).
 - Kernhaven ships without a default catalog source; owners add the sources
   they trust. There is no automatic periodic sync yet.
 - Rootful Docker with separate service users is verified only as far as CI

@@ -236,6 +236,11 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request) {
 		}
 		rules = append(rules, x.Rule)
 	}
+	// Approving policy exceptions is security-relevant (AT-F09-04).
+	if len(in.Exceptions) > 0 && identity.CheckStepUp(q.r.Context()) != nil {
+		httpserver.WriteError(q.w, q.r, http.StatusForbidden, "step_up_required", identity.ErrStepUpRequired.Error())
+		return
+	}
 	if len(in.Exceptions) > 0 && !q.p.Has(authz.PolicyExceptions) {
 		q.record("policy.exception", "container:"+in.Spec.Name, errors.New("only owners may approve policy exceptions"), "rules", strings.Join(rules, ","))
 		httpserver.WriteError(w, r, http.StatusForbidden, "forbidden", "only owners may approve policy exceptions")

@@ -100,7 +100,7 @@ func (s *Service) CompleteSetup(ctx context.Context, m Meta, in SetupInput) (str
 			return err
 		}
 		var sess Session
-		token, sess, err = s.createSession(ctx, tx, u.ID, m)
+		token, sess, err = s.createSession(ctx, tx, u.ID, m, sessionKind{})
 		if err != nil {
 			return err
 		}

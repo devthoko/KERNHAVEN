@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net/http"
@@ -98,13 +99,19 @@ func (s *Service) Guard(permission string, next http.Handler) http.Handler {
 				return
 			}
 		}
+		// MFA required by policy but not enrolled: only the own account (M11).
+		if p.Session.EnrollmentOnly && perm != authz.SelfManage {
+			httpserver.WriteError(w, r, http.StatusForbidden, "mfa_enrollment_required", "set up a second factor before using Kernhaven")
+			return
+		}
 		if !p.Has(perm) {
 			s.record(r.Context(), withDetails(actorEvent(p, MetaFrom(r), "authz.denied", r.Method+" "+r.URL.Path, audit.Denied),
 				"permission", permission))
 			httpserver.WriteError(w, r, http.StatusForbidden, "forbidden", "you do not have permission for this action")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), p)))
+		ctx := context.WithValue(withPrincipal(r.Context(), p), serviceKey{}, s)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -118,6 +125,12 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.As(err, &rl):
 		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(rl.RetryAfter.Seconds()))))
 		httpserver.WriteError(w, r, http.StatusTooManyRequests, "rate_limited", "too many attempts; try again later")
+	case errors.Is(err, ErrStepUpRequired):
+		httpserver.WriteError(w, r, http.StatusForbidden, "step_up_required", err.Error())
+	case errors.Is(err, ErrLastFactor):
+		httpserver.WriteError(w, r, http.StatusConflict, "last_factor", err.Error())
+	case errors.Is(err, ErrChallenge):
+		httpserver.WriteError(w, r, http.StatusUnauthorized, "challenge_expired", err.Error())
 	case errors.Is(err, ErrInvalidCredentials):
 		httpserver.WriteError(w, r, http.StatusUnauthorized, "invalid_credentials", "invalid username or password")
 	case errors.Is(err, ErrInvalidSetupToken):
@@ -161,10 +174,20 @@ type sessionResponse struct {
 	Permissions []authz.Permission `json:"permissions"`
 	CSRFToken   string             `json:"csrf_token"`
 	ExpiresAt   time.Time          `json:"expires_at"`
+	// M11
+	MFAEnrollmentRequired bool       `json:"mfa_enrollment_required"`
+	MFA                   bool       `json:"mfa"`
+	StepUpUntil           *time.Time `json:"step_up_until,omitempty"`
 }
 
 func newSessionResponse(p *Principal) sessionResponse {
-	return sessionResponse{User: p.User, Permissions: p.User.Role.Permissions(), CSRFToken: p.Session.CSRFToken, ExpiresAt: p.Session.AbsoluteExpiresAt}
+	r := sessionResponse{User: p.User, Permissions: p.User.Role.Permissions(), CSRFToken: p.Session.CSRFToken, ExpiresAt: p.Session.AbsoluteExpiresAt,
+		MFAEnrollmentRequired: p.Session.EnrollmentOnly, MFA: !p.Session.MFAAt.IsZero()}
+	if !p.Session.StepUpAt.IsZero() {
+		until := p.Session.StepUpAt.Add(StepUpWindow)
+		r.StepUpUntil = &until
+	}
+	return r
 }
 
 type sessionView struct {
@@ -174,6 +197,7 @@ type sessionView struct {
 
 // Register adds the setup, auth and user routes.
 func (s *Service) Register(rt *httpserver.Router) {
+	s.registerMFA(rt)
 	self := httpserver.RequirePermission(string(authz.SelfManage))
 	usersRead := httpserver.RequirePermission(string(authz.UsersRead))
 	usersManage := httpserver.RequirePermission(string(authz.UsersManage))
@@ -218,13 +242,12 @@ func (s *Service) Register(rt *httpserver.Router) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
-		token, p, err := s.Login(r.Context(), MetaFrom(r), strings.TrimSpace(in.Username), in.Password)
+		res, err := s.Login(r.Context(), MetaFrom(r), strings.TrimSpace(in.Username), in.Password)
 		if err != nil {
 			writeErr(w, r, err)
 			return
 		}
-		s.setCookie(w, token)
-		httpserver.WriteJSON(w, http.StatusOK, newSessionResponse(p))
+		s.writeLogin(w, res)
 	})
 
 	rt.HandleFunc("POST /api/v1/auth/logout", self, func(w http.ResponseWriter, r *http.Request) {

@@ -55,12 +55,17 @@ type Options struct {
 // New builds the Core from an open database and validated config.
 func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, error) {
 	auditLog := audit.New(db, opts.Now)
+	box, err := secretbox.Open(filepath.Join(cfg.Storage.DataDir, secretbox.KeyFile))
+	if err != nil {
+		return nil, fmt.Errorf("secrets key: %w", err)
+	}
 	ids, err := identity.New(db, auditLog, identity.Config{
 		IdleTimeout:     cfg.Auth.SessionIdleTimeout.Duration,
 		AbsoluteTimeout: cfg.Auth.SessionAbsoluteTimeout.Duration,
 		SetupTokenTTL:   cfg.Auth.SetupTokenTTL.Duration,
 		Origin:          cfg.Server.Origin(),
 		Hash:            opts.Hash,
+		Box:             box,
 	}, log, opts.Now)
 	if err != nil {
 		return nil, err
@@ -108,10 +113,6 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}
 	khfiles.New(filesClient, db, auditLog, jobSvc, runner.Wake, cfg.Files, now).Register(rt)
 	containers.New(agent, auditLog, jobSvc, runner.Wake, cfg.Containers.AllowedBindRoots).Register(rt)
-	box, err := secretbox.Open(filepath.Join(cfg.Storage.DataDir, secretbox.KeyFile))
-	if err != nil {
-		return nil, fmt.Errorf("secrets key: %w", err)
-	}
 	stackSvc := stacks.New(db, box, agent, auditLog, jobSvc, runner.Wake, stacks.Options{BindRoots: cfg.Containers.AllowedBindRoots, Fetcher: opts.Fetcher, Now: now})
 	stackSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)

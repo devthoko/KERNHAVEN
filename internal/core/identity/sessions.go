@@ -5,41 +5,52 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
 )
 
-// Login verifies credentials and creates a new session. It returns the raw
-// session token, which is only ever sent to the client in the cookie.
-func (s *Service) Login(ctx context.Context, m Meta, username, password string) (string, *Principal, error) {
+// LoginResult is either a session (Token and Principal) or, for accounts with
+// a second factor, an MFA challenge (MFAToken and Methods, M11).
+type LoginResult struct {
+	Token     string
+	Principal *Principal
+	MFAToken  string
+	Methods   []string
+}
+
+// Login verifies the password. Without a second factor it creates a session;
+// the raw session token is only ever sent to the client in the cookie.
+func (s *Service) Login(ctx context.Context, m Meta, username, password string) (LoginResult, error) {
 	if ok, wait := s.limiter.allow(m.IP); !ok {
 		s.record(ctx, withDetails(audit.Event{Actor: username, Action: "auth.login", Target: "user:" + username,
 			Result: audit.Denied, RequestID: m.RequestID, IP: m.IP}, "reason", "rate limited"))
-		return "", nil, &RateLimitError{RetryAfter: wait}
+		return LoginResult{}, &RateLimitError{RetryAfter: wait}
 	}
 
-	fail := func(reason string, userID int64) (string, *Principal, error) {
+	fail := func(reason string, userID int64) (LoginResult, error) {
 		s.record(ctx, withDetails(audit.Event{ActorID: userID, Actor: username, Action: "auth.login", Target: "user:" + username,
 			Result: audit.Failure, RequestID: m.RequestID, IP: m.IP}, "reason", reason))
-		return "", nil, ErrInvalidCredentials
+		return LoginResult{}, ErrInvalidCredentials
 	}
 
 	var (
-		id               int64
-		hash             string
-		disabled, failed int
-		lockedUntil      int64
+		id                        int64
+		hash                      string
+		disabled, failed, pwLogin int
+		lockedUntil               int64
+		role                      authz.Role
 	)
-	err := s.db.QueryRowContext(ctx, `SELECT id, password_hash, disabled, failed_logins, locked_until_ms FROM users WHERE username = ?`,
-		username).Scan(&id, &hash, &disabled, &failed, &lockedUntil)
+	err := s.db.QueryRowContext(ctx, `SELECT id, password_hash, disabled, failed_logins, locked_until_ms, password_login, role FROM users WHERE username = ?`,
+		username).Scan(&id, &hash, &disabled, &failed, &lockedUntil, &pwLogin, &role)
 	if errors.Is(err, sql.ErrNoRows) {
 		_, _ = s.verify(ctx, s.dummyHash, password) // uniform timing
 		return fail("unknown user", 0)
 	}
 	if err != nil {
-		return "", nil, err
+		return LoginResult{}, err
 	}
 	if lockedUntil > s.nowMS() {
 		_, _ = s.verify(ctx, s.dummyHash, password)
@@ -47,26 +58,53 @@ func (s *Service) Login(ctx context.Context, m Meta, username, password string) 
 	}
 	ok, err := s.verify(ctx, hash, password)
 	if err != nil {
-		return "", nil, err
+		return LoginResult{}, err
 	}
 	if !ok {
 		if err := s.registerFailure(ctx, m, id, username); err != nil {
-			return "", nil, err
+			return LoginResult{}, err
 		}
 		return fail("wrong password", id)
 	}
 	if disabled == 1 {
 		return fail("account disabled", id)
 	}
+	if pwLogin == 0 {
+		return fail("password sign-in is off (passkey-only account)", id)
+	}
 
+	// Accounts with a second factor get a challenge instead of a session.
+	methods, err := s.methods(ctx, s.db, id)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	if len(methods) > 0 {
+		tok, err := s.newChallenge(ctx, s.db, id, challengeMFA, "")
+		if err != nil {
+			return LoginResult{}, err
+		}
+		s.record(ctx, withDetails(audit.Event{ActorID: id, Actor: username, Action: "auth.login", Target: targetUser(id),
+			Result: audit.Success, RequestID: m.RequestID, IP: m.IP}, "stage", "password", "next", strings.Join(methods, ",")))
+		return LoginResult{MFAToken: tok, Methods: methods}, nil
+	}
+	required, err := s.mfaRequired(ctx, s.db, role)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	return s.startSession(ctx, m, id, username, sessionKind{enrollmentOnly: required}, "password")
+}
+
+// startSession creates a session after a successful sign-in and audits it.
+func (s *Service) startSession(ctx context.Context, m Meta, id int64, username string, kind sessionKind, method string) (LoginResult, error) {
 	var token string
 	var p *Principal
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET failed_logins = 0, locked_until_ms = 0 WHERE id = ?`, id); err != nil {
 			return err
 		}
 		var sess Session
-		token, sess, err = s.createSession(ctx, tx, id, m)
+		var err error
+		token, sess, err = s.createSession(ctx, tx, id, m, kind)
 		if err != nil {
 			return err
 		}
@@ -76,13 +114,14 @@ func (s *Service) Login(ctx context.Context, m Meta, username, password string) 
 		}
 		p = &Principal{User: u, Session: sess}
 		_, err = audit.Append(ctx, tx, s.now(), withDetails(audit.Event{ActorID: id, Actor: username, Action: "auth.login",
-			Target: targetUser(id), Result: audit.Success, RequestID: m.RequestID, IP: m.IP}, "session", sess.ID))
+			Target: targetUser(id), Result: audit.Success, RequestID: m.RequestID, IP: m.IP},
+			"session", sess.ID, "method", method, "enrollment_only", boolString(kind.enrollmentOnly)))
 		return err
 	})
 	if err != nil {
-		return "", nil, err
+		return LoginResult{}, err
 	}
-	return token, p, nil
+	return LoginResult{Token: token, Principal: p}, nil
 }
 
 // registerFailure counts a failed password and locks the account with
@@ -111,7 +150,13 @@ func (s *Service) registerFailure(ctx context.Context, m Meta, id int64, usernam
 	})
 }
 
-func (s *Service) createSession(ctx context.Context, tx *sql.Tx, userID int64, m Meta) (string, Session, error) {
+// sessionKind describes how a session was established.
+type sessionKind struct {
+	mfa            bool // a second factor or passkey was verified
+	enrollmentOnly bool // MFA required by policy but not enrolled
+}
+
+func (s *Service) createSession(ctx context.Context, tx *sql.Tx, userID int64, m Meta, kind sessionKind) (string, Session, error) {
 	now := s.now()
 	token := randomToken(32)
 	sess := Session{
@@ -125,20 +170,32 @@ func (s *Service) createSession(ctx context.Context, tx *sql.Tx, userID int64, m
 		UserAgent:         truncateString(m.UserAgent, 256),
 	}
 	sess.IdleExpiresAt = minTime(now.Add(s.cfg.IdleTimeout), sess.AbsoluteExpiresAt).UTC().Truncate(time.Millisecond)
+	// Signing in is a strong authentication: it opens the step-up window.
+	sess.StepUpAt, sess.EnrollmentOnly = sess.CreatedAt, kind.enrollmentOnly
+	var mfaMS int64
+	if kind.mfa {
+		sess.MFAAt, mfaMS = sess.CreatedAt, ms(sess.CreatedAt)
+	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO sessions
-		(id, token_hash, user_id, csrf_token, created_ms, last_seen_ms, idle_expires_ms, absolute_expires_ms, ip, user_agent)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		(id, token_hash, user_id, csrf_token, created_ms, last_seen_ms, idle_expires_ms, absolute_expires_ms, ip, user_agent, mfa_ms, step_up_ms, enrollment_only)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sess.ID, sha256Hex(token), userID, sess.CSRFToken, ms(sess.CreatedAt), ms(sess.LastSeenAt),
-		ms(sess.IdleExpiresAt), ms(sess.AbsoluteExpiresAt), sess.IP, sess.UserAgent)
+		ms(sess.IdleExpiresAt), ms(sess.AbsoluteExpiresAt), sess.IP, sess.UserAgent, mfaMS, ms(sess.StepUpAt), boolInt(kind.enrollmentOnly))
 	return token, sess, err
 }
 
-const sessionColumns = `s.id, s.user_id, s.csrf_token, s.created_ms, s.last_seen_ms, s.idle_expires_ms, s.absolute_expires_ms, s.ip, s.user_agent`
+const sessionColumns = `s.id, s.user_id, s.csrf_token, s.created_ms, s.last_seen_ms, s.idle_expires_ms, s.absolute_expires_ms, s.ip, s.user_agent,
+	s.mfa_ms, s.step_up_ms, s.enrollment_only`
 
 func scanSession(row rowScanner) (Session, error) {
 	var sess Session
-	var created, seen, idle, abs int64
-	err := row.Scan(&sess.ID, &sess.UserID, &sess.CSRFToken, &created, &seen, &idle, &abs, &sess.IP, &sess.UserAgent)
+	var created, seen, idle, abs, mfa, stepUp int64
+	var enrol int
+	err := row.Scan(&sess.ID, &sess.UserID, &sess.CSRFToken, &created, &seen, &idle, &abs, &sess.IP, &sess.UserAgent, &mfa, &stepUp, &enrol)
+	if mfa > 0 {
+		sess.MFAAt = fromMS(mfa)
+	}
+	sess.StepUpAt, sess.EnrollmentOnly = fromMS(stepUp), enrol == 1
 	sess.CreatedAt, sess.LastSeenAt, sess.IdleExpiresAt, sess.AbsoluteExpiresAt = fromMS(created), fromMS(seen), fromMS(idle), fromMS(abs)
 	return sess, err
 }

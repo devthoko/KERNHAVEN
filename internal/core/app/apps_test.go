@@ -446,14 +446,16 @@ func TestAppRemove(t *testing.T) {
 	if kept != "keep me" {
 		t.Fatalf("reinstall lost data: %q", kept)
 	}
-	if r := owner.do("POST", "/api/v1/apps/notes/remove", map[string]any{"delete_data": true, "password": "wrong password!"}); r.Code != 403 || r.errorCode() != "reauthentication_failed" {
-		t.Fatalf("wrong password: %d %s", r.Code, r.Body)
+	// Deleting data needs a recent strong authentication (AT-F09-04): the
+	// sign-in counts for 10 minutes, then the user must confirm again.
+	h.clock.Advance(11 * time.Minute)
+	if r := owner.do("POST", "/api/v1/apps/notes/remove", map[string]any{"delete_data": true}); r.Code != 403 || r.errorCode() != "step_up_required" {
+		t.Fatalf("without step-up: %d %s", r.Code, r.Body)
 	}
-	if r := owner.do("POST", "/api/v1/apps/notes/remove", map[string]any{"delete_data": true}); r.Code != 403 {
-		t.Fatalf("missing password: %d", r.Code)
-	}
+	owner.do("POST", "/api/v1/auth/step-up", map[string]string{"password": "wrong password!"}).expect(401)
 	owner.do("GET", "/api/v1/apps/notes", nil).expect(200)
-	owner.do("POST", "/api/v1/apps/notes/remove", map[string]any{"delete_data": true, "password": strongPassword}).expect(202).json(&res)
+	owner.do("POST", "/api/v1/auth/step-up", map[string]string{"password": strongPassword}).expect(204)
+	owner.do("POST", "/api/v1/apps/notes/remove", map[string]any{"delete_data": true}).expect(202).json(&res)
 	h.waitJob(res.JobID, jobs.Succeeded)
 	md.mu.Lock()
 	_, vol := md.volumes["notes_data"]
@@ -461,8 +463,8 @@ func TestAppRemove(t *testing.T) {
 	if vol {
 		t.Fatal("volume kept although data deletion was confirmed")
 	}
-	if auditCount(t, h, "auth.reauth", "failure") != 2 || auditCount(t, h, "auth.reauth", "success") != 1 || auditCount(t, h, "app.remove", "success") != 2 {
-		t.Fatal("re-authentication or removal not audited")
+	if auditCount(t, h, "auth.step_up", "failure") != 1 || auditCount(t, h, "auth.step_up", "success") != 1 || auditCount(t, h, "app.remove", "success") != 2 {
+		t.Fatal("step-up or removal not audited")
 	}
 }
 

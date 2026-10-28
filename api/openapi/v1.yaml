@@ -175,7 +175,7 @@ paths:
     post:
       operationId: createUser
       x-permission: users.manage
-      description: Admins may only create operators and viewers.
+      description: Admins may only create operators and viewers. Needs a recent step-up (403 step_up_required, see /auth/step-up) when creating an owner or admin.
       requestBody:
         required: true
         content:
@@ -205,7 +205,7 @@ paths:
     patch:
       operationId: updateUser
       x-permission: users.manage
-      description: Role or disabled changes end all sessions of the user. Nobody can change their own role or disable themselves; the last enabled owner is protected.
+      description: Role or disabled changes end all sessions of the user. Nobody can change their own role or disable themselves; the last enabled owner is protected. Needs a recent step-up (403 step_up_required, see /auth/step-up).
       parameters: [{ $ref: "#/components/parameters/UserID" }]
       requestBody:
         required: true
@@ -225,6 +225,7 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
     delete:
       operationId: deleteUser
+      description: Deletes the user and ends their sessions. Needs a recent step-up (403 step_up_required, see /auth/step-up).
       x-permission: users.manage
       parameters: [{ $ref: "#/components/parameters/UserID" }]
       responses:
@@ -235,6 +236,7 @@ paths:
   /users/{id}/password:
     post:
       operationId: resetUserPassword
+      description: Sets a new password and ends the user's sessions. Needs a recent step-up (403 step_up_required, see /auth/step-up).
       x-permission: users.manage
       parameters: [{ $ref: "#/components/parameters/UserID" }]
       requestBody:
@@ -331,7 +333,7 @@ paths:
     post:
       operationId: createContainer
       x-permission: containers.manage
-      description: Creates a container after policy evaluation in Core and agent. Exceptions require policy.exceptions (owners) and a reason; they are audited.
+      description: Creates a container after policy evaluation in Core and agent. Exceptions require policy.exceptions (owners) and a reason; they are audited. Needs a recent step-up (403 step_up_required, see /auth/step-up) when exceptions are given.
       requestBody:
         required: true
         content:
@@ -476,7 +478,7 @@ paths:
     post:
       operationId: createStack
       x-permission: containers.manage
-      description: Creates a stack with revision 1. The Compose file must be valid and every policy violation covered by an exception (exceptions need policy.exceptions).
+      description: Creates a stack with revision 1. The Compose file must be valid and every policy violation covered by an exception (exceptions need policy.exceptions). Needs a recent step-up (403 step_up_required, see /auth/step-up) when exceptions are given.
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevisionInput" } } } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Stack" } } } }
@@ -526,6 +528,7 @@ paths:
         "200": { description: Revisions, newest first, content: { application/json: { schema: { type: object } } } }
     post:
       operationId: createStackRevision
+      description: Adds a revision to the stack. Needs a recent step-up (403 step_up_required, see /auth/step-up) when exceptions are given.
       x-permission: containers.manage
       parameters: [{ $ref: "#/components/parameters/StackName" }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevisionInput" } } } }
@@ -582,7 +585,7 @@ paths:
     post:
       operationId: addCatalogSource
       x-permission: catalog.manage
-      description: Adds a catalog source with its Ed25519 trust key (ADR-0020). The URL is optional; without it, signed catalogs are uploaded. The source is synced separately.
+      description: Adds a catalog source with its Ed25519 trust key (ADR-0020). The URL is optional; without it, signed catalogs are uploaded. The source is synced separately. Needs a recent step-up (403 step_up_required, see /auth/step-up).
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSourceInput" } } } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
@@ -592,7 +595,7 @@ paths:
     delete:
       operationId: removeCatalogSource
       x-permission: catalog.manage
-      description: Removes the source and its catalog. Installed apps stay but no longer receive updates.
+      description: Removes the source and its catalog. Installed apps stay but no longer receive updates. Needs a recent step-up (403 step_up_required, see /auth/step-up).
       parameters: [{ $ref: "#/components/parameters/SourceID" }]
       responses:
         "204": { description: Removed }
@@ -649,7 +652,7 @@ paths:
     post:
       operationId: installApp
       x-permission: apps.manage
-      description: Creates the app's managed stack from the catalog entry and queues its deployment. Apps that need policy exceptions require policy.exceptions and approve_exceptions.
+      description: Creates the app's managed stack from the catalog entry and queues its deployment. Apps that need policy exceptions require policy.exceptions and approve_exceptions. Needs a recent step-up (403 step_up_required, see /auth/step-up) when approve_exceptions is set.
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InstallAppInput" } } } }
       responses:
         "202": { $ref: "#/components/responses/AppJob" }
@@ -669,7 +672,7 @@ paths:
     post:
       operationId: updateApp
       x-permission: apps.manage
-      description: Deploys the catalog's version as a new revision with a pre-update volume snapshot; a failed deployment restores the volumes and the previous revision.
+      description: Deploys the catalog's version as a new revision with a pre-update volume snapshot; a failed deployment restores the volumes and the previous revision. Needs a recent step-up (403 step_up_required, see /auth/step-up) when approve_exceptions is set.
       parameters: [{ $ref: "#/components/parameters/StackName" }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateAppInput" } } } }
       responses:
@@ -681,14 +684,14 @@ paths:
     post:
       operationId: removeApp
       x-permission: apps.manage
-      description: Removes the app's containers and networks. With delete_data the volumes are removed as well, which requires the user's current password.
+      description: Removes the app's containers and networks. With delete_data the volumes and snapshots are removed as well, which needs a recent step-up (403 step_up_required, see /auth/step-up).
       parameters: [{ $ref: "#/components/parameters/StackName" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, additionalProperties: false, properties: { delete_data: { type: boolean }, password: { type: string } } } } }
+        content: { application/json: { schema: { type: object, additionalProperties: false, properties: { delete_data: { type: boolean } } } } }
       responses:
         "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
-        "403": { description: Wrong password (code reauthentication_failed), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "403": { description: A recent step-up is needed (code step_up_required), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -704,14 +707,14 @@ paths:
     post:
       operationId: formatDisk
       x-permission: storage.manage
-      description: Queues formatting a free disk with one GPT partition and a file system. Requires the disk's name as typed confirmation and the user's password. The storage service refuses the system disk, disks in use and disks whose serial, WWN or size no longer match. Never retried automatically.
+      description: Queues formatting a free disk with one GPT partition and a file system. Requires the disk's name as typed confirmation and a recent step-up (see /auth/step-up). The storage service refuses the system disk, disks in use and disks whose serial, WWN or size no longer match. Never retried automatically.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [path, size_bytes, fstype, label, confirm, password]
+              required: [path, size_bytes, fstype, label, confirm]
               properties:
                 path: { type: string }
                 serial: { type: string }
@@ -720,10 +723,9 @@ paths:
                 fstype: { type: string, enum: [ext4, xfs, btrfs] }
                 label: { type: string, pattern: "^[A-Za-z0-9_-]{1,12}$" }
                 confirm: { type: string, description: the disk's name, for example sdb }
-                password: { type: string }
       responses:
         "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
-        "403": { description: Wrong password (code reauthentication_failed), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "403": { description: A recent step-up is needed (code step_up_required), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "409": { $ref: "#/components/responses/Error" }
         "422": { description: Missing or wrong confirmation (code confirmation_required), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Error" }
@@ -845,7 +847,7 @@ paths:
     post:
       operationId: purgeTrash
       x-permission: files.write
-      description: Queues deleting one trash item (id) or the whole trash of the root (no id).
+      description: Queues deleting one trash item (id) or the whole trash of the root (no id). Needs a recent step-up (403 step_up_required, see /auth/step-up).
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [root], properties: { root: { type: string }, id: { type: string } } } } } }
       responses:
         "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
@@ -892,6 +894,178 @@ paths:
         "200": { description: Done, content: { application/json: { schema: { type: object, properties: { path: { type: string } } } } } }
         "409": { $ref: "#/components/responses/Error" }
         "422": { description: Incomplete upload, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /auth/login/mfa:
+    post:
+      operationId: loginSecondFactor
+      x-permission: public
+      security: []
+      description: Completes a password sign-in that returned mfa_required with a TOTP or a recovery code. Wrong codes count towards the account lockout.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [mfa_token], properties: { mfa_token: { type: string }, code: { type: string }, recovery_code: { type: string } } } } } }
+      responses:
+        "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/login/mfa/passkey/begin:
+    post:
+      operationId: loginSecondFactorPasskeyBegin
+      x-permission: public
+      security: []
+      description: WebAuthn assertion options for the passkeys of the account behind an MFA challenge.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [mfa_token], properties: { mfa_token: { type: string } } } } } }
+      responses:
+        "200": { description: Ceremony, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnCeremony" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/login/mfa/passkey/finish:
+    post:
+      operationId: loginSecondFactorPasskeyFinish
+      x-permission: public
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnResponse" } } } }
+      responses:
+        "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/passkey/begin:
+    post:
+      operationId: passkeyLoginBegin
+      x-permission: public
+      security: []
+      description: Options for a usernameless sign-in with a passkey (user verification required).
+      responses:
+        "200": { description: Ceremony, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnCeremony" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/passkey/finish:
+    post:
+      operationId: passkeyLoginFinish
+      x-permission: public
+      security: []
+      description: Signs in with a passkey alone; it counts as multi-factor. A signature counter that goes backwards is rejected.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnResponse" } } } }
+      responses:
+        "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/mfa:
+    get:
+      operationId: getMyMFA
+      x-permission: self.manage
+      responses:
+        "200": { description: Sign-in methods, content: { application/json: { schema: { $ref: "#/components/schemas/MFAStatus" } } } }
+  /auth/step-up:
+    post:
+      operationId: stepUp
+      x-permission: self.manage
+      description: Confirms the user for 10 minutes. Accounts with a second factor need password plus TOTP or recovery code (or a passkey via the passkey step-up); passkey-only accounts must use a passkey.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { password: { type: string }, code: { type: string }, recovery_code: { type: string } } } } } }
+      responses:
+        "204": { description: Confirmed }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/step-up/passkey/begin:
+    post:
+      operationId: stepUpPasskeyBegin
+      x-permission: self.manage
+      responses:
+        "200": { description: Ceremony, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnCeremony" } } } }
+  /auth/step-up/passkey/finish:
+    post:
+      operationId: stepUpPasskeyFinish
+      x-permission: self.manage
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnResponse" } } } }
+      responses:
+        "204": { description: Confirmed }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/mfa/totp:
+    post:
+      operationId: beginTOTP
+      x-permission: self.manage
+      description: Creates an unconfirmed TOTP secret (step-up required). Returns the base32 secret and the otpauth URL.
+      responses:
+        "200": { description: Secret, content: { application/json: { schema: { type: object, properties: { secret: { type: string }, otpauth_url: { type: string } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: disableTOTP
+      x-permission: self.manage
+      description: Removes TOTP (step-up required). Refused if it is the last factor a policy requires.
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /auth/mfa/totp/confirm:
+    post:
+      operationId: confirmTOTP
+      x-permission: self.manage
+      description: Activates TOTP with a first valid code and returns 10 new recovery codes (shown once).
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } } }
+      responses:
+        "200": { description: Recovery codes, content: { application/json: { schema: { type: object, properties: { recovery_codes: { type: array, items: { type: string } } } } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/mfa/recovery-codes:
+    post:
+      operationId: regenerateRecoveryCodes
+      x-permission: self.manage
+      description: Replaces the recovery codes (step-up required).
+      responses:
+        "200": { description: Recovery codes, content: { application/json: { schema: { type: object, properties: { recovery_codes: { type: array, items: { type: string } } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /auth/passkeys/begin:
+    post:
+      operationId: passkeyRegistrationBegin
+      x-permission: self.manage
+      description: Options to create a passkey (resident key, user verification required; step-up required).
+      responses:
+        "200": { description: Ceremony, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnCeremony" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /auth/passkeys/finish:
+    post:
+      operationId: passkeyRegistrationFinish
+      x-permission: self.manage
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WebAuthnResponse" } } } }
+      responses:
+        "201": { description: Registered, content: { application/json: { schema: { $ref: "#/components/schemas/Passkey" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/passkeys/{id}:
+    delete:
+      operationId: deletePasskey
+      x-permission: self.manage
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      description: Removes a passkey (step-up required). Refused for the last passkey of a passkey-only account or the last factor a policy requires.
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /auth/password-login:
+    put:
+      operationId: setPasswordLogin
+      x-permission: self.manage
+      description: Switches password sign-in off (passkey-only, needs a passkey) or on again. Step-up required.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } } } } }
+      responses:
+        "204": { description: Changed }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/mfa-policy:
+    get:
+      operationId: getMFAPolicy
+      x-permission: security.manage
+      responses:
+        "200": { description: Policy, content: { application/json: { schema: { type: object, properties: { required: { type: object, additionalProperties: { type: boolean } } } } } } }
+    put:
+      operationId: setMFAPolicy
+      x-permission: security.manage
+      description: Requires MFA per role. Step-up required; removing a requirement is audited as a downgrade.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { required: { type: object, additionalProperties: { type: boolean } } } } } } }
+      responses:
+        "204": { description: Stored }
+        "403": { $ref: "#/components/responses/Error" }
+  /users/{id}/mfa/reset:
+    post:
+      operationId: resetUserMFA
+      x-permission: users.manage
+      description: Removes all second factors and sessions of a user and turns password sign-in back on (lost device). Step-up and the user management rules apply.
+      parameters: [{ $ref: "#/components/parameters/UserID" }]
+      responses:
+        "204": { description: Reset }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -929,6 +1103,45 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    LoginResponse:
+      type: object
+      description: A session (as GET /auth/session) or, with mfa_required, a challenge for the second factor.
+      properties:
+        mfa_required: { type: boolean }
+        mfa_token: { type: string }
+        methods: { type: array, items: { type: string, enum: [totp, passkey, recovery_code] } }
+        user: { type: object }
+        permissions: { type: array, items: { type: string } }
+        csrf_token: { type: string }
+        mfa_enrollment_required: { type: boolean }
+    WebAuthnCeremony:
+      type: object
+      properties:
+        token: { type: string }
+        options: { type: object, description: PublicKeyCredentialCreationOptions or RequestOptions (JSON) }
+    WebAuthnResponse:
+      type: object
+      required: [token, credential]
+      properties:
+        token: { type: string }
+        mfa_token: { type: string }
+        name: { type: string, maxLength: 64 }
+        credential: { type: object, description: PublicKeyCredential as JSON }
+    Passkey:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: [string, "null"], format: date-time }
+    MFAStatus:
+      type: object
+      properties:
+        totp: { type: boolean }
+        recovery_codes_left: { type: integer }
+        passkeys: { type: array, items: { $ref: "#/components/schemas/Passkey" } }
+        password_login: { type: boolean }
+        required_by_policy: { type: boolean }
     FileRoot:
       type: object
       properties:

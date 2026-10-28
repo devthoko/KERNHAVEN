@@ -20,6 +20,12 @@ var publicRoutes = map[string]bool{
 	"GET /api/v1/setup":        true,
 	"POST /api/v1/setup":       true,
 	"POST /api/v1/auth/login":  true,
+	// M11: second sign-in step and passkey sign-in (rate-limited, origin-checked).
+	"POST /api/v1/auth/login/mfa":                true,
+	"POST /api/v1/auth/login/mfa/passkey/begin":  true,
+	"POST /api/v1/auth/login/mfa/passkey/finish": true,
+	"POST /api/v1/auth/passkey/begin":            true,
+	"POST /api/v1/auth/passkey/finish":           true,
 }
 
 // AT-F09-01: every route declares known access; public routes are reviewed.

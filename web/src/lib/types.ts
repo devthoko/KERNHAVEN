@@ -23,7 +23,8 @@ export type Permission =
   | "storage.read"
   | "storage.manage"
   | "files.read"
-  | "files.write";
+  | "files.write"
+  | "security.manage";
 
 export interface User {
   id: number;
@@ -41,6 +42,16 @@ export interface SessionInfo {
   permissions: Permission[];
   csrf_token: string;
   expires_at: string;
+  mfa_enrollment_required?: boolean;
+  mfa?: boolean;
+  step_up_until?: string;
+}
+
+/** LoginResponse is a session or, with mfa_required, a second-factor challenge (M11). */
+export interface LoginResponse extends Partial<SessionInfo> {
+  mfa_required?: boolean;
+  mfa_token?: string;
+  methods?: ("totp" | "passkey" | "recovery_code")[];
 }
 
 export interface Session {
@@ -554,4 +565,26 @@ export interface UploadSession {
   size: number;
   received: number;
   chunk_size: number;
+}
+
+// ---- M11: MFA ----
+
+export interface Passkey {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface MFAStatus {
+  totp: boolean;
+  recovery_codes_left: number;
+  passkeys: Passkey[];
+  password_login: boolean;
+  required_by_policy: boolean;
+}
+
+export interface Ceremony {
+  token: string;
+  options: { publicKey: Record<string, unknown> };
 }

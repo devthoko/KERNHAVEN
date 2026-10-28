@@ -53,8 +53,8 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Partially mitigated (M2: Argon2id, IP rate limit, lockout; MFA in M11) |
-| TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2 | Mitigated (AT-F08-03) |
+| TH-01 | S | Credential stuffing / brute force on login | Argon2id, rate limits per IP and account, exponential backoff, MFA | M2/M11 | Mitigated (M2: Argon2id, IP rate limit, lockout; M11: TOTP with replay protection, passkeys, MFA policy per role; wrong second factors count towards the lockout) |
+| TH-02 | S | Session hijacking | Secure/HttpOnly/SameSite=Strict cookies, server-side sessions, rotation, idle/absolute timeouts | M2/M11 | Mitigated (AT-F08-03; M11: destructive and security-relevant actions need a step-up within 10 minutes) |
 | TH-03 | T | CSRF on state-changing endpoints | CSRF token + Origin check; SameSite cookies | M2 | Mitigated (AT-F08-04) |
 | TH-04 | T/E | XSS in dashboard (e.g. container names, logs, file previews) | React escaping, strict CSP, no `dangerouslySetInnerHTML`, attachment disposition for untrusted files | M5/M10 | Mitigated (M5: strict CSP without unsafe-inline, React escaping only, dangerouslySetInnerHTML banned in CI; M10: file content only as attachment with sandbox CSP and nosniff, previews as text, images by content sniffing without SVG) |
 | TH-05 | I | Core reachable directly from the network, bypassing Caddy | Loopback-only bind enforced in config validation | M1 | Mitigated (AT-F00-01) |
@@ -110,7 +110,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | ID | Risk | Rationale |
 |---|---|---|
 | AR-01 | The agent's Docker access is root-equivalent | Inherent to managing Docker; contained by ADR-0003 controls and agent minimalism |
-| AR-02 | A compromised Core can request any allow-listed agent operation within policy | Policy-enforcing agent limits impact; destructive operations additionally need step-up-bound grants (M11) |
+| AR-02 | A compromised Core can request any allow-listed agent operation within policy | Policy-enforcing agent limits impact. M11 enforces step-up for destructive actions in the Core; binding agent grants to a step-up is not implemented, so a compromised Core is not limited by it |
 
 ## 6. Review log
 
@@ -125,3 +125,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-27 | M8 | TH-40 mitigated (signed catalogs); TH-41 update diff; TH-51 app secrets; new agent operation volumes.copy (ADR-0021) |
 | 2026-10-28 | M9 | TH-32 mitigated; new privilege domain: root storage service with its own allow-list (ADR-0022); mount points only below the mount root, nosuid,nodev |
 | 2026-10-28 | M10 | TH-31 mitigated for files (os.Root in a separate root file service); TH-04 mitigated for file content; stream endpoint in the agent protocol (ADR-0023) |
+| 2026-10-28 | M11 | TH-01 mitigated (MFA, passkeys, policy); TH-02 extended by step-up; AR-02 rationale corrected (no step-up-bound agent grants yet) |

@@ -73,6 +73,9 @@ func (s *Service) Register(rt *httpserver.Router) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
+		if len(in.Exceptions) > 0 && !stepUp(w, r) {
+			return
+		}
 		st, _, err := s.Create(r.Context(), actorFrom(r), in)
 		if err != nil {
 			writeErr(w, r, err)
@@ -183,6 +186,9 @@ func (s *Service) Register(rt *httpserver.Router) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
+		if len(in.Exceptions) > 0 && !stepUp(w, r) {
+			return
+		}
 		rev, _, err := s.AddRevision(r.Context(), actorFrom(r), r.PathValue("name"), in)
 		if err != nil {
 			writeErr(w, r, err)
@@ -261,4 +267,14 @@ func (s *Service) Register(rt *httpserver.Router) {
 		}
 		httpserver.WriteJSON(w, http.StatusAccepted, map[string]int64{"job_id": id})
 	})
+}
+
+// stepUp requires a recent strong authentication for revisions that carry
+// policy exceptions (AT-F09-04).
+func stepUp(w http.ResponseWriter, r *http.Request) bool {
+	if err := identity.CheckStepUp(r.Context()); err != nil {
+		httpserver.WriteError(w, r, http.StatusForbidden, "step_up_required", err.Error())
+		return false
+	}
+	return true
 }

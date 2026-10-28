@@ -52,8 +52,8 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httpserver.WriteError(w, r, http.StatusForbidden, "approval_required", err.Error())
 	case errors.Is(err, stacks.ErrBlocked):
 		httpserver.WriteError(w, r, http.StatusUnprocessableEntity, "url_blocked", err.Error())
-	case errors.Is(err, identity.ErrInvalidCredentials):
-		httpserver.WriteError(w, r, http.StatusForbidden, "reauthentication_failed", "the password is not correct")
+	case errors.Is(err, identity.ErrStepUpRequired):
+		httpserver.WriteError(w, r, http.StatusForbidden, "step_up_required", err.Error())
 	case errors.As(err, &rl):
 		w.Header().Set("Retry-After", strconv.Itoa(int(rl.RetryAfter.Seconds())+1))
 		httpserver.WriteError(w, r, http.StatusTooManyRequests, "rate_limited", rl.Error())
@@ -91,6 +91,11 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
+		// A trust key decides which apps may be installed (AT-F09-04).
+		if err := identity.CheckStepUp(r.Context()); err != nil {
+			writeErr(w, r, err)
+			return
+		}
 		src, err := s.AddSource(r.Context(), actorFrom(r), in)
 		if err != nil {
 			writeErr(w, r, err)
@@ -100,6 +105,10 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 	})
 
 	rt.HandleFunc("DELETE /api/v1/catalog/sources/{id}", sources, func(w http.ResponseWriter, r *http.Request) {
+		if err := identity.CheckStepUp(r.Context()); err != nil {
+			writeErr(w, r, err)
+			return
+		}
 		id, ok := sourceID(w, r)
 		if !ok {
 			return
@@ -183,6 +192,12 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
+		if in.ApproveExceptions {
+			if err := identity.CheckStepUp(r.Context()); err != nil {
+				writeErr(w, r, err)
+				return
+			}
+		}
 		app, job, err := s.Install(r.Context(), actorFrom(r), in)
 		if err != nil {
 			writeErr(w, r, err)
@@ -205,6 +220,12 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
 		}
+		if in.ApproveExceptions {
+			if err := identity.CheckStepUp(r.Context()); err != nil {
+				writeErr(w, r, err)
+				return
+			}
+		}
 		app, job, err := s.Update(r.Context(), actorFrom(r), r.PathValue("name"), in)
 		if err != nil {
 			writeErr(w, r, err)
@@ -215,8 +236,7 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 
 	rt.HandleFunc("POST /api/v1/apps/{name}/remove", manage, func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			DeleteData bool   `json:"delete_data"`
-			Password   string `json:"password"`
+			DeleteData bool `json:"delete_data"`
 		}
 		if httpserver.DecodeJSON(w, r, &in) != nil {
 			return
@@ -226,10 +246,9 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 			writeErr(w, r, err)
 			return
 		}
-		// Deleting data cannot be undone: confirm with the password (AT-F05-03).
+		// Deleting data cannot be undone: it needs step-up (AT-F05-03, AT-F09-04).
 		if in.DeleteData {
-			p, _ := identity.FromContext(r.Context())
-			if err := ids.Reauthenticate(r.Context(), p, identity.MetaFrom(r), in.Password, "app.remove", "app:"+name); err != nil {
+			if err := identity.CheckStepUp(r.Context()); err != nil {
 				writeErr(w, r, err)
 				return
 			}
