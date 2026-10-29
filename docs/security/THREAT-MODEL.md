@@ -128,7 +128,26 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | AR-01 | The agent's Docker access is root-equivalent | Inherent to managing Docker; contained by ADR-0003 controls and agent minimalism |
 | AR-02 | A compromised Core can request any allow-listed agent operation within policy | Policy-enforcing agent limits impact. M11 enforces step-up for destructive actions in the Core; binding agent grants to a step-up is not implemented, so a compromised Core is not limited by it |
 
-## 6. Review log
+
+## 6. Review for 1.0 (M19, 2026-10-29)
+
+Every threat was reviewed against its row above. All are **Mitigated**
+except the ones below, which are partially mitigated. Accepting a residual
+risk is the owner's decision; until the owner decides, each stays open and
+the 1.0 gate box "all threats Mitigated or Accepted with rationale" stays
+unchecked.
+
+| ID | Residual risk | Proposed decision | Rationale |
+|---|---|---|---|
+| TH-06 | Request floods beyond the sign-in rate limits (e.g. many valid sessions) | Accept | A homelab platform behind Caddy on a LAN; Caddy and the router are the place for volumetric limits; server timeouts and body limits are in place |
+| TH-14 | Apps' published Docker ports stay reachable around the proxy | Accept (documented) | Publishing ports is the user's choice in the Compose file; the UI shows published ports; closing them would need firewall management, which is out of scope (CLAUDE.md) |
+| TH-21 | Exceptions are approved in the Core; a compromised Core could forge one | Needs work or acceptance | Signing exceptions with an owner key outside the Core (planned since M6) is not implemented; the agent re-evaluates policy, exceptions are owner-only, reasoned and audited |
+| TH-41 | Catalogs need not pin image digests | Accept | Digests are recorded and changes shown at update time; catalogs from untrusted sources are refused by signature (TH-40) |
+| TH-43 | No release key exists yet | Blocked by B-3 | Verification is implemented and fails closed; the key ceremony is the owner's |
+| TH-52 | No automatic remote log sink | Accept for 1.0 | Verifiable exports and `audit-check` detect truncation against kept exports; a remote sink is a feature for a later version |
+| TH-53 | Power loss not tested on real hardware or VMs | Blocked by B-2 | SQLite WAL with FULL sync, integrity check at start and SIGKILL recovery tests exist; the VM power-loss test needs B-2 |
+
+## 7. Review log
 
 | Date | Milestone | Change |
 |---|---|---|
@@ -150,3 +169,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-29 | M17 | TH-52: verifiable exports and continuation check detect tail truncation against a kept export (still partial: no automatic remote sink); the security dashboard surfaces MFA gaps, open routes, exceptions and a broken chain |
 | 2026-10-29 | M6b | New TH-25 (exec console) and TH-26 (long-lived streams), mitigated; TH-20 still holds: the console starts only sh or bash, never a command from the API (ADR-0031) |
 | 2026-10-29 | M18 | TH-43 partially mitigated (verification in place, key ceremony open, B-3); new TH-45 (installer side effects), mitigated |
+| 2026-10-29 | M19 | Review for 1.0 (section 6): all other threats mitigated; TH-06, TH-14, TH-41, TH-52 proposed for acceptance, TH-21 needs work or acceptance, TH-43 and TH-53 blocked by B-3 and B-2 — owner decision pending |

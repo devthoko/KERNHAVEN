@@ -44,5 +44,8 @@ Description: secure self-hosting management for Linux homelabs
  without giving the web application root access to the host.
 CTL
 mkdir -p "$OUT"
+export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || date +%s)}
+# Same file times in every build (reproducible packages, M19).
+find "$root" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 dpkg-deb --root-owner-group -Zxz --build "$root" "$OUT/kernhaven_${VERSION}_${ARCH}.deb" >/dev/null
 echo "$OUT/kernhaven_${VERSION}_${ARCH}.deb"

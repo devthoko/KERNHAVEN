@@ -22,7 +22,10 @@ without giving the web application root on your host.
 | Security | [Threat model](docs/security/THREAT-MODEL.md) |
 | Testing | [Test strategy](docs/testing/TEST-STRATEGY.md) |
 | Plan | [Milestones](docs/milestones/MILESTONES.md) |
-| Release criteria | [Quality gates](docs/release/QUALITY-GATES.md) |
+| Release criteria | [Quality gates](docs/release/QUALITY-GATES.md), [status of the 1.0 gate](docs/release/1.0-GATE.md) |
+| Install and operate | [Operator guide](docs/operations/OPERATIONS.md) |
+| Use | [User guide](docs/user/USER-GUIDE.md) |
+| Security overview | [Security](docs/security/SECURITY.md), [ASVS self-assessment](docs/security/ASVS-L2.md) |
 
 ## Development
 

@@ -5,7 +5,10 @@ cd "$(dirname "$0")/.."
 
 VERSION=${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}
 COMMIT=$(git rev-parse HEAD 2>/dev/null || echo unknown)
-DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Reproducible builds (M19): the build time is the commit time, also for the
+# package's file times (dpkg-deb clamps to SOURCE_DATE_EPOCH).
+export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || date +%s)}
+DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y-%m-%dT%H:%M:%SZ)
 PKG=github.com/devthoko/KERNHAVEN/internal/platform/version
 
 (cd web && npm ci --ignore-scripts --no-audit --no-fund && npm run build)

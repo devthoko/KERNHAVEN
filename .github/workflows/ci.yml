@@ -437,6 +437,85 @@ jobs:
       - name: install, repair, upgrade N-1 → N, failed upgrade, rollback, removal (AT-F15-01..04, AT-F17-01..04)
         run: sudo scripts/package-test.sh "$RUNNER_TEMP/rel" "$RUNNER_TEMP/test.pub" 0.15.0 0.18.0 0.18.1
 
+  reproducible:
+    name: reproducible build (two builds, identical binaries and packages)
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: build twice in different directories and compare
+        run: |
+          trap 'echo "::error::$BASH_COMMAND failed (exit $?)"' ERR
+          for d in a b; do
+            git worktree add "$RUNNER_TEMP/$d" HEAD
+            (cd "$RUNNER_TEMP/$d" && VERSION=1.0.0~repro scripts/build.sh >/dev/null && for arch in amd64 arm64; do scripts/package.sh 1.0.0~repro "$arch" >/dev/null; done)
+          done
+          (cd "$RUNNER_TEMP/a" && sha256sum bin/* dist/*) > "$RUNNER_TEMP/a.sums"
+          (cd "$RUNNER_TEMP/b" && sha256sum bin/* dist/*) > "$RUNNER_TEMP/b.sums"
+          cat "$RUNNER_TEMP/a.sums"
+          if ! diff "$RUNNER_TEMP/a.sums" "$RUNNER_TEMP/b.sums"; then
+            echo "::error::the two builds differ: $(diff "$RUNNER_TEMP/a.sums" "$RUNNER_TEMP/b.sums" | grep '^[<>]' | head -6 | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "::notice::$(wc -l < "$RUNNER_TEMP/a.sums") artifacts identical in two builds"
+
+  zap:
+    name: OWASP ZAP baseline scan
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: start the Core (first-run state, no agents)
+        run: |
+          trap 'echo "::error::$BASH_COMMAND failed (exit $?)"' ERR
+          (cd web && npm ci --ignore-scripts --no-audit --no-fund && npm run build) >/dev/null
+          CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/kernhaven-core" ./cmd/kernhaven-core
+          mkdir -m 700 "$RUNNER_TEMP/data"
+          cat > "$RUNNER_TEMP/core.toml" <<CFG
+          [server]
+          listen = "127.0.0.1:8470"
+          public_origin = "http://localhost:8470"
+          [storage]
+          data_dir = "$RUNNER_TEMP/data"
+          [agent]
+          socket = ""
+          storage_socket = ""
+          files_socket = ""
+          proxy_socket = ""
+          monitor_socket = ""
+          CFG
+          sed -i 's/^          //' "$RUNNER_TEMP/core.toml"
+          "$RUNNER_TEMP/kernhaven-core" -config "$RUNNER_TEMP/core.toml" 2> "$RUNNER_TEMP/core.log" &
+          for i in $(seq 30); do curl -fsS http://127.0.0.1:8470/api/v1/health/ready >/dev/null && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8470/api/v1/health/ready
+      - name: ZAP baseline (pinned image; medium and high findings fail unless accepted in .zap/rules.tsv)
+        run: |
+          trap 'echo "::error::$BASH_COMMAND failed (exit $?)"' ERR
+          mkdir -p "$RUNNER_TEMP/zap" && chmod 777 "$RUNNER_TEMP/zap"
+          set +e
+          docker run --rm --network host -v "$RUNNER_TEMP/zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab \
+            zap-baseline.py -t http://127.0.0.1:8470 -J report.json -r report.html -I
+          set -e
+          python3 scripts/zap-check.py "$RUNNER_TEMP/zap/report.json" .zap/rules.tsv
+
   fuzz:
     name: fuzz agent protocol (60 s each)
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')

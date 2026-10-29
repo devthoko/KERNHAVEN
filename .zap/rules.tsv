@@ -1,0 +1,3 @@
+# ZAP baseline rule decisions (M19). Format: rule ID <TAB> IGNORE|WARN|FAIL <TAB> rationale.
+# A medium or high finding fails CI unless its rule is listed here as
+# ACCEPTED with a reason (scripts/zap-check.py).

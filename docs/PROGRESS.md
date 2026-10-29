@@ -6,8 +6,8 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4, M6–M18 and M6b are implemented on
-stacked branches up to `m18-installer`.
+green CI on stacked branches awaiting owner review; M4, M6–M19 and M6b are implemented on
+stacked branches up to `m19-release`.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
@@ -31,7 +31,7 @@ stacked branches up to `m18-installer`.
 | M17 | Security dashboard, audit search and export (F10-03/04) | Done on branch `m17-security` (stacked on M16), CI 40950899401, merge pending owner review | [M17 evidence](milestones/M17-security.md#verification-evidence-2026-10-29-branch-m17-security) |
 | M6b | Exec console, live status, log follow (F02-07, F01-05) | Done on branch `m6b-streaming` (stacked on M17), CI 40958468980, merge pending owner review | [M6b evidence](milestones/M6b-streaming.md#verification-evidence-2026-10-29-branch-m6b-streaming) |
 | M18 | Installer, upgrades, rollback, signed releases (F15, F17) | Verified on Ubuntu 24.04 on branch `m18-installer` (stacked on M6b), CI 40967427295, merge pending owner review; Debian 13 run pending B-2, release key pending B-3 | [M18 evidence](milestones/M18-installer.md#verification-evidence-2026-10-29-branch-m18-installer) |
-| M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M19 | Release hardening and 1.0 verification | Implemented on branch `m19-release` (stacked on M18), CI pending; the 1.0 gate is not passed | [1.0 gate status](release/1.0-GATE.md) |
 
 ## Environment blockers
 
@@ -47,7 +47,7 @@ stacked branches up to `m18-installer`.
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa`, `m12-network`, `m13-tls`, `m14-monitoring`, `m15-alerts`, `m16-backup`, `m17-security`, `m6b-streaming` and `m18-installer`. Next: M19 (owner review of all branches at the end).
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa`, `m12-network`, `m13-tls`, `m14-monitoring`, `m15-alerts`, `m16-backup`, `m17-security`, `m6b-streaming`, `m18-installer` and `m19-release`. All milestones are implemented; 1.0 needs the items in [the gate status](release/1.0-GATE.md#what-the-owner-needs-to-do) (owner review of all branches at the end).
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment
