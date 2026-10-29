@@ -13,22 +13,37 @@ API=http://127.0.0.1:8470/api/v1
 ORIGIN=http://localhost:8470
 JAR=$(mktemp)
 STEP=start
+exec 3>&1 # annotations reach the log even from redirected blocks
 fail() {
-  echo "::error::package test, step '$STEP': $*"
+  echo "::error::package test, step '$STEP': $*" >&3
   journalctl -u kernhaven-core --no-pager -n 50 >&2 || true
   exit 1
 }
-trap 'echo "::error::package test, step '"'"'$STEP'"'"', line $LINENO: $BASH_COMMAND"' ERR
+trap 'echo "::error::package test, step '"'"'$STEP'"'"', line $LINENO: $BASH_COMMAND" >&3' ERR
 step() { STEP=$*; echo; echo "=== $*"; }
 
+# run COMMAND...: shows the output; a failure is reported with its last lines.
+run() {
+  local out
+  out=$(mktemp)
+  if ! "$@" > "$out" 2>&1; then
+    cat "$out"
+    fail "$(basename "$1") failed: $(tail -6 "$out" | tr '\n' ' ')"
+  fi
+  cat "$out"
+  rm -f "$out"
+}
+
+# host_state records what Kernhaven must not change: SSH configuration,
+# firewall rules (without Docker's own chains) and installed packages.
 host_state() {
   {
-    sha256sum /etc/ssh/sshd_config /etc/ssh/ssh_config 2>/dev/null || true
-    find /etc/ssh -type f -exec sha256sum {} + 2>/dev/null | sort
-    iptables-save 2>/dev/null | grep -v '^#' | grep -iv docker || true
-    nft list ruleset 2>/dev/null | grep -iv docker || true
+    if [ -d /etc/ssh ]; then (find /etc/ssh -type f -print0 | sort -z | xargs -0 -r sha256sum) || true; fi
+    (iptables-save 2>/dev/null | grep -v '^#' | grep -iv docker) || true
+    (nft list ruleset 2>/dev/null | grep -iv docker) || true
     dpkg-query -W -f='${Package} ${Version}\n' | grep -v '^kernhaven ' | sort
   } > "$1"
+  [ -s "$1" ] || fail "could not record the host state"
 }
 
 wait_ready() {
@@ -65,7 +80,7 @@ step "baseline of the host"
 host_state /tmp/before.txt
 
 step "install $OLD with pre-flight checks (AT-F17-01)"
-"$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
+run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 [ "$(version)" = "$OLD" ] || fail "version $(version), want $OLD"
 # The test reaches the Core directly over http.
 sed -i 's|^public_origin = .*|public_origin = "http://localhost:8470"|' /etc/kernhaven/core.toml
@@ -84,7 +99,7 @@ login alice 'Alice-Test-Passw0rd!'
 step "a second run of the installer repairs and changes nothing else (AT-F17-02)"
 rm -f /etc/kernhaven/agent-grant.pub
 systemctl stop kernhaven-agent
-"$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
+run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 [ -s /etc/kernhaven/agent-grant.pub ] || fail "grant key not repaired"
 grep -q 'public_origin = "http://localhost:8470"' /etc/kernhaven/core.toml || fail "the administrator's configuration was replaced"
 wait_ready
@@ -102,7 +117,7 @@ if kernhaven-upgrade apply "$bad"; then fail "tampered package accepted"; fi
 [ "$(version)" = "$OLD" ] || fail "a refused release changed the version"
 
 step "upgrade $OLD → $NEW with the data (AT-F15-02, AT-F15-04)"
-kernhaven-upgrade apply "$REL/$NEW"
+run kernhaven-upgrade apply "$REL/$NEW"
 [ "$(version)" = "$NEW" ] || fail "version $(version), want $NEW"
 ls /var/lib/kernhaven-upgrade/snapshots/*/kernhaven.db >/dev/null || fail "no snapshot"
 login alice 'Alice-Test-Passw0rd!'
@@ -120,7 +135,7 @@ wait_ready
 login alice 'Alice-Test-Passw0rd!'
 
 step "manual rollback to $OLD with its database (AT-F15-03)"
-kernhaven-upgrade rollback
+run kernhaven-upgrade rollback
 [ "$(version)" = "$OLD" ] || fail "version $(version), want $OLD"
 wait_ready
 login alice 'Alice-Test-Passw0rd!'
@@ -132,7 +147,7 @@ diff -u /tmp/before.txt /tmp/after.txt || fail "the host changed"
 
 step "uninstall keeps apps running and data in place (AT-F17-03)"
 docker run -d --name kh-pkgtest-app --label io.kernhaven.managed=true alpine:3 sleep 600 >/dev/null
-/usr/share/kernhaven/uninstall.sh --yes
+run /usr/share/kernhaven/uninstall.sh --yes
 [ "$(docker inspect -f '{{.State.Running}}' kh-pkgtest-app)" = true ] || fail "an app was stopped"
 ! systemctl list-unit-files 'kernhaven*' --no-legend | grep -q . || fail "units left"
 ! getent passwd kernhaven >/dev/null || fail "user left"
@@ -141,9 +156,9 @@ docker run -d --name kh-pkgtest-app --label io.kernhaven.managed=true alpine:3 s
 docker rm -f kh-pkgtest-app >/dev/null
 
 step "reinstall onto the kept data, then remove everything on request"
-"$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
+run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 wait_ready
-/usr/share/kernhaven/uninstall.sh --yes --remove-data
+run /usr/share/kernhaven/uninstall.sh --yes --remove-data
 [ ! -e /var/lib/kernhaven ] || fail "data kept although its removal was requested"
 echo
 echo "package test passed"
