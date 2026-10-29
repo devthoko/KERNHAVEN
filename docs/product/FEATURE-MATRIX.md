@@ -142,10 +142,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F13-01 | Host metrics | CPU, memory, load, disk I/O, network, temperatures where available | M14 | Not started |
-| AT-F13-02 | Container metrics | Per-container CPU, memory, network, block I/O | M14 | Not started |
-| AT-F13-03 | History | 7-day retention with downsampling; bounded storage | M14 | Not started |
-| AT-F13-04 | Service health | Core, agent, Docker and Caddy health on the dashboard | M14 | Not started |
+| AT-F13-01 | Host metrics | CPU, memory, load, disk I/O, network, temperatures where available | M14 | Implemented on `m14-monitoring` (CI pending; merge pending owner review) |
+| AT-F13-02 | Container metrics | Per-container CPU, memory, network, block I/O | M14 | Implemented on `m14-monitoring` (CI pending; merge pending owner review) |
+| AT-F13-03 | History | 7-day retention with downsampling; bounded storage | M14 | Implemented on `m14-monitoring` (CI pending; merge pending owner review) |
+| AT-F13-04 | Service health | Core, agent, Docker and Caddy health on the dashboard | M14 | Implemented on `m14-monitoring` (CI pending; merge pending owner review) |
 
 ## F14 — Encrypted, scheduled backup and restore
 

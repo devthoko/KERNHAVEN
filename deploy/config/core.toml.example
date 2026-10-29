@@ -35,6 +35,12 @@ files_socket = "/run/kernhaven-files/files.sock"
 # empty disables both.
 proxy_socket = "/run/kernhaven-proxy/proxy.sock"
 
+# Unix socket of kernhaven-monitor (host metrics, M14); empty disables them.
+monitor_socket = "/run/kernhaven-monitor/monitor.sock"
+
+[metrics]
+interval = "15s"   # 5s..60s between samples
+
 [auth]
 session_idle_timeout = "30m"      # 5m..24h
 session_absolute_timeout = "12h"  # 1h..720h, not shorter than the idle timeout

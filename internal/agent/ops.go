@@ -12,6 +12,7 @@ import (
 
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
+	"github.com/devthoko/KERNHAVEN/internal/agent/monitor"
 	"github.com/devthoko/KERNHAVEN/internal/agent/network"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
@@ -45,6 +46,9 @@ type Docker interface {
 	ListNetworks(ctx context.Context) ([]agentproto.NetworkSummary, error)
 	CreateNetwork(ctx context.Context, name string, internal bool, labels map[string]string) (string, error)
 	RemoveNetwork(ctx context.Context, ref string) error
+
+	// M14
+	Stats(ctx context.Context) ([]agentproto.ContainerStats, error)
 }
 
 // errInvalidParams marks parameter validation failures.
@@ -119,6 +123,8 @@ type Options struct {
 	// Proxy selects the proxy role (M12): only agent.info, the Caddy
 	// configuration and the network overview.
 	Proxy *network.Service
+	// Monitor selects the monitor role (M14): only agent.info and host.metrics.
+	Monitor *monitor.Reader
 }
 
 // operations builds the allow-list. Nothing outside this map can be invoked.
@@ -136,6 +142,13 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 		ops := proxyOperations(o.Proxy)
 		ops[agentproto.OpAgentInfo] = agentInfo(started)
 		return ops
+	case o.Monitor != nil:
+		return map[string]handler{
+			agentproto.OpAgentInfo: agentInfo(started),
+			agentproto.OpHostMetrics: typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
+				return o.Monitor.Metrics(ctx)
+			}),
+		}
 	}
 	ops := map[string]handler{
 		agentproto.OpAgentInfo: agentInfo(started),
@@ -181,6 +194,9 @@ func operations(d Docker, started time.Time, o Options) map[string]handler {
 			return agentproto.ActionResult{ID: p.ID, Changed: changed}, err
 		}),
 	}
+	ops[agentproto.OpContainersStats] = typed(func(ctx context.Context, _ agentproto.Empty) (any, error) {
+		return d.Stats(ctx)
+	})
 	for name, h := range manageOperations(d, o) {
 		ops[name] = h
 	}
@@ -208,6 +224,11 @@ func FilesOperationNames() []string {
 // ProxyOperationNames lists the operations of the proxy role (sorted).
 func ProxyOperationNames() []string {
 	return sortedNames(operations(nil, time.Time{}, Options{Proxy: &network.Service{}}))
+}
+
+// MonitorOperationNames lists the operations of the monitor role (sorted).
+func MonitorOperationNames() []string {
+	return sortedNames(operations(nil, time.Time{}, Options{Monitor: &monitor.Reader{}}))
 }
 
 // OperationNames lists the allow-listed operations (sorted).

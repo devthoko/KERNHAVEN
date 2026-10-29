@@ -128,6 +128,7 @@ jobs:
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-proxy
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-monitor
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin caddy
           getent group docker || sudo groupadd docker
       - name: Caddy binary from the distribution archive (not started as a service)
@@ -138,7 +139,7 @@ jobs:
           "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" version
           sudo install -m 0755 "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" /usr/bin/caddy
       - name: systemd-analyze verify
-        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service deploy/systemd/kernhaven-proxy.service deploy/systemd/kernhaven-caddy.service
+        run: systemd-analyze verify deploy/systemd/kernhaven-core.service deploy/systemd/kernhaven-agent.service deploy/systemd/kernhaven-storage.service deploy/systemd/kernhaven-files.service deploy/systemd/kernhaven-proxy.service deploy/systemd/kernhaven-caddy.service deploy/systemd/kernhaven-monitor.service
       - name: systemd-analyze security (AT-F00-06, threshold 2.0)
         run: |
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-core.service
@@ -147,6 +148,7 @@ jobs:
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-files.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-proxy.service
           systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-caddy.service
+          systemd-analyze security --offline=true --threshold=20 deploy/systemd/kernhaven-monitor.service
 
   web:
     name: web UI (typecheck, unit tests, build, audit)
@@ -295,7 +297,7 @@ jobs:
         run: sudo losetup -d "$LOOP" || true
 
   proxy:
-    name: proxy and Caddy services with their real units (ports 80/443)
+    name: proxy, Caddy and monitor services with their real units (ports 80/443)
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
     runs-on: ubuntu-24.04
     steps:
@@ -315,19 +317,22 @@ jobs:
         run: |
           CGO_ENABLED=0 go build -trimpath -o bin/kernhaven-agent ./cmd/kernhaven-agent
           go test -c -tags proxy_service -o bin/proxy.test ./internal/agent/network/
+          go test -c -tags monitor_service -o bin/monitor.test ./internal/agent/monitor/
           sudo install -m 0755 bin/kernhaven-agent /usr/bin/
           sudo install -m 0755 "$RUNNER_TEMP/caddy-pkg/usr/bin/caddy" /usr/bin/caddy
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-agent
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-proxy
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kernhaven-monitor
           sudo useradd --system --no-create-home --shell /usr/sbin/nologin caddy
           sudo mkdir -p /etc/kernhaven
           sudo KH_PROXY_KEYDIR=/etc/kernhaven bin/proxy.test -test.run '^TestM12WriteKey$'
           sudo install -m 0644 deploy/config/caddy.json /etc/kernhaven/caddy.json
           sed -e 's/^allowed_uids = .*/allowed_uids = [0]/' deploy/config/proxy.toml.example | sudo tee /etc/kernhaven/proxy.toml
-          sudo cp deploy/systemd/kernhaven-caddy.service deploy/systemd/kernhaven-proxy.service /etc/systemd/system/
+          sed -e 's/^allowed_uids = .*/allowed_uids = [0]/' deploy/config/monitor.toml.example | sudo tee /etc/kernhaven/monitor.toml
+          sudo cp deploy/systemd/kernhaven-caddy.service deploy/systemd/kernhaven-proxy.service deploy/systemd/kernhaven-monitor.service /etc/systemd/system/
           sudo systemctl daemon-reload
-          sudo systemctl start kernhaven-caddy kernhaven-proxy
-          systemctl is-active kernhaven-caddy kernhaven-proxy
+          sudo systemctl start kernhaven-caddy kernhaven-proxy kernhaven-monitor
+          systemctl is-active kernhaven-caddy kernhaven-proxy kernhaven-monitor
       - name: only the proxy service can reach Caddy's admin socket
         run: |
           sudo ls -ld /run/kernhaven-caddy /run/kernhaven-caddy/admin.sock
@@ -340,13 +345,17 @@ jobs:
           sudo KH_PROXY_KEYDIR=/etc/kernhaven KH_PROXY_SOCKET=/run/kernhaven-proxy/proxy.sock KH_CADDY_ROOT=/var/lib/kernhaven-caddy/data/caddy/pki/authorities/local/root.crt \
             bin/proxy.test -test.v -test.run '^TestM12ProxyService$' 2>&1 | tee proxy-test.log
           test "${PIPESTATUS[0]}" -eq 0
+      - name: host metrics through the real monitor unit (AT-F13-01)
+        run: |
+          sudo KH_MONITOR_KEYDIR=/etc/kernhaven KH_MONITOR_SOCKET=/run/kernhaven-monitor/monitor.sock bin/monitor.test -test.v -test.run '^TestM14MonitorService$' 2>&1 | tee monitor-test.log
+          test "${PIPESTATUS[0]}" -eq 0
       - name: Caddy did not touch the host's trust store
         run: "! ls /usr/local/share/ca-certificates | grep -i caddy"
       - name: service log on failure
         if: failure()
         run: |
-          sudo journalctl -u kernhaven-caddy -u kernhaven-proxy --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=proxy service log::${l}"; done || true
-          grep -E -- '--- FAIL|_test.go:[0-9]+:' proxy-test.log | head -20 | while IFS= read -r l; do echo "::error title=proxy::${l}"; done || true
+          sudo journalctl -u kernhaven-caddy -u kernhaven-proxy -u kernhaven-monitor --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=service log::${l}"; done || true
+          grep -hE -- '--- FAIL|_test.go:[0-9]+:' proxy-test.log monitor-test.log 2>/dev/null | head -20 | while IFS= read -r l; do echo "::error title=proxy/monitor::${l}"; done || true
 
   fuzz:
     name: fuzz agent protocol (60 s each)

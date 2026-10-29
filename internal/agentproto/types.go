@@ -619,3 +619,57 @@ type NetworkOverview struct {
 	Interfaces []NetworkInterface `json:"interfaces"`
 	Listening  []ListeningSocket  `json:"listening"`
 }
+
+// ---- M14: monitoring ----
+
+// HostMetrics are raw host counters; the Core computes rates from two
+// readings.
+type HostMetrics struct {
+	TakenAtMS    int64             `json:"taken_at_ms"`
+	CPUBusy      uint64            `json:"cpu_busy"`  // jiffies, all CPUs
+	CPUTotal     uint64            `json:"cpu_total"` // jiffies, all CPUs
+	CPUs         int               `json:"cpus"`
+	Memory       MemoryInfo        `json:"memory"`
+	Load         [3]float64        `json:"load"`
+	Disks        []IOCounter       `json:"disks"`
+	Interfaces   []IOCounter       `json:"interfaces"`
+	Temperatures []Temperature     `json:"temperatures"`
+	Errors       map[string]string `json:"errors,omitempty"` // sources that could not be read
+}
+
+// MemoryInfo is memory and swap in bytes.
+type MemoryInfo struct {
+	Total     uint64 `json:"total"`
+	Available uint64 `json:"available"`
+	SwapTotal uint64 `json:"swap_total"`
+	SwapFree  uint64 `json:"swap_free"`
+}
+
+// IOCounter is a byte counter pair: read/write for disks, received/sent
+// for interfaces.
+type IOCounter struct {
+	Name string `json:"name"`
+	In   uint64 `json:"in"`
+	Out  uint64 `json:"out"`
+}
+
+// Temperature is one sensor reading.
+type Temperature struct {
+	Sensor  string  `json:"sensor"`
+	Celsius float64 `json:"celsius"`
+}
+
+// ContainerStats are raw counters of a running container.
+type ContainerStats struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	CPUNanos    uint64 `json:"cpu_nanos"`    // container CPU time
+	SystemNanos uint64 `json:"system_nanos"` // host CPU time (all CPUs)
+	OnlineCPUs  int    `json:"online_cpus"`
+	Memory      uint64 `json:"memory"`
+	MemoryLimit uint64 `json:"memory_limit"`
+	NetRx       uint64 `json:"net_rx"`
+	NetTx       uint64 `json:"net_tx"`
+	BlockRead   uint64 `json:"block_read"`
+	BlockWrite  uint64 `json:"block_write"`
+}

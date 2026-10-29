@@ -4,8 +4,9 @@ import { api } from "../lib/api";
 import { formatDateTime, formatRelative } from "../lib/format";
 import { Link } from "../lib/router";
 import { useCurrentSession, useSession } from "../lib/session";
-import { ACTIVE_JOB_STATES, type AgentStatus, type AuditEvent, type Job, type JobState, type Version } from "../lib/types";
+import { ACTIVE_JOB_STATES, type AgentStatus, type AuditEvent, type HostMetrics, type Job, type JobState, type Version } from "../lib/types";
 import { useData } from "../lib/useData";
+import { HostSummary, ServiceList } from "./MonitoringPage";
 
 function PlatformCard() {
   const { data, error, loading } = useData(async () => {
@@ -51,6 +52,22 @@ function PlatformCard() {
           <dd>{formatDateTime(data.version.build_date)}</dd>
         </dl>
       )}
+    </Card>
+  );
+}
+
+function HostCard() {
+  const { data, error } = useData(() => api.get<HostMetrics>("/metrics/host"), [], { refreshMs: 15000 });
+  return (
+    <Card
+      title="Host"
+      actions={
+        <Link to="/monitoring" className="text-sm text-brand-700 underline dark:text-brand-500">
+          Monitoring
+        </Link>
+      }
+    >
+      {data ? <HostSummary host={data} /> : error ? <p className="text-sm text-slate-600 dark:text-slate-400">{error}</p> : <Spinner />}
     </Card>
   );
 }
@@ -157,6 +174,12 @@ export function DashboardPage() {
       <PageHeader title="Dashboard" description="Current state of this Kernhaven instance." />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PlatformCard />
+        {can("system.read") && <HostCard />}
+        {can("system.read") && (
+          <Card title="Services">
+            <ServiceList />
+          </Card>
+        )}
         <SessionCard />
         {can("jobs.read") && <JobsCard />}
         {can("audit.read") && <SecurityCard />}

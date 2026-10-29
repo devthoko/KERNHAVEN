@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -119,7 +120,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	maintenanceDone := make(chan struct{})
 	go func() {
 		defer close(maintenanceDone)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() { defer wg.Done(); core.Metrics.Run(mctx) }() // sampling stops with maintenance (M14)
 		scheduleMaintenance(mctx, core, log)
+		wg.Wait()
 	}()
 	defer func() {
 		stopMaintenance()

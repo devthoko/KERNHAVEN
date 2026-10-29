@@ -64,6 +64,9 @@ const (
 	OpProxyStatus     = "proxy.status"
 	OpNetworkOverview = "network.overview"
 	OpProxyCA         = "proxy.ca"
+	// M14: host readings (monitor role) and container stats (Docker agent).
+	OpHostMetrics     = "host.metrics"
+	OpContainersStats = "containers.stats"
 	// Stream operations (POST /v1/stream/{op}, M10).
 	OpFilesRead         = "files.read"
 	OpFilesUploadAppend = "files.upload.append"

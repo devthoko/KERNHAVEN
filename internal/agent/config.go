@@ -100,11 +100,11 @@ func LoadConfig(path string) (Config, error) {
 		errs = append(errs, err)
 	}
 	switch cfg.Role {
-	case "docker", "storage", "files":
+	case "docker", "storage", "files", "monitor":
 	case "proxy":
 		errs = append(errs, validProxy(cfg)...)
 	default:
-		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage, files, proxy", cfg.Role))
+		errs = append(errs, fmt.Errorf("role: %q is not one of docker, storage, files, proxy, monitor", cfg.Role))
 	}
 	if !filepath.IsAbs(cfg.MountRoot) || filepath.Clean(cfg.MountRoot) != cfg.MountRoot || cfg.MountRoot == "/" {
 		errs = append(errs, fmt.Errorf("mount_root: %q must be an absolute, clean directory other than /", cfg.MountRoot))

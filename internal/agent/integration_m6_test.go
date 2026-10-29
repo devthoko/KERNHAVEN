@@ -155,6 +155,24 @@ func TestM6ContainersImagesVolumesNetworks(t *testing.T) {
 		t.Fatalf("logs since future: %+v %v", logs, err)
 	}
 
+	// AT-F13-02: one-shot stats of the running container.
+	var stats []agentproto.ContainerStats
+	if err := do(agentproto.OpContainersStats, nil, &stats); err != nil {
+		t.Fatalf("stats: %v", err)
+	}
+	found := false
+	for _, st := range stats {
+		if st.Name == name {
+			found = true
+			if st.ID != created.ID || st.CPUNanos == 0 || st.SystemNanos == 0 || st.Memory == 0 || st.MemoryLimit != 64<<20 {
+				t.Fatalf("stats %+v", st)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no stats for %s in %+v", name, stats)
+	}
+
 	// AT-F02-02: pause/unpause.
 	var res agentproto.ActionResult
 	if err := do(agentproto.OpContainersPause, agentproto.ContainerRef{ID: name}, &res); err != nil {

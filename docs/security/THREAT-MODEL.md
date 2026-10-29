@@ -70,6 +70,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-15 | I | Theft of private keys, the ACME account key or DNS credentials | Encrypted with the Core's key (ADR-0019); never in API responses or logs; keys reach only the proxy service, only for Caddy | M13 | Mitigated (`TestTLS`, mutation check) |
 | TH-16 | T | A wrong, broken or foreign certificate is served | Validated in the Core (chain, key, validity, purpose, signatures) and again in the proxy service (parse, key, host); one certificate per host selected by SNI | M13 | Mitigated (`TestValidateUpload`, `TestBuildTLS`, real Caddy) |
 | TH-17 | S/T | The Core points Caddy at a foreign ACME CA or obtains certificates for foreign names | CA chosen by the proxy service from Let's Encrypt only; ACME only for hosts with routes; DNS-01 only in zones the token can edit; every issuance audited | M13 | Mitigated |
+| TH-18 | D | Monitoring exhausts disk, CPU or the Docker daemon | Sampling interval 5–60 s, 300-series cap, retention pruning (bounded at about 25 MB), one stats call per running container with a timeout; the monitor role has no capabilities and no IP traffic | M14 | Mitigated (`TestMetricsHistory`, ADR-0027) |
 
 ### TB-3 — Core ↔ Agent
 
@@ -135,3 +136,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-28 | M11 | TH-01 mitigated (MFA, passkeys, policy); TH-02 extended by step-up; AR-02 rationale corrected (no step-up-bound agent grants yet) |
 | 2026-10-28 | M12 | New TH-11…TH-14 (reverse proxy, sign-in gate); TH-11–TH-13 mitigated, TH-14 partially; fourth privilege domain: proxy service, the only client of Caddy's admin socket (ADR-0025) |
 | 2026-10-28 | M13 | New TH-15…TH-17 (certificates); TB-6 now includes Let's Encrypt and the Cloudflare API, both fixed endpoints (ADR-0026) |
+| 2026-10-29 | M14 | New TH-18 (resource use of monitoring), mitigated; fifth privilege domain: monitor service, read-only host counters (ADR-0027) |

@@ -479,7 +479,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -553,6 +553,35 @@ function totp(secret: string): string {
   const o = h[19]! & 15;
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
+
+test("AT-F13-01..04: host and container metrics, history and service health", async () => {
+  await page.goto("/");
+  const services = page.getByRole("list", { name: "Services" });
+  await expect(services.getByRole("listitem").filter({ hasText: "Kernhaven Core" }).getByText("running")).toBeVisible();
+  await expect(services.getByRole("listitem").filter({ hasText: "Monitor service" }).getByText("running")).toBeVisible();
+  await expect(services.getByRole("listitem").filter({ hasText: "File service" }).getByText("running")).toBeVisible();
+  // The host card fills once the first reading exists (sampling every 15 s).
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByText(/^CPU \(\d+\)$/)).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 40_000 });
+
+  await page.goto("/monitoring");
+  await expect(page.getByRole("heading", { name: "Monitoring" })).toBeVisible();
+  await expect(page.getByText("Load (1 minute)")).toBeVisible();
+  await page.getByRole("button", { name: "24 hours" }).click();
+  await expect(page.getByRole("button", { name: "24 hours" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "1 hour" }).click();
+  // After two readings the CPU chart has data.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByRole("img", { name: /^CPU\. busy: now/ })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 40_000 });
+  if (docker) {
+    await expect(page.getByRole("table", { name: "Running containers" }).or(page.getByText("No running containers."))).toBeVisible();
+  }
+  await expectAccessible(page, "monitoring");
+});
 
 const proxy = process.env.KH_E2E_PROXY === "1";
 const appURL = "https://whoami.kh.test:18443/";

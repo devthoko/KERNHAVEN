@@ -76,6 +76,9 @@ Go interface to other modules. Modules never read other modules' tables.
   no capabilities, no IP traffic; the only client of Caddy's admin socket. It
   builds Caddy's entire configuration from typed routes and lists interfaces
   and listening sockets.
+- A fifth role, the monitor service (M14, ADR-0027): user
+  `kernhaven-monitor`, no capabilities, no IP traffic, read-only; reads host
+  counters from `/proc` and `/sys` for the Core's metrics module.
 
 - Listens only on a unix socket; accepts connections only from the `kernhaven`
   user (`SO_PEERCRED`).

@@ -1230,6 +1230,48 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /metrics/host:
+    get:
+      operationId: getHostMetrics
+      x-permission: system.read
+      description: Latest host reading from the monitor service (M14) — CPU share, memory, load, disk and network rates per device, temperatures. Rates are null until two readings exist.
+      responses:
+        "200": { description: Host, content: { application/json: { schema: { $ref: "#/components/schemas/HostMetrics" } } } }
+        "503": { description: Not configured (metrics_unavailable) or no reading yet (metrics_pending), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /metrics/containers:
+    get:
+      operationId: getContainerMetrics
+      x-permission: containers.read
+      description: Latest reading of every running container (CPU share of the host, memory, network and block I/O rates).
+      responses:
+        "200": { description: Containers, content: { application/json: { schema: { type: object, properties: { containers: { type: array, items: { $ref: "#/components/schemas/ContainerMetrics" } } } } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /metrics/series:
+    get:
+      operationId: listMetricSeries
+      x-permission: system.read
+      description: Known series; container series only with containers.read.
+      responses:
+        "200": { description: Series, content: { application/json: { schema: { type: object, properties: { series: { type: array, items: { type: object, properties: { key: { type: string }, unit: { type: string } } } } } } } } }
+  /metrics/history:
+    get:
+      operationId: getMetricHistory
+      x-permission: system.read
+      description: Points of one series — 1h of raw samples (memory), 24h of 1-minute or 7d of 15-minute averages and maxima (AT-F13-03). Container series need containers.read.
+      parameters:
+        - { name: series, in: query, required: true, schema: { type: string } }
+        - { name: range, in: query, required: true, schema: { type: string, enum: [1h, 24h, 7d] } }
+      responses:
+        "200": { description: History, content: { application/json: { schema: { $ref: "#/components/schemas/MetricHistory" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /health/services:
+    get:
+      operationId: getServiceHealth
+      x-permission: system.read
+      description: Health of the Core, the Docker agent and Engine, the storage, file, proxy and monitor services and Caddy (AT-F13-04); each ok, down (with the reason) or not_configured.
+      responses:
+        "200": { description: Services, content: { application/json: { schema: { type: object, properties: { services: { type: array, items: { $ref: "#/components/schemas/ServiceCheck" } } } } } } }
 components:
   securitySchemes:
     session:
@@ -1565,6 +1607,51 @@ components:
         error: { type: string }
         error_at: { type: string, format: date-time }
         https_port: { type: integer }
+    HostMetrics:
+      type: object
+      properties:
+        sampled_at: { type: string, format: date-time }
+        cpus: { type: integer }
+        cpu_percent: { type: [number, "null"] }
+        load: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        memory: { type: object, properties: { total: { type: integer }, available: { type: integer }, swap_total: { type: integer }, swap_free: { type: integer } } }
+        memory_used: { type: integer }
+        disks: { type: array, items: { $ref: "#/components/schemas/IORate" } }
+        interfaces: { type: array, items: { $ref: "#/components/schemas/IORate" } }
+        temperatures: { type: array, items: { type: object, properties: { sensor: { type: string }, celsius: { type: number } } } }
+        errors: { type: object, additionalProperties: { type: string } }
+    IORate:
+      type: object
+      properties:
+        name: { type: string }
+        in: { type: number, description: bytes/s read or received }
+        out: { type: number, description: bytes/s written or sent }
+    ContainerMetrics:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        cpu_percent: { type: [number, "null"] }
+        memory: { type: integer }
+        memory_limit: { type: integer }
+        net_rx: { type: [number, "null"] }
+        net_tx: { type: [number, "null"] }
+        block_read: { type: [number, "null"] }
+        block_write: { type: [number, "null"] }
+    MetricHistory:
+      type: object
+      properties:
+        series: { type: string }
+        unit: { type: string, enum: [percent, bytes, bytes/s, load, celsius] }
+        resolution: { type: integer, description: seconds }
+        points: { type: array, items: { type: object, properties: { t: { type: string, format: date-time }, avg: { type: number }, max: { type: number } } } }
+    ServiceCheck:
+      type: object
+      properties:
+        name: { type: string, enum: [core, agent, docker, storage, files, proxy, caddy, monitor] }
+        label: { type: string }
+        status: { type: string, enum: [ok, down, not_configured] }
+        detail: { type: string }
     TLSSettings:
       type: object
       properties:

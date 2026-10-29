@@ -1,0 +1,57 @@
+[Unit]
+Description=Kernhaven monitor service (host metrics, read-only)
+Documentation=https://github.com/devthoko/KERNHAVEN
+
+[Service]
+Type=exec
+# Reads host counters from /proc and /sys for the Core (M14, ADR-0027).
+# No capabilities, no IP traffic, read-only system, other processes hidden.
+User=kernhaven-monitor
+Group=kernhaven-agent
+ExecStart=/usr/bin/kernhaven-agent -config /etc/kernhaven/monitor.toml
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=30s
+
+# /run/kernhaven-monitor (0750, group kernhaven-agent): the Core user is a
+# member of kernhaven-agent and connects to monitor.sock (0660).
+RuntimeDirectory=kernhaven-monitor
+RuntimeDirectoryMode=0750
+UMask=0117
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+# The host's network namespace, so /proc/net/dev shows the host's
+# interfaces; IP traffic itself is denied.
+PrivateNetwork=no
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+# /proc/stat, meminfo, loadavg, diskstats are needed (no ProcSubset=pid);
+# other processes stay invisible.
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+KeyringMode=private
+DevicePolicy=closed
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

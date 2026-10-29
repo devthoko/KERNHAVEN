@@ -15,6 +15,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/agent"
 	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
+	"github.com/devthoko/KERNHAVEN/internal/agent/monitor"
 	"github.com/devthoko/KERNHAVEN/internal/agent/network"
 	"github.com/devthoko/KERNHAVEN/internal/agent/storage"
 	"github.com/devthoko/KERNHAVEN/internal/platform/logging"
@@ -76,6 +77,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return exitConfig
 		}
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Files: fs})
+	case "monitor":
+		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Monitor: monitor.New()})
 	case "proxy":
 		srv = agent.NewServer(log, cfg.PublicKey(), cfg.AllowedUIDs, nil, agent.Options{Proxy: network.New(cfg.ProxySettings())})
 	default:

@@ -681,3 +681,56 @@ export interface TLSOverview {
   settings: TLSSettings;
   root_sha256?: string;
 }
+
+// ---- M14: monitoring ----
+
+export interface IORate {
+  name: string;
+  in: number;
+  out: number;
+}
+
+export interface HostMetrics {
+  sampled_at: string;
+  cpus: number;
+  cpu_percent: number | null;
+  load: [number, number, number];
+  memory: { total: number; available: number; swap_total: number; swap_free: number };
+  memory_used: number;
+  disks: IORate[];
+  interfaces: IORate[];
+  temperatures: { sensor: string; celsius: number }[];
+  errors?: Record<string, string>;
+}
+
+export interface ContainerMetrics {
+  id: string;
+  name: string;
+  cpu_percent: number | null;
+  memory: number;
+  memory_limit: number;
+  net_rx: number | null;
+  net_tx: number | null;
+  block_read: number | null;
+  block_write: number | null;
+}
+
+export interface MetricPoint {
+  t: string;
+  avg: number;
+  max: number;
+}
+
+export interface MetricHistory {
+  series: string;
+  unit: "percent" | "bytes" | "bytes/s" | "load" | "celsius" | "";
+  resolution: number;
+  points: MetricPoint[];
+}
+
+export interface ServiceCheck {
+  name: string;
+  label: string;
+  status: "ok" | "down" | "not_configured";
+  detail?: string;
+}

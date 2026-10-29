@@ -38,12 +38,29 @@ type memDocker struct {
 	// block makes Create wait for images containing "block" until closed.
 	block   chan struct{}
 	waiting atomic.Int32 // Create calls waiting on block
+	// stats are the counters of running containers by name (M14).
+	stats map[string]agentproto.ContainerStats
 }
 
 func newMemDocker() *memDocker {
 	return &memDocker{containers: map[string]agentproto.ContainerSummary{}, labels: map[string]map[string]string{}, volumes: map[string]bool{},
 		specs: map[string]agentproto.ContainerSpec{}, networks: map[string]map[string]string{}, volLabels: map[string]map[string]string{},
 		data: map[string]string{}, exitCodes: map[string]int{}}
+}
+
+func (m *memDocker) Stats(context.Context) ([]agentproto.ContainerStats, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := []agentproto.ContainerStats{}
+	for _, c := range m.containers {
+		if c.State != "running" || len(c.Names) == 0 {
+			continue
+		}
+		st := m.stats[c.Names[0]]
+		st.ID, st.Name = c.ID, c.Names[0]
+		out = append(out, st)
+	}
+	return out, nil
 }
 
 func (m *memDocker) Info(context.Context) (agentproto.DockerInfo, error) {

@@ -290,6 +290,81 @@ func (c *Client) ListContainers(ctx context.Context, all bool) ([]agentproto.Con
 	return out, nil
 }
 
+// Stats returns one-shot counters of every running container (M14). A
+// container that stops in between is skipped.
+func (c *Client) Stats(ctx context.Context) ([]agentproto.ContainerStats, error) {
+	running, err := c.ListContainers(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	p, err := c.prefix(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]agentproto.ContainerStats, 0, len(running))
+	for _, r := range running {
+		var raw struct {
+			CPU struct {
+				Usage struct {
+					Total uint64 `json:"total_usage"`
+				} `json:"cpu_usage"`
+				System uint64 `json:"system_cpu_usage"`
+				Online int    `json:"online_cpus"`
+			} `json:"cpu_stats"`
+			Memory struct {
+				Usage uint64            `json:"usage"`
+				Limit uint64            `json:"limit"`
+				Stats map[string]uint64 `json:"stats"`
+			} `json:"memory_stats"`
+			Networks map[string]struct {
+				Rx uint64 `json:"rx_bytes"`
+				Tx uint64 `json:"tx_bytes"`
+			} `json:"networks"`
+			Blkio struct {
+				IO []struct {
+					Op    string `json:"op"`
+					Value uint64 `json:"value"`
+				} `json:"io_service_bytes_recursive"`
+			} `json:"blkio_stats"`
+		}
+		q := url.Values{"stream": {"false"}, "one-shot": {"true"}}
+		status, err := c.do(ctx, http.MethodGet, p+"/containers/"+url.PathEscape(r.ID)+"/stats", q, 0, &raw)
+		if status == http.StatusNotFound || errors.Is(err, ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		st := agentproto.ContainerStats{ID: r.ID, CPUNanos: raw.CPU.Usage.Total, SystemNanos: raw.CPU.System, OnlineCPUs: raw.CPU.Online,
+			Memory: raw.Memory.Usage, MemoryLimit: raw.Memory.Limit}
+		if len(r.Names) > 0 {
+			st.Name = r.Names[0]
+		}
+		// Like `docker stats`: page cache that can be reclaimed does not count.
+		cache := raw.Memory.Stats["inactive_file"]
+		if cache == 0 {
+			cache = raw.Memory.Stats["total_inactive_file"]
+		}
+		if cache < st.Memory {
+			st.Memory -= cache
+		}
+		for _, n := range raw.Networks {
+			st.NetRx += n.Rx
+			st.NetTx += n.Tx
+		}
+		for _, e := range raw.Blkio.IO {
+			switch strings.ToLower(e.Op) {
+			case "read":
+				st.BlockRead += e.Value
+			case "write":
+				st.BlockWrite += e.Value
+			}
+		}
+		out = append(out, st)
+	}
+	return out, nil
+}
+
 // Inspect returns a security-relevant summary of one container.
 func (c *Client) Inspect(ctx context.Context, ref string) (agentproto.ContainerDetail, error) {
 	p, err := c.prefix(ctx)

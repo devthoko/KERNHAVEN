@@ -1,0 +1,17 @@
+# Kernhaven monitor service configuration — /etc/kernhaven/monitor.toml
+# The same binary as the agent, in the monitor role (M14, ADR-0027): it only
+# reads host counters from /proc and /sys. Unknown keys are rejected.
+
+role = "monitor"
+
+# Unix socket the Core connects to (directory created by systemd).
+socket = "/run/kernhaven-monitor/monitor.sock"
+
+# Only these UIDs may connect (SO_PEERCRED): the Core user (id -u kernhaven).
+allowed_uids = [998]
+
+# The same grant verification key as the agent (copied by the installer).
+grant_public_key = "/etc/kernhaven/agent-grant.pub"
+
+[log]
+level = "info"   # debug | info | warn | error

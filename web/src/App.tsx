@@ -24,6 +24,7 @@ import { SetupPage } from "./pages/SetupPage";
 import { StoragePage } from "./pages/StoragePage";
 import { CertificatesPage } from "./pages/CertificatesPage";
 import { FilesPage } from "./pages/FilesPage";
+import { MonitoringPage } from "./pages/MonitoringPage";
 import { GatePage } from "./pages/GatePage";
 import { ProxyPage } from "./pages/ProxyPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -37,6 +38,7 @@ interface RouteDef {
 
 const routes: RouteDef[] = [
   { pattern: "/", title: "Dashboard", render: () => <DashboardPage /> },
+  { pattern: "/monitoring", title: "Monitoring", permission: "system.read", render: () => <MonitoringPage /> },
   { pattern: "/apps", title: "Apps", permission: "apps.read", render: () => <AppsPage /> },
   { pattern: "/apps/store", title: "App store", permission: "apps.read", render: () => <AppStorePage /> },
   { pattern: "/apps/sources", title: "Catalog sources", permission: "apps.read", render: () => <SourcesPage /> },

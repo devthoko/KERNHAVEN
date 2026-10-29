@@ -84,6 +84,7 @@ func newHarnessFull(t *testing.T, adjust func(*config.Config), adjustOpts func(*
 	cfg.Server.PublicOrigin = testOrigin
 	cfg.Agent.Socket = ""
 	cfg.Agent.ProxySocket = ""
+	cfg.Agent.MonitorSocket = ""
 	if adjust != nil {
 		adjust(&cfg)
 	}

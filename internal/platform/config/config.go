@@ -41,6 +41,13 @@ type Config struct {
 	Containers Containers `toml:"containers"`
 	Files      Files      `toml:"files"`
 	TLS        TLS        `toml:"tls"`
+	Metrics    Metrics    `toml:"metrics"`
+}
+
+// Metrics configures monitoring (M14).
+type Metrics struct {
+	// Interval between samples (5s..60s).
+	Interval Duration `toml:"interval"`
 }
 
 // TLS configures certificates (M13).
@@ -88,6 +95,9 @@ type Agent struct {
 	// ProxySocket is the proxy service's socket (M12, Caddy); empty disables
 	// routes and the network overview.
 	ProxySocket string `toml:"proxy_socket"`
+	// MonitorSocket is the monitor service's socket (M14, host metrics);
+	// empty disables host metrics.
+	MonitorSocket string `toml:"monitor_socket"`
 }
 
 // Server configures the HTTP listener.
@@ -143,7 +153,8 @@ func Default() Config {
 		Log:     Log{Level: "info"},
 		Files:   Files{MaxUploadBytes: 20 << 30},
 		TLS:     TLS{DNSPropagation: Duration{time.Minute}},
-		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock", FilesSocket: "/run/kernhaven-files/files.sock", ProxySocket: "/run/kernhaven-proxy/proxy.sock"},
+		Metrics: Metrics{Interval: Duration{15 * time.Second}},
+		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock", FilesSocket: "/run/kernhaven-files/files.sock", ProxySocket: "/run/kernhaven-proxy/proxy.sock", MonitorSocket: "/run/kernhaven-monitor/monitor.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
 			SessionAbsoluteTimeout: Duration{12 * time.Hour},
@@ -196,6 +207,9 @@ func (c Config) Validate() error {
 	if s := c.Agent.Socket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.socket: %q must be an absolute, clean path or empty", s))
 	}
+	if d := c.Metrics.Interval.Duration; d < 5*time.Second || d > time.Minute {
+		errs = append(errs, fmt.Errorf("metrics.interval: %s is not within 5s..60s", d))
+	}
 	if d := c.TLS.DNSPropagation.Duration; d < 0 || d > 10*time.Minute {
 		errs = append(errs, fmt.Errorf("tls.dns_propagation: %s is not within 0s..10m", d))
 	}
@@ -219,6 +233,9 @@ func (c Config) Validate() error {
 	}
 	if s := c.Agent.FilesSocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.files_socket: %q must be an absolute, clean path or empty", s))
+	}
+	if s := c.Agent.MonitorSocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
+		errs = append(errs, fmt.Errorf("agent.monitor_socket: %q must be an absolute, clean path or empty", s))
 	}
 	if s := c.Agent.ProxySocket; s != "" && (!filepath.IsAbs(s) || filepath.Clean(s) != s) {
 		errs = append(errs, fmt.Errorf("agent.proxy_socket: %q must be an absolute, clean path or empty", s))

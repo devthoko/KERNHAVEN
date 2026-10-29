@@ -2,6 +2,7 @@
 package app
 
 import (
+	"context"
 	"crypto/x509"
 	"database/sql"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	khfiles "github.com/devthoko/KERNHAVEN/internal/core/files"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/metrics"
 	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 	khstorage "github.com/devthoko/KERNHAVEN/internal/core/storage"
@@ -42,6 +44,7 @@ type App struct {
 	Apps     *apps.Service
 	Network  *network.Service
 	Certs    *certs.Service
+	Metrics  *metrics.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -151,6 +154,22 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}
 	certSvc := certs.New(db, box, netSvc, auditLog, jobSvc, runner.Wake, tlsCfg, log, now)
 	certSvc.Register(rt)
+	// Host readings come from the separate monitor service (M14, ADR-0027).
+	var monitorClient *agentclient.Client
+	if cfg.Agent.MonitorSocket != "" {
+		key, err := agentclient.LoadOrCreateKey(cfg.Storage.DataDir)
+		if err != nil {
+			return nil, fmt.Errorf("agent grant key: %w", err)
+		}
+		monitorClient = agentclient.New(cfg.Agent.MonitorSocket, key)
+	}
+	metricSvc := metrics.New(db, monitorClient, agent, cfg.Metrics.Interval.Duration, log, now)
+	deps := metrics.HealthDeps{DB: db, Started: now(), Docker: agent, Storage: storageClient, Files: filesClient, Proxy: proxyClient, Monitor: monitorClient,
+		Caddy: func(ctx context.Context) (bool, bool, bool, string) {
+			st := netSvc.State(ctx)
+			return st.Configured, st.Reachable, st.InSync, st.Error
+		}}
+	metricSvc.Register(rt, func(r *http.Request) []metrics.Check { return metrics.Health(r.Context(), deps, now()) })
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
@@ -171,6 +190,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Apps:     appSvc,
 		Network:  netSvc,
 		Certs:    certSvc,
+		Metrics:  metricSvc,
 		Runner:   runner,
 		now:      now,
 	}

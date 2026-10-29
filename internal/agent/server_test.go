@@ -88,6 +88,9 @@ func (f *fakeDocker) Info(context.Context) (agentproto.DockerInfo, error) {
 func (f *fakeDocker) ListContainers(_ context.Context, all bool) ([]agentproto.ContainerSummary, error) {
 	return []agentproto.ContainerSummary{{ID: "abc", Names: []string{"web"}}}, f.record("list")
 }
+func (f *fakeDocker) Stats(context.Context) ([]agentproto.ContainerStats, error) {
+	return []agentproto.ContainerStats{{ID: "abc", Name: "web", CPUNanos: 1}}, f.record("stats")
+}
 func (f *fakeDocker) Inspect(_ context.Context, id string) (agentproto.ContainerDetail, error) {
 	return agentproto.ContainerDetail{ID: id}, f.record("inspect " + id)
 }
@@ -188,11 +191,11 @@ func (e *env) call(op string, params string, mod func(*agentproto.Grant)) reply 
 // AT-M4-01: the allow-list is exactly these operations — no exec, no passthrough.
 func TestOperationAllowList(t *testing.T) {
 	want := []string{"agent.info", "containers.create", "containers.inspect", "containers.list", "containers.logs", "containers.pause",
-		"containers.remove", "containers.restart", "containers.start", "containers.stop", "containers.unpause", "docker.info",
+		"containers.remove", "containers.restart", "containers.start", "containers.stats", "containers.stop", "containers.unpause", "docker.info",
 		"images.list", "images.prune", "images.pull", "images.remove", "networks.create", "networks.list", "networks.remove",
 		"volumes.copy", "volumes.create", "volumes.list", "volumes.remove"}
 	if got := OperationNames(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6/M8/M9 design)", got, want)
+		t.Fatalf("operations = %v\nwant %v\n(adding an operation requires updating this test and the M4/M6/M8/M9/M14 design)", got, want)
 	}
 }
 
@@ -216,6 +219,10 @@ func TestStorageRoleAllowList(t *testing.T) {
 	want = []string{"agent.info", "network.overview", "proxy.apply", "proxy.ca", "proxy.status"}
 	if got := ProxyOperationNames(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("proxy operations = %v\nwant %v", got, want)
+	}
+	// M14: the monitor role only reads host counters.
+	if got := MonitorOperationNames(); !reflect.DeepEqual(got, []string{"agent.info", "host.metrics"}) {
+		t.Fatalf("monitor operations = %v", got)
 	}
 }
 
