@@ -12,8 +12,14 @@ BROKEN=$5
 API=http://127.0.0.1:8470/api/v1
 ORIGIN=http://localhost:8470
 JAR=$(mktemp)
-fail() { echo "FAIL: $*" >&2; journalctl -u kernhaven-core --no-pager -n 50 >&2 || true; exit 1; }
-step() { echo; echo "=== $*"; }
+STEP=start
+fail() {
+  echo "::error::package test, step '$STEP': $*"
+  journalctl -u kernhaven-core --no-pager -n 50 >&2 || true
+  exit 1
+}
+trap 'echo "::error::package test, step '"'"'$STEP'"'"', line $LINENO: $BASH_COMMAND"' ERR
+step() { STEP=$*; echo; echo "=== $*"; }
 
 host_state() {
   {
@@ -35,11 +41,20 @@ wait_ready() {
 
 version() { kernhaven-core version | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])'; }
 
-api() { # method path [json]
-  local csrf
+# http METHOD PATH [JSON]: the body on stdout; any status >= 400 fails with
+# the status and the start of the body.
+http() {
+  local csrf code out
   csrf=$(cat "$JAR.csrf" 2>/dev/null || true)
-  curl -fsS -b "$JAR" -c "$JAR" -X "$1" -H "Origin: $ORIGIN" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' ${3:+--data "$3"} "$API$2"
+  out=$(mktemp)
+  code=$(curl -sS -o "$out" -w '%{http_code}' -b "$JAR" -c "$JAR" -X "$1" -H "Origin: $ORIGIN" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' ${3:+--data "$3"} "$API$2")
+  if [ "$code" -ge 400 ]; then
+    fail "HTTP $code for $1 $2: $(head -c 400 "$out" | tr '\n' ' ')"
+  fi
+  cat "$out"
+  rm -f "$out"
 }
+api() { http "$@"; }
 
 login() { # user password
   rm -f "$JAR" "$JAR.csrf"
@@ -61,8 +76,8 @@ systemctl is-active kernhaven-core kernhaven-agent kernhaven-storage kernhaven-f
 step "first-run setup and data"
 token=$(journalctl -u kernhaven-core --no-pager | sed -n 's/.*"setup_token":"\([^"]*\)".*/\1/p' | tail -1)
 [ -n "$token" ] || fail "no setup token in the journal"
-rm -f "$JAR"
-curl -fsS -c "$JAR" -H "Origin: $ORIGIN" -H 'Content-Type: application/json' --data "{\"token\":\"$token\",\"username\":\"owner\",\"password\":\"Package-Test-Passw0rd!\"}" "$API/setup" | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])' > "$JAR.csrf"
+rm -f "$JAR" "$JAR.csrf"
+http POST /setup "{\"token\":\"$token\",\"username\":\"owner\",\"password\":\"Package-Test-Passw0rd!\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])' > "$JAR.csrf"
 api POST /users '{"username":"alice","role":"viewer","password":"Alice-Test-Passw0rd!"}' >/dev/null
 login alice 'Alice-Test-Passw0rd!'
 
