@@ -153,7 +153,10 @@ kernhaven-upgrade status
 
 step "no side effects on firewall, SSH or other packages (AT-F17-04)"
 host_state /tmp/after.txt
-diff -u /tmp/before.txt /tmp/after.txt || fail "the host changed"
+if ! diff -u /tmp/before.txt /tmp/after.txt > /tmp/host.diff; then
+  cat /tmp/host.diff
+  fail "the host changed: $(grep '^[-+][^-+]' /tmp/host.diff | head -12 | tr '\n' ' ' | cut -c1-900)"
+fi
 
 step "uninstall keeps apps running and data in place (AT-F17-03)"
 docker run -d --name kh-pkgtest-app --label io.kernhaven.managed=true alpine:3 sleep 600 >/dev/null
