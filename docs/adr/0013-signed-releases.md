@@ -1,19 +1,33 @@
 # ADR-0013: Signed and verifiable releases
 
-- Status: Proposed (decision due in M18)
-- Date: 2026-10-27
+- Status: Accepted (M18); the key ceremony itself is open (B-3)
+- Date: 2026-10-27, decided 2026-10-29
 
 ## Context
 Upgrades replace privileged binaries; a compromised release channel would
 compromise every installation.
 
-## Proposal
+## Decision
 - Reproducible `CGO_ENABLED=0` builds with `-trimpath`.
-- Release artifacts signed with an offline-held Ed25519 key (minisign format);
-  public key shipped with the installer and pinned in the upgrade module.
-- SLSA build provenance generated in CI and published with each release.
-- Upgrade refuses artifacts with missing or invalid signatures (AT-F15-01).
+- Each release directory holds the packages, `install.sh` and a
+  `SHA256SUMS` file signed with **minisign** (Ed25519, prehashed) by a key
+  the owner keeps offline. minisign is a small, standard tool the owner can
+  run on an offline machine; Debian packages it.
+- Hosts trust the public keys in `/etc/kernhaven/release-keys/*.pub`. The
+  package installs the keys of `deploy/release-keys/`; `install.sh
+  --pubkey` adds one on first installation.
+- `install.sh` verifies with the minisign tool; `kernhaven-upgrade`
+  verifies with its own implementation (`internal/release`), which CI checks
+  against signatures made by the real minisign. Unsigned releases, unknown
+  keys, changed checksum lists or comments and packages that differ from
+  their checksum are refused before anything changes (AT-F15-01).
+- No key exists until the owner holds the ceremony; until then every
+  upgrade is refused (fail closed).
 
-## Open questions
-Key ceremony and rotation; whether to additionally publish Sigstore
-signatures.
+## Consequences
+- The release workflow needs the owner to sign `SHA256SUMS` offline; CI
+  produces the unsigned artifacts.
+- Key rotation: add the new key to `deploy/release-keys/` in a release
+  signed with the old key, then sign with the new key; remove the old one in
+  a later release.
+- SLSA provenance and Sigstore signatures are not part of 1.0.

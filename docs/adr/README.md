@@ -18,7 +18,7 @@ ADR that supersedes the old one.
 | [0010](0010-config-toml-loopback-only.md) | TOML configuration, loopback-only Core listener | Accepted |
 | [0011](0011-checksummed-embedded-migrations.md) | Embedded, checksummed, forward-only migrations | Accepted |
 | [0012](0012-versioned-rest-api-openapi.md) | Versioned REST API with OpenAPI contract | Accepted |
-| [0013](0013-signed-releases.md) | Signed and verifiable releases | Proposed |
+| [0013](0013-signed-releases.md) | Signed and verifiable releases | Accepted (key ceremony open, B-3) |
 | [0014](0014-ci-supply-chain-pinning.md) | CI actions pinned by commit SHA | Accepted |
 | [0015](0015-argon2id-password-hashing.md) | Argon2id password hashing via golang.org/x/crypto | Accepted |
 | [0016](0016-hash-chained-audit-log.md) | Hash-chained audit log in SQLite | Accepted |
@@ -37,3 +37,4 @@ ADR that supersedes the old one.
 | [0029](0029-backup-format.md) | Own backup format: STREAM encryption with AES-256-GCM, Argon2id-wrapped key | Accepted |
 | [0030](0030-backup-targets-and-volume-streams.md) | Backup targets (local, SFTP with pinned host keys, own S3 client) and volume streams through the Docker agent | Accepted |
 | [0031](0031-console-and-live-streams.md) | A line console and live updates over server-sent events | Accepted |
+| [0032](0032-packages-and-upgrades.md) | Debian packages, an idempotent installer and a CLI upgrader with automatic rollback | Accepted |

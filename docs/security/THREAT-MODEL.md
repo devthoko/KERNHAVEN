@@ -104,7 +104,8 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-40 | T | Malicious catalog entries (T5) | Signed catalogs; per-source trust keys; policy check of every app | M8 | Mitigated (M8, ADR-0020: Ed25519-signed catalogs, one trust key per source set by an owner, rollback and freeze protection, strict parsing; every app is evaluated by the container policy and its privileges are shown before install; exceptions need an owner) |
 | TH-41 | T | Image tag replaced upstream | Digest pinning; update shows digest change | M6/M8 | Partially mitigated (M6: pulls record the resolved digest, UI warns about unpinned images; M8: the update page lists changed images and flags unpinned ones; catalogs are not required to pin digests) |
 | TH-42 | S | SSRF via Compose URL import, webhooks, catalog URLs | HTTPS-only, block private/loopback/link-local ranges unless explicitly allowed, size/time limits | M7/M15 | Mitigated for Compose URL import (M7: HTTPS only, dialer refuses non-public addresses after DNS resolution and on redirects, size and time limits); webhooks in M15 |
-| TH-43 | T | Tampered release or upgrade (T7) | Signed releases, pinned public key, refuse unsigned | M18 | Open |
+| TH-43 | T | Tampered release or upgrade (T7) | minisign-signed SHA256SUMS with an offline key; keys pinned in /etc/kernhaven/release-keys; verification before any change (ADR-0013, ADR-0032) | M18 | Partially mitigated (verification implemented and tested; the owner's release key does not exist yet, B-3 — upgrades fail closed) |
+| TH-45 | E/T | The installer weakens the host or changes unrelated packages | No firewall, SSH or unrelated package changes; configuration written only where missing; services keep their sandboxing | M18 | Mitigated (CI package job compares host state before and after) |
 | TH-44 | T | Compromised CI action or dependency | Actions pinned by SHA, `govulncheck`, minimal dependencies, `go.sum` verification | M0 | Mitigated (ADR-0014) |
 
 ### Data protection
@@ -148,3 +149,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-29 | M16 | TH-50 mitigated; new TH-55 (tampered backups), TH-56 (backup operations of a compromised Core), TH-57 (backup targets), mitigated; TB-6 includes backup targets (ADR-0029, ADR-0030); M15's alert-flood threat renumbered TH-60 |
 | 2026-10-29 | M17 | TH-52: verifiable exports and continuation check detect tail truncation against a kept export (still partial: no automatic remote sink); the security dashboard surfaces MFA gaps, open routes, exceptions and a broken chain |
 | 2026-10-29 | M6b | New TH-25 (exec console) and TH-26 (long-lived streams), mitigated; TH-20 still holds: the console starts only sh or bash, never a command from the API (ADR-0031) |
+| 2026-10-29 | M18 | TH-43 partially mitigated (verification in place, key ceremony open, B-3); new TH-45 (installer side effects), mitigated |

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Stops Kernhaven's services on removal. Containers and apps keep running
+# (AT-F17-03); an upgrade restarts the services in postinst instead.
+set -e
+case "$1" in
+  remove|deconfigure)
+    for u in kernhaven-proxy kernhaven-caddy kernhaven-agent kernhaven-monitor kernhaven-files kernhaven-storage kernhaven-core; do
+      systemctl disable --now "$u.service" >/dev/null 2>&1 || true
+    done
+    ;;
+esac
+exit 0

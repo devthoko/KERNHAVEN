@@ -1,0 +1,26 @@
+#!/bin/sh
+# Purge removes the configuration and the service users. Data stays unless
+# uninstall.sh --remove-data asked for its removal (AT-F17-03).
+set -e
+case "$1" in
+  remove)
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    ;;
+  purge)
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    rm -rf /etc/kernhaven
+    if [ -e /var/lib/kernhaven-upgrade/remove-data-on-purge ]; then
+      rm -rf /var/lib/kernhaven /var/lib/kernhaven-backups /var/lib/kernhaven-upgrade
+    else
+      echo "Kernhaven's data stays in /var/lib/kernhaven, /var/lib/kernhaven-backups and /var/lib/kernhaven-upgrade."
+    fi
+    if getent passwd caddy >/dev/null && id -nG caddy | tr ' ' '\n' | grep -qx kernhaven-proxy; then
+      gpasswd -d caddy kernhaven-proxy >/dev/null 2>&1 || true
+    fi
+    for u in kernhaven-monitor kernhaven-proxy kernhaven-agent kernhaven; do
+      if getent passwd "$u" >/dev/null; then userdel "$u" >/dev/null 2>&1 || true; fi
+      if getent group "$u" >/dev/null; then groupdel "$u" >/dev/null 2>&1 || true; fi
+    done
+    ;;
+esac
+exit 0

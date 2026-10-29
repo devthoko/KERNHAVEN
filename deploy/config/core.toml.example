@@ -54,3 +54,9 @@ max_upload_bytes = 21474836480
 # [files.roots.backups]
 # read = ["owner", "admin"]
 # write = ["owner"]
+
+# Backups (M16). Local repositories may only be created below these
+# directories; they must belong to the Core's user. The package creates the
+# default; add a directory on a backup disk here.
+# [backup]
+# local_roots = ["/var/lib/kernhaven-backups"]

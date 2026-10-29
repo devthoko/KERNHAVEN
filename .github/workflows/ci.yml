@@ -370,6 +370,64 @@ jobs:
           sudo journalctl -u kernhaven-caddy -u kernhaven-proxy -u kernhaven-monitor --no-pager -o cat | tail -30 | while IFS= read -r l; do echo "::warning title=service log::${l}"; done || true
           grep -hE -- '--- FAIL|_test.go:[0-9]+:' proxy-test.log monitor-test.log 2>/dev/null | head -20 | while IFS= read -r l; do echo "::error title=proxy/monitor::${l}"; done || true
 
+  package:
+    name: package install, upgrade, rollback and removal (${{ matrix.arch }})
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: minisign (signs the test releases with a throwaway key)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
+      - name: build N-1 (the M15 commit, database migrations up to 0013) and N
+        run: |
+          old=$(git log --format=%H -1 --grep='^M15: record green full CI run')
+          test -n "$old"
+          git worktree add "$RUNNER_TEMP/old" "$old"
+          (cd "$RUNNER_TEMP/old" && VERSION=0.15.0 scripts/build.sh)
+          VERSION=0.18.0 scripts/build.sh
+          mkdir -p "$RUNNER_TEMP/bin-old" "$RUNNER_TEMP/bin-broken"
+          cp "$RUNNER_TEMP/old/bin/kernhaven-core-linux-$ARCH" "$RUNNER_TEMP/old/bin/kernhaven-agent-linux-$ARCH" "$RUNNER_TEMP/bin-old/"
+          # N-1 had no upgrader; its package carries the current one.
+          cp "bin/kernhaven-upgrade-linux-$ARCH" "$RUNNER_TEMP/bin-old/"
+          # A release whose Core never becomes healthy.
+          cp bin/*-linux-"$ARCH" "$RUNNER_TEMP/bin-broken/"
+          printf '#!/bin/sh\nexit 1\n' > "$RUNNER_TEMP/bin-broken/kernhaven-core-linux-$ARCH"
+      - name: packages and signed releases
+        run: |
+          minisign -G -W -p "$RUNNER_TEMP/test.pub" -s "$RUNNER_TEMP/test.key"
+          for v in 0.15.0:"$RUNNER_TEMP/bin-old" 0.18.0:bin 0.18.1:"$RUNNER_TEMP/bin-broken"; do
+            ver=${v%%:*}
+            dir="$RUNNER_TEMP/rel/$ver"
+            scripts/package.sh "$ver" "$ARCH" "${v#*:}" "$dir"
+            cp packaging/install.sh "$dir/"
+            (cd "$dir" && sha256sum ./*.deb install.sh | sed 's|  \./|  |' > SHA256SUMS && minisign -S -s "$RUNNER_TEMP/test.key" -m SHA256SUMS -t "kernhaven $ver")
+          done
+          # Our own minisign verification accepts what the real minisign signed.
+          mkdir -p "$RUNNER_TEMP/keys" && cp "$RUNNER_TEMP/test.pub" "$RUNNER_TEMP/keys/"
+          "bin/kernhaven-upgrade-linux-$ARCH" verify -keys "$RUNNER_TEMP/keys" "$RUNNER_TEMP/rel/0.18.0"
+          ls -l "$RUNNER_TEMP"/rel/*
+      - name: install, repair, upgrade N-1 → N, failed upgrade, rollback, removal (AT-F15-01..04, AT-F17-01..04)
+        run: sudo scripts/package-test.sh "$RUNNER_TEMP/rel" "$RUNNER_TEMP/test.pub" 0.15.0 0.18.0 0.18.1
+
   fuzz:
     name: fuzz agent protocol (60 s each)
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full-ci]')

@@ -1,0 +1,77 @@
+#!/bin/sh
+# Kernhaven package configuration (M18, ADR-0032). Idempotent: running it
+# again (reinstall, install.sh) repairs users, directories, configuration,
+# keys and units. It never touches the firewall, SSH or other packages.
+set -e
+[ "$1" = configure ] || exit 0
+
+# Users and groups. The Core joins kernhaven-agent to reach the services'
+# sockets; caddy joins kernhaven-proxy when Caddy is installed.
+for u in kernhaven kernhaven-agent kernhaven-proxy kernhaven-monitor; do
+  getent group "$u" >/dev/null || groupadd --system "$u"
+  getent passwd "$u" >/dev/null || useradd --system --gid "$u" --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin "$u"
+done
+id -nG kernhaven | tr ' ' '\n' | grep -qx kernhaven-agent || usermod -a -G kernhaven-agent kernhaven
+
+# Directories.
+install -d -m 0750 -o root -g kernhaven /etc/kernhaven
+install -d -m 0755 -o root -g root /etc/kernhaven/release-keys
+install -d -m 0700 -o kernhaven -g kernhaven /var/lib/kernhaven /var/lib/kernhaven-backups
+install -d -m 0700 -o root -g root /var/lib/kernhaven-upgrade
+# Data kept from an earlier installation belongs to the user created now
+# (its UID may differ after a removal).
+chown -R kernhaven:kernhaven /var/lib/kernhaven /var/lib/kernhaven-backups
+
+# Configuration from the examples, only where none exists (an existing file
+# is the administrator's and is never changed).
+uid=$(id -u kernhaven)
+for f in core agent storage files proxy monitor; do
+  dst=/etc/kernhaven/$f.toml
+  [ -e "$dst" ] && continue
+  sed "s/allowed_uids = \[998\]/allowed_uids = [$uid]/" "/usr/share/kernhaven/config/$f.toml.example" > "$dst.tmp"
+  mv "$dst.tmp" "$dst"
+done
+chown root:kernhaven /etc/kernhaven/core.toml
+chmod 0640 /etc/kernhaven/core.toml
+for f in agent storage files proxy monitor; do
+  chown root:root "/etc/kernhaven/$f.toml"
+  chmod 0644 "/etc/kernhaven/$f.toml"
+done
+[ -e /etc/kernhaven/caddy.json ] || install -m 0644 /usr/share/kernhaven/config/caddy.json /etc/kernhaven/caddy.json
+for k in /usr/share/kernhaven/release-keys/*.pub; do
+  [ -e "$k" ] || continue
+  [ -e "/etc/kernhaven/release-keys/$(basename "$k")" ] || install -m 0644 "$k" /etc/kernhaven/release-keys/
+done
+
+# The grant key: created as the Core's user, its public half copied to a
+# root-owned path the services read (the Core cannot replace it later).
+if ! runuser -u kernhaven -- /usr/bin/kernhaven-core init-keys -config /etc/kernhaven/core.toml >/dev/null 2>&1; then
+  # Older Core versions create the key on their first start.
+  systemctl start kernhaven-core.service || true
+  i=0
+  while [ ! -s /var/lib/kernhaven/agent-grant.pub ] && [ "$i" -lt 30 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+fi
+install -m 0644 -o root -g root /var/lib/kernhaven/agent-grant.pub /etc/kernhaven/agent-grant.pub
+
+systemctl daemon-reload
+units="kernhaven-core.service kernhaven-storage.service kernhaven-files.service kernhaven-monitor.service"
+if getent group docker >/dev/null; then
+  units="$units kernhaven-agent.service"
+fi
+if [ -x /usr/bin/caddy ] && getent passwd caddy >/dev/null; then
+  id -nG caddy | tr ' ' '\n' | grep -qx kernhaven-proxy || usermod -a -G kernhaven-proxy caddy
+  units="$units kernhaven-caddy.service kernhaven-proxy.service"
+fi
+# shellcheck disable=SC2086
+systemctl enable $units >/dev/null 2>&1
+# shellcheck disable=SC2086
+systemctl restart $units
+
+if [ -z "$2" ]; then
+  echo "Kernhaven is installed. Set public_origin in /etc/kernhaven/core.toml, then open the web UI;"
+  echo "the one-time setup token is in: journalctl -u kernhaven-core | grep setup_token"
+fi
+exit 0
