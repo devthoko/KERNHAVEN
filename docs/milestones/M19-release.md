@@ -1,6 +1,6 @@
 # M19 — Release Hardening and 1.0 Verification
 
-Status: Implemented (CI pending); the 1.0 gate is **not** passed — see
+Status: Implemented (CI 40968428696); the 1.0 gate is **not** passed — see
 [1.0 gate status](../release/1.0-GATE.md)
 Depends on: all milestones
 
@@ -29,4 +29,5 @@ Depends on: all milestones
 | Check | Environment | Result |
 |---|---|---|
 | `scripts/check.sh` | `khv01-dev` | Passed |
-| CI full suite incl. `reproducible` and `zap` | GitHub Actions | pending |
+| Local rebuild of the Core binary twice | `khv01-dev` | Identical |
+| CI full suite incl. `reproducible` (two builds: binaries for both architectures and both packages identical) and `zap` (no medium or high findings; nothing accepted) | GitHub Actions | Passed (run 40968428696) |
