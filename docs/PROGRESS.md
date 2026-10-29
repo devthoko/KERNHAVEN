@@ -27,7 +27,7 @@ stacked branches up to `m16-backup`. Installer functionality does not exist yet.
 | M13 | TLS certificates (F12-01..03) | Done on branch `m13-tls` (stacked on M12), CI 40773688023, merge pending owner review | [M13 evidence](milestones/M13-tls.md#verification-evidence-2026-10-28-branch-m13-tls) |
 | M14 | Monitoring (F13) | Done on branch `m14-monitoring` (stacked on M13), CI 40836524907, merge pending owner review | [M14 evidence](milestones/M14-monitoring.md#verification-evidence-2026-10-29-branch-m14-monitoring) |
 | M15 | Notifications and alerts (F16, F06-04, F12-04) | Done on branch `m15-alerts` (stacked on M14), CI 40901885634, merge pending owner review | [M15 evidence](milestones/M15-alerts.md#verification-evidence-2026-10-29-branch-m15-alerts) |
-| M16 | Encrypted backup and restore (F14) | Implemented on branch `m16-backup` (stacked on M15), CI pending, merge pending owner review | [M16 evidence](milestones/M16-backup.md#verification-evidence-2026-10-29-branch-m16-backup) |
+| M16 | Encrypted backup and restore (F14) | Done on branch `m16-backup` (stacked on M15), CI 40949090854, merge pending owner review | [M16 evidence](milestones/M16-backup.md#verification-evidence-2026-10-29-branch-m16-backup) |
 | M6b, M17–M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers

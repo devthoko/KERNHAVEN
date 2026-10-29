@@ -64,7 +64,7 @@ graph TD
 | M13 | TLS certificate management | M12 | F12 (01–03) | Done on branch `m13-tls` (based on `m12-network`), CI 40773688023, merge pending owner review — [design](M13-tls.md) |
 | M14 | System and container monitoring | M6 | F13 | Done on branch `m14-monitoring` (based on `m13-tls`), CI 40836524907, merge pending owner review — [design](M14-monitoring.md) |
 | M15 | Notifications and alerts | M3, M14 | F16, F06-04, F12-04 | Done on branch `m15-alerts` (based on `m14-monitoring`), CI 40901885634, merge pending owner review — [design](M15-alerts.md) |
-| M16 | Encrypted backup and restore | M3, M9 | F14 | Implemented on branch `m16-backup` (based on `m15-alerts`), CI pending, merge pending owner review — [design](M16-backup.md) |
+| M16 | Encrypted backup and restore | M3, M9 | F14 | Done on branch `m16-backup` (based on `m15-alerts`), CI 40949090854, merge pending owner review — [design](M16-backup.md) |
 | M17 | Security dashboard | M11, M14 | F10 (03–04) | Not started |
 | M18 | Installer, upgrades, rollback, signed releases | M16 | F15, F17 | Not started |
 | M19 | Release hardening and 1.0 verification | all | Release gate G4 | Not started |

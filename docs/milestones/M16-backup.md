@@ -1,6 +1,6 @@
 # M16 — Encrypted Backup and Restore
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40949090854); merge pending owner review
 Depends on: M3, M6, M8, M9, M15
 Acceptance tests: AT-F14-01 … AT-F14-06
 Threats addressed: TH-50, TH-55, TH-56, TH-57 (below), TH-51 (secret key in backups)
@@ -121,4 +121,4 @@ and the stack started again.
 | `TestM16VolumeExportImport` on real rootless Docker 29.9.2 | `khv01-dev` | Passed — the first run found that `copyUIDGID` gives every file to the helper's user; it is no longer sent |
 | `TestBackupAndRestoreThroughCore`, `TestBackupSchedule`, `TestPlatformRestore`, `TestRestoreCommand`, contract, RBAC | `khv01-dev` | Passed — the first run found that deployed stacks have the status `deployed`, not `running` (restores would not restart them) |
 | Mutation checks: last-segment flag ignored, paths below symbolic links allowed, device files allowed, no copy-back after a failed restore, local roots not enforced, host key not pinned, missing snapshots not reported, newest snapshot not protected — each makes a test fail. Removing the manifest's snapshot-ID check leaves the per-snapshot key derivation, which still rejects a moved manifest (defence in depth) | `khv01-dev` | Passed |
-| CI full suite incl. browser E2E | GitHub Actions | pending |
+| CI full suite: unit tests on amd64/arm64 and Debian 13, real Docker export/import and the real S3 server (`rclone serve s3`) on amd64/arm64, browser E2E (repository, plan, backup, snapshot, check, axe) | GitHub Actions | Passed (run 40949090854) |

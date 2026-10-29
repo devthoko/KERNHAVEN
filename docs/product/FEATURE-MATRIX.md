@@ -151,12 +151,12 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F14-01 | Encryption | Backups encrypted client-side with an authenticated cipher; key never stored unencrypted on the backup target | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
-| AT-F14-02 | Targets | Local disk, SFTP and S3-compatible targets | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
-| AT-F14-03 | Scope | Platform config, database, app data volumes; consistent snapshots (app quiesce or DB-native dump) | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
-| AT-F14-04 | Scheduling and retention | Cron-like schedules; retention policies; missed runs caught up after downtime | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
-| AT-F14-05 | Restore | Full platform restore onto a fresh Debian 13 host and per-app restore; restore verified by app health checks | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
-| AT-F14-06 | Integrity | Periodic verification detects corrupted or tampered backups | M16 | Implemented on `m16-backup` (CI pending; merge pending owner review) |
+| AT-F14-01 | Encryption | Backups encrypted client-side with an authenticated cipher; key never stored unencrypted on the backup target | M16 | Done (CI 40949090854; merge pending owner review) |
+| AT-F14-02 | Targets | Local disk, SFTP and S3-compatible targets | M16 | Done (CI 40949090854; merge pending owner review) |
+| AT-F14-03 | Scope | Platform config, database, app data volumes; consistent snapshots (app quiesce or DB-native dump) | M16 | Done (CI 40949090854; merge pending owner review) |
+| AT-F14-04 | Scheduling and retention | Cron-like schedules; retention policies; missed runs caught up after downtime | M16 | Done (CI 40949090854; merge pending owner review) |
+| AT-F14-05 | Restore | Full platform restore onto a fresh Debian 13 host and per-app restore; restore verified by app health checks | M16 | Done (CI 40949090854; merge pending owner review) |
+| AT-F14-06 | Integrity | Periodic verification detects corrupted or tampered backups | M16 | Done (CI 40949090854; merge pending owner review) |
 
 ## F15 — Reliable platform upgrades and rollback
 
