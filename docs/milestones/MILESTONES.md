@@ -62,7 +62,7 @@ graph TD
 | M11 | Passkeys, MFA, step-up auth | M2, M5 | F09 (02–05) | Done on branch `m11-mfa` (based on `m10-files`), CI 40719877647, merge pending owner review — [design](M11-mfa.md) |
 | M12 | Network and reverse proxy | M4, M5 | F11 | Done on branch `m12-network` (based on `m11-mfa`), CI 40761331938, merge pending owner review — [design](M12-network.md) |
 | M13 | TLS certificate management | M12 | F12 (01–03) | Done on branch `m13-tls` (based on `m12-network`), CI 40773688023, merge pending owner review — [design](M13-tls.md) |
-| M14 | System and container monitoring | M6 | F13 | Implemented on branch `m14-monitoring` (based on `m13-tls`), CI pending, merge pending owner review — [design](M14-monitoring.md) |
+| M14 | System and container monitoring | M6 | F13 | Done on branch `m14-monitoring` (based on `m13-tls`), CI 40836524907, merge pending owner review — [design](M14-monitoring.md) |
 | M15 | Notifications and alerts | M3, M14 | F16, F06-04, F12-04 | Not started |
 | M16 | Encrypted backup and restore | M3, M9 | F14 | Not started |
 | M17 | Security dashboard | M11, M14 | F10 (03–04) | Not started |

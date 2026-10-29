@@ -1,6 +1,6 @@
 # M14 — System and Container Monitoring
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40836524907); merge pending owner review
 Depends on: M4, M6 (and M9–M13 for the services whose health is shown)
 Acceptance tests: AT-F13-01 … AT-F13-04
 Threats addressed: TH-06 (resource use of the collector), TH-18 (below)
@@ -109,4 +109,4 @@ and Docker Engine, storage service, file service, proxy service and Caddy
 | Live with real binaries (Core, monitor role, Docker agent, rootless Docker, 5 s sampling): a busy-loop container shows 16.7 % (one of six CPUs), the host 16.9 %; memory, load, disk and network rates; 1-hour and 1-minute history; services ok / not configured | `khv01-dev` | Passed |
 | UI check: monitoring page with charts, container table, dashboard host and services cards, 375 px without horizontal overflow | `khv01-dev` | Passed — the first chart version scaled its axis labels with the SVG and was unreadable; labels are HTML now |
 | First full CI run (40836136980) | GitHub Actions | Failed: only E2E — the dashboard test's `Host agent` text now also matched the new services list (selector scoped to the platform card). All other jobs passed, including the real monitor unit and Docker stats on amd64/arm64 |
-| CI full suite: real monitor unit, Docker stats on amd64/arm64, browser E2E | GitHub Actions | pending |
+| CI full suite: real `kernhaven-monitor` unit reads the host's counters in its sandbox, Docker stats on amd64/arm64, unit hardening, browser E2E (services, host card, charts after two readings, range buttons, container table, axe) | GitHub Actions | Passed (run 40836524907) |
