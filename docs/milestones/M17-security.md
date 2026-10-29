@@ -1,6 +1,6 @@
 # M17 — Security Dashboard and Audit Search
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40950899401); merge pending owner review
 Depends on: M2, M11, M12, M13, M14, M16
 Acceptance tests: AT-F10-03, AT-F10-04
 Threats addressed: TH-52 (tail truncation of the audit log, partially)
@@ -74,4 +74,4 @@ reads; nothing is changed from it.
 | `scripts/check.sh` (Go + web; staticcheck, govulncheck, builds) | `khv01-dev` | Passed |
 | `internal/core/audit`, `TestSecurityOverview`, `TestAuditSearchAndExport`, `TestAuditCheckCommand`, contract, RBAC | `khv01-dev` | Passed |
 | Mutation checks: LIKE wildcards not escaped, modified records accepted, rewritten log accepted, routes with sign-in reported as open, admins without MFA not reported, operators allowed to read the dashboard — each makes a test fail | `khv01-dev` | Passed |
-| CI full suite incl. browser E2E | GitHub Actions | pending |
+| CI full suite: unit and API tests on amd64/arm64 and Debian 13, browser E2E (security findings and accounts, audit search with result filter, JSON Lines download where every record matches, axe) | GitHub Actions | Passed (run 40950899401) |

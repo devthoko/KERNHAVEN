@@ -28,7 +28,7 @@ stacked branches up to `m17-security`. Installer functionality does not exist ye
 | M14 | Monitoring (F13) | Done on branch `m14-monitoring` (stacked on M13), CI 40836524907, merge pending owner review | [M14 evidence](milestones/M14-monitoring.md#verification-evidence-2026-10-29-branch-m14-monitoring) |
 | M15 | Notifications and alerts (F16, F06-04, F12-04) | Done on branch `m15-alerts` (stacked on M14), CI 40901885634, merge pending owner review | [M15 evidence](milestones/M15-alerts.md#verification-evidence-2026-10-29-branch-m15-alerts) |
 | M16 | Encrypted backup and restore (F14) | Done on branch `m16-backup` (stacked on M15), CI 40949090854, merge pending owner review | [M16 evidence](milestones/M16-backup.md#verification-evidence-2026-10-29-branch-m16-backup) |
-| M17 | Security dashboard, audit search and export (F10-03/04) | Implemented on branch `m17-security` (stacked on M16), CI pending, merge pending owner review | [M17 evidence](milestones/M17-security.md#verification-evidence-2026-10-29-branch-m17-security) |
+| M17 | Security dashboard, audit search and export (F10-03/04) | Done on branch `m17-security` (stacked on M16), CI 40950899401, merge pending owner review | [M17 evidence](milestones/M17-security.md#verification-evidence-2026-10-29-branch-m17-security) |
 | M6b, M18, M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers

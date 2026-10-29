@@ -117,8 +117,8 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 |---|---|---|---|---|
 | AT-F10-01 | Audit log | Every authentication event and state change is recorded with actor, action, target, result and request ID | M2 | Done (CI 40510127374; merge pending owner review) |
 | AT-F10-02 | Tamper evidence | Audit records are hash-chained; verification detects modified or deleted records | M2 | Done (CI 40510127374; merge pending owner review) |
-| AT-F10-03 | Audit UI | Filter, search and export (JSON Lines) | M17 | Implemented on `m17-security` (CI pending; merge pending owner review) |
-| AT-F10-04 | Security dashboard | Shows MFA coverage, exposed apps, policy exceptions, outdated images, failed logins, certificate expiry | M17 | Implemented on `m17-security` (CI pending; merge pending owner review) |
+| AT-F10-03 | Audit UI | Filter, search and export (JSON Lines) | M17 | Done (CI 40950899401; merge pending owner review) |
+| AT-F10-04 | Security dashboard | Shows MFA coverage, exposed apps, policy exceptions, outdated images, failed logins, certificate expiry | M17 | Done (CI 40950899401; merge pending owner review) |
 
 ## F11 — Network and reverse proxy management
 
