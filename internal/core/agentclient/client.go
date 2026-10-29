@@ -75,8 +75,10 @@ func New(socket string, key ed25519.PrivateKey) *Client {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", socket)
 		},
-		MaxIdleConns:    4,
-		IdleConnTimeout: 30 * time.Second,
+		// One connection per call: a kept-alive connection to an agent that
+		// restarted in between would fail the next call (unix sockets are
+		// cheap to open).
+		DisableKeepAlives: true,
 	}
 	return &Client{socket: socket, key: key, http: &http.Client{Transport: tr}, now: time.Now}
 }
