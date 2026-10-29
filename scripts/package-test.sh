@@ -3,7 +3,7 @@
 # disposable host (CI runner, root) — M18, AT-F15-01..04, AT-F17-01..04.
 #   scripts/package-test.sh RELEASES_DIR PUBKEY OLD NEW BROKEN
 # RELEASES_DIR holds one signed release directory per version.
-set -euo pipefail
+set -Eeuo pipefail
 REL=$1
 PUB=$2
 OLD=$3

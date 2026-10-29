@@ -399,6 +399,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
       - name: build N-1 (the M15 commit, database migrations up to 0013) and N
         run: |
+          trap 'echo "::error::$BASH_COMMAND failed (exit $?)"' ERR
           old=$(git log --format=%H -1 --grep='^M15: record green full CI run')
           test -n "$old"
           git worktree add "$RUNNER_TEMP/old" "$old"
@@ -413,6 +414,7 @@ jobs:
           printf '#!/bin/sh\nexit 1\n' > "$RUNNER_TEMP/bin-broken/kernhaven-core-linux-$ARCH"
       - name: packages and signed releases
         run: |
+          trap 'echo "::error::$BASH_COMMAND failed (exit $?)"' ERR
           minisign -G -W -p "$RUNNER_TEMP/test.pub" -s "$RUNNER_TEMP/test.key"
           for v in 0.15.0:"$RUNNER_TEMP/bin-old" 0.18.0:bin 0.18.1:"$RUNNER_TEMP/bin-broken"; do
             ver=${v%%:*}
@@ -423,7 +425,8 @@ jobs:
           done
           # Our own minisign verification accepts what the real minisign signed.
           mkdir -p "$RUNNER_TEMP/keys" && cp "$RUNNER_TEMP/test.pub" "$RUNNER_TEMP/keys/"
-          "bin/kernhaven-upgrade-linux-$ARCH" verify -keys "$RUNNER_TEMP/keys" "$RUNNER_TEMP/rel/0.18.0"
+          out=$("bin/kernhaven-upgrade-linux-$ARCH" verify -keys "$RUNNER_TEMP/keys" "$RUNNER_TEMP/rel/0.18.0" 2>&1) || { echo "::error::verify: $out"; head -5 "$RUNNER_TEMP/rel/0.18.0/SHA256SUMS.minisig" "$RUNNER_TEMP/test.pub"; exit 1; }
+          echo "$out"
           ls -l "$RUNNER_TEMP"/rel/*
       - name: install, repair, upgrade N-1 → N, failed upgrade, rollback, removal (AT-F15-01..04, AT-F17-01..04)
         run: sudo scripts/package-test.sh "$RUNNER_TEMP/rel" "$RUNNER_TEMP/test.pub" 0.15.0 0.18.0 0.18.1
