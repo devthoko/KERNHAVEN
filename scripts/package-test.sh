@@ -47,8 +47,9 @@ run() {
 host_state() {
   {
     if [ -d /etc/ssh ]; then (find /etc/ssh -type f -print0 | sort -z | xargs -0 -r sha256sum) || true; fi
-    (iptables-save 2>/dev/null | grep -v '^#' | grep -iv docker) || true
-    (nft list ruleset 2>/dev/null | grep -iv docker) || true
+    # Rules only: packet counters change all the time.
+    (iptables-save 2>/dev/null | grep -v '^#' | grep -iv docker | sed 's/ \[[0-9]*:[0-9]*\]$//') || true
+    (nft list ruleset 2>/dev/null | grep -iv docker | sed 's/ counter packets [0-9]* bytes [0-9]*//') || true
     dpkg-query -W -f='${Package} ${Version}\n' | grep -v '^kernhaven ' | sort
   } > "$1"
   [ -s "$1" ] || fail "could not record the host state"
