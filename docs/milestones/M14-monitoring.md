@@ -108,4 +108,5 @@ and Docker Engine, storage service, file service, proxy service and Caddy
 | systemd exposure: `kernhaven-monitor` 0.8 (threshold 2.0) | `khv01-dev` | Passed |
 | Live with real binaries (Core, monitor role, Docker agent, rootless Docker, 5 s sampling): a busy-loop container shows 16.7 % (one of six CPUs), the host 16.9 %; memory, load, disk and network rates; 1-hour and 1-minute history; services ok / not configured | `khv01-dev` | Passed |
 | UI check: monitoring page with charts, container table, dashboard host and services cards, 375 px without horizontal overflow | `khv01-dev` | Passed — the first chart version scaled its axis labels with the SVG and was unreadable; labels are HTML now |
+| First full CI run (40836136980) | GitHub Actions | Failed: only E2E — the dashboard test's `Host agent` text now also matched the new services list (selector scoped to the platform card). All other jobs passed, including the real monitor unit and Docker stats on amd64/arm64 |
 | CI full suite: real monitor unit, Docker stats on amd64/arm64, browser E2E | GitHub Actions | pending |

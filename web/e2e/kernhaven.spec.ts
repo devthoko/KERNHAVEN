@@ -88,7 +88,7 @@ test("AT-F08-01, AT-F01-04: first-run setup works by keyboard and is accessible"
 
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(page.getByText("Host agent", { exact: true })).toBeVisible();
+  await expect(page.getByRole("term").filter({ hasText: "Host agent" })).toBeVisible();
   await expect(page.getByText(docker ? "Connected" : "Unavailable", { exact: true })).toBeVisible();
   await expectAccessible(page, "dashboard");
 });
