@@ -66,7 +66,7 @@ graph TD
 | M15 | Notifications and alerts | M3, M14 | F16, F06-04, F12-04 | Done on branch `m15-alerts` (based on `m14-monitoring`), CI 40901885634, merge pending owner review — [design](M15-alerts.md) |
 | M16 | Encrypted backup and restore | M3, M9 | F14 | Done on branch `m16-backup` (based on `m15-alerts`), CI 40949090854, merge pending owner review — [design](M16-backup.md) |
 | M17 | Security dashboard | M11, M14 | F10 (03–04) | Done on branch `m17-security` (based on `m16-backup`), CI 40950899401, merge pending owner review — [design](M17-security.md) |
-| M18 | Installer, upgrades, rollback, signed releases | M16 | F15, F17 | Implemented on branch `m18-installer` (based on `m6b-streaming`), CI pending, merge pending owner review; Debian 13 run pending B-2, release key pending B-3 — [design](M18-installer.md) |
+| M18 | Installer, upgrades, rollback, signed releases | M16 | F15, F17 | Implemented on branch `m18-installer` (based on `m6b-streaming`), verified on Ubuntu 24.04 (CI 40967427295), merge pending owner review; Debian 13 run pending B-2, release key pending B-3 — [design](M18-installer.md) |
 | M19 | Release hardening and 1.0 verification | all | Release gate G4 | Not started |
 
 ## Known blockers

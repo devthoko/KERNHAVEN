@@ -1,6 +1,6 @@
 # M18 — Installer, Upgrades, Rollback, Signed Releases
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented and verified on Ubuntu 24.04 (CI 40967427295); Debian 13 run pending B-2; release key pending B-3; merge pending owner review
 Depends on: M16 (backups), all services' units
 Acceptance tests: AT-F15-01 … AT-F15-04, AT-F17-01 … AT-F17-04
 Threats addressed: TH-43, TH-45 (below)
@@ -72,6 +72,9 @@ database and its key, not the apps' volumes.
 | Check | Environment | Result |
 |---|---|---|
 | `scripts/check.sh` | `khv01-dev` | Passed |
+| CI full suite (all jobs incl. Debian 13 userland, real Docker, E2E) | GitHub Actions | Passed (run 40967427295) |
 | `internal/release`, `internal/upgrade` unit tests | `khv01-dev` | Passed |
 | `scripts/package.sh` builds a package (contents and control fields checked) | `khv01-dev` | Passed — the first build had a 0700 root directory and group-writable directories (umask); fixed |
-| Package lifecycle on real hosts (install, repair, upgrade, failed upgrade, rollbacks, removal, host side effects) | GitHub Actions (Ubuntu 24.04, amd64 and arm64) | pending |
+| Our minisign verification against signatures made by the real minisign 0.11 | GitHub Actions (amd64, arm64) | Passed |
+| Package lifecycle on real hosts (install, repair, upgrade, failed upgrade, rollbacks, removal, host side effects) | GitHub Actions (Ubuntu 24.04, amd64 and arm64) | Passed (run 40967427295) — on the way the job found: (1) `/etc/kernhaven` was 0750 root:kernhaven (enforced by the Core unit's `ConfigurationDirectoryMode`), so the agent and the monitor could not read their configuration and did not start — now 0755 with `core.toml` 0640; (2) the comparison of the host state counted firewall packet counters — rules only now; plus test-script fixes (password policy, error reporting) |
+| Flaky `TestAgentStatusAvailable` on Debian/arm64: a kept-alive connection to a restarted agent failed the next call | `khv01-dev`, GitHub Actions | Fixed — the Core opens one agent connection per call |

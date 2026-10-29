@@ -162,10 +162,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F15-01 | Signed releases | Release artifacts are signed; unsigned or mismatched artifacts are refused | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F15-02 | Upgrade | In-place upgrade with automatic pre-upgrade DB snapshot | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F15-03 | Rollback | Failed post-upgrade health check rolls back binaries and DB automatically; manual rollback available | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F15-04 | Upgrade path test | Upgrade from N-1 to N with real data passes on both architectures | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F15-01 | Signed releases | Release artifacts are signed; unsigned or mismatched artifacts are refused | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F15-02 | Upgrade | In-place upgrade with automatic pre-upgrade DB snapshot | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F15-03 | Rollback | Failed post-upgrade health check rolls back binaries and DB automatically; manual rollback available | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F15-04 | Upgrade path test | Upgrade from N-1 to N with real data passes on both architectures | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
 
 ## F16 — Notifications and operational alerts
 
@@ -179,10 +179,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F17-01 | Installer | `.deb` packages for amd64 and arm64 plus a verified install script; pre-flight checks (OS, arch, systemd, Docker, ports, disk) | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F17-02 | Idempotency | Re-running the installer is safe and repairs a partial install | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F17-03 | Uninstall | Uninstall removes services, users and units; data removal is opt-in; apps keep running unless removal is requested | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
-| AT-F17-04 | No host side effects | Installer does not change firewall, SSH config or unrelated packages | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F17-01 | Installer | `.deb` packages for amd64 and arm64 plus a verified install script; pre-flight checks (OS, arch, systemd, Docker, ports, disk) | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F17-02 | Idempotency | Re-running the installer is safe and repairs a partial install | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F17-03 | Uninstall | Uninstall removes services, users and units; data removal is opt-in; apps keep running unless removal is requested | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
+| AT-F17-04 | No host side effects | Installer does not change firewall, SSH config or unrelated packages | M18 | Verified on Ubuntu 24.04 (CI 40967427295); Debian 13 VM run pending B-2; release key pending B-3; merge pending owner review |
 
 ## F18 — Crash recovery and persistent background jobs
 

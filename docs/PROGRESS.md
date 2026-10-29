@@ -30,7 +30,7 @@ stacked branches up to `m18-installer`.
 | M16 | Encrypted backup and restore (F14) | Done on branch `m16-backup` (stacked on M15), CI 40949090854, merge pending owner review | [M16 evidence](milestones/M16-backup.md#verification-evidence-2026-10-29-branch-m16-backup) |
 | M17 | Security dashboard, audit search and export (F10-03/04) | Done on branch `m17-security` (stacked on M16), CI 40950899401, merge pending owner review | [M17 evidence](milestones/M17-security.md#verification-evidence-2026-10-29-branch-m17-security) |
 | M6b | Exec console, live status, log follow (F02-07, F01-05) | Done on branch `m6b-streaming` (stacked on M17), CI 40958468980, merge pending owner review | [M6b evidence](milestones/M6b-streaming.md#verification-evidence-2026-10-29-branch-m6b-streaming) |
-| M18 | Installer, upgrades, rollback, signed releases (F15, F17) | Implemented on branch `m18-installer` (stacked on M6b), CI pending, merge pending owner review; Debian 13 run pending B-2, release key pending B-3 | [M18 evidence](milestones/M18-installer.md#verification-evidence-2026-10-29-branch-m18-installer) |
+| M18 | Installer, upgrades, rollback, signed releases (F15, F17) | Verified on Ubuntu 24.04 on branch `m18-installer` (stacked on M6b), CI 40967427295, merge pending owner review; Debian 13 run pending B-2, release key pending B-3 | [M18 evidence](milestones/M18-installer.md#verification-evidence-2026-10-29-branch-m18-installer) |
 | M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
