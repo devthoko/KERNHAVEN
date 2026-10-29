@@ -3,7 +3,7 @@
 Status: Implemented (CI 40901885634); merge pending owner review
 Depends on: M3, M9, M13, M14
 Acceptance tests: AT-F16-01 … AT-F16-03, AT-F06-04, AT-F12-04
-Threats addressed: TH-19, TH-20 (below), TH-15 (credentials of channels)
+Threats addressed: TH-19, TH-60 (below; first numbered TH-20, corrected in M16), TH-15 (credentials of channels)
 
 ## Model
 
@@ -72,7 +72,7 @@ redirects are not followed; responses are read up to 64 KiB (ADR-0028).
 | ID | Threat | Mitigation |
 |---|---|---|
 | TH-19 | The Core is used to reach internal endpoints (SSRF) through channel URLs | Only owners/admins with step-up; loopback, link-local, metadata and multicast refused at dial time; no redirects; bounded responses |
-| TH-20 | Alert floods hide real problems or exhaust a channel | Deduplication per alert, per-channel rate limit, recorded drops |
+| TH-60 | Alert floods hide real problems or exhaust a channel | Deduplication per alert, per-channel rate limit, recorded drops |
 
 ## Acceptance criteria → tests
 

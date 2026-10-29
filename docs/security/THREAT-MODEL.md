@@ -72,7 +72,7 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-17 | S/T | The Core points Caddy at a foreign ACME CA or obtains certificates for foreign names | CA chosen by the proxy service from Let's Encrypt only; ACME only for hosts with routes; DNS-01 only in zones the token can edit; every issuance audited | M13 | Mitigated |
 | TH-18 | D | Monitoring exhausts disk, CPU or the Docker daemon | Sampling interval 5–60 s, 300-series cap, retention pruning (bounded at about 25 MB), one stats call per running container with a timeout; the monitor role has no capabilities and no IP traffic | M14 | Mitigated (`TestMetricsHistory`, ADR-0027) |
 | TH-19 | S/I | The Core is used to reach internal endpoints (SSRF) through notification channels | Owners/admins with step-up only; loopback, link-local (metadata), unspecified and multicast refused on save and at every connection; no redirects; bounded responses (ADR-0028) | M15 | Mitigated (`TestGuard`, live check) |
-| TH-20 | D | Alert floods hide real problems or exhaust a channel | Deduplication per alert (code and unique index), 20 deliveries per channel and hour, drops recorded | M15 | Mitigated (`TestDelivery`) |
+| TH-60 | D | Alert floods hide real problems or exhaust a channel | Deduplication per alert (code and unique index), 20 deliveries per channel and hour, drops recorded | M15 | Mitigated (`TestDelivery`) |
 
 ### TB-3 — Core ↔ Agent
 
@@ -109,7 +109,10 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 
 | ID | STRIDE | Threat | Mitigation | MS | Status |
 |---|---|---|---|---|---|
-| TH-50 | I | Theft of backups | Client-side authenticated encryption; key derived from passphrase via Argon2id | M16 | Open |
+| TH-50 | I | Theft of backups | Client-side authenticated encryption (STREAM, AES-256-GCM); data key wrapped with Argon2id(passphrase), passphrase never stored; no stack or volume names in object paths (ADR-0029) | M16 | Mitigated (`TestRepoHeader`, `TestBackupAndRestoreThroughCore`: no plaintext on the target) |
+| TH-55 | T | A damaged or tampered backup is restored | Every segment authenticated before use; manifest bound to repository and snapshot; restores keep the current data until the stack is healthy; scheduled verification reports damaged and deleted snapshots | M16 | Mitigated (`TestStreamTamper`, `TestRepoObjects`, failed restore puts data back) |
+| TH-56 | I/T | A compromised Core uses backup operations to read or overwrite other data | The agent exports/imports only volumes labelled for the named stack (no snapshot copies, no unmanaged volumes); archives filtered in both directions (no `..`, absolute names, paths below links, devices) (ADR-0030) | M16 | Mitigated (`TestFilterTar`, `TestM16VolumeExportImport`) |
+| TH-57 | S/I | SSRF or credential theft through backup targets | Address guard (ADR-0028) for SFTP and S3; SFTP host keys pinned after fingerprint comparison; local repositories only below configured roots via `os.Root`; credentials sealed and write-only; step-up | M16 | Mitigated (`TestSFTPTarget`, `TestS3Target`, `TestLocalTarget`) |
 | TH-51 | I | Secrets readable from DB file or logs | Secrets encrypted at rest with a key in a separate file (0600); log redaction | M2/M7 | Mitigated for stack variables and app secrets (M7/M8, ADR-0019: AES-256-GCM at rest, write-only, generated app secrets never leave the server) |
 | TH-52 | R | Admin hides actions by editing the audit log | Hash-chained audit log; chain verification; export to remote sink | M2/M17 | Partially mitigated (M2: hash chain + append-only triggers; tail truncation needs M17 export) |
 | TH-53 | T | Database corruption after crash/power loss | WAL + `synchronous=FULL`; integrity check on startup; journaled jobs | M1/M3 | Partially mitigated (M1: WAL, FULL sync; M3: journaled jobs with SIGKILL recovery tests; VM power-loss test blocked by B-2) |
@@ -139,4 +142,5 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-28 | M12 | New TH-11…TH-14 (reverse proxy, sign-in gate); TH-11–TH-13 mitigated, TH-14 partially; fourth privilege domain: proxy service, the only client of Caddy's admin socket (ADR-0025) |
 | 2026-10-28 | M13 | New TH-15…TH-17 (certificates); TB-6 now includes Let's Encrypt and the Cloudflare API, both fixed endpoints (ADR-0026) |
 | 2026-10-29 | M14 | New TH-18 (resource use of monitoring), mitigated; fifth privilege domain: monitor service, read-only host counters (ADR-0027) |
-| 2026-10-29 | M15 | New TH-19 (SSRF through channels) and TH-20 (alert floods), mitigated; TB-6 now includes notification endpoints (ADR-0028) |
+| 2026-10-29 | M15 | New TH-19 (SSRF through channels) and TH-60 (alert floods; first numbered TH-20, which M4 already used — corrected in M16), mitigated; TB-6 now includes notification endpoints (ADR-0028) |
+| 2026-10-29 | M16 | TH-50 mitigated; new TH-55 (tampered backups), TH-56 (backup operations of a compromised Core), TH-57 (backup targets), mitigated; TB-6 includes backup targets (ADR-0029, ADR-0030); M15's alert-flood threat renumbered TH-60 |

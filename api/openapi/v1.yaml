@@ -1352,6 +1352,151 @@ paths:
       responses:
         "200": { description: Delivery, content: { application/json: { schema: { $ref: "#/components/schemas/Delivery" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /backup/repositories:
+    get:
+      operationId: listBackupRepositories
+      x-permission: backup.read
+      description: Backup repositories with their target settings (never credentials or keys), snapshot count, size and last verification.
+      responses:
+        "200": { description: Repositories, content: { application/json: { schema: { type: object, properties: { repositories: { type: array, items: { $ref: "#/components/schemas/BackupRepository" } } } } } } }
+    post:
+      operationId: createBackupRepository
+      x-permission: backup.manage
+      description: Initialises a repository on an empty target (connect false) or connects to an existing one with its passphrase (connect true). The target is contacted first; local paths must lie inside backup.local_roots, SFTP needs the pinned host key, loopback and link-local addresses are refused. The passphrase is never stored. Needs a recent step-up.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRepositoryInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRepository" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /backup/repositories/{id}:
+    put:
+      operationId: updateBackupRepository
+      x-permission: backup.manage
+      description: Changes name, target settings, credentials (omit secret to keep them) or the verification schedule. The target must still hold the same repository. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRepositoryInput" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRepository" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteBackupRepository
+      x-permission: backup.manage
+      description: Forgets a repository that no plan uses; the data on the target stays. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/repositories/{id}/verify:
+    post:
+      operationId: verifyBackupRepository
+      x-permission: backup.run
+      description: Queues a verification that reads and authenticates every object of every snapshot and reports snapshots missing from the target. A failure fails the job (and raises the job_failed alert).
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/repositories/{id}/snapshots:
+    get:
+      operationId: listBackupSnapshots
+      x-permission: backup.read
+      description: Snapshots of a repository, newest first, with their verification state.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "200": { description: Snapshots, content: { application/json: { schema: { type: object, properties: { snapshots: { type: array, items: { $ref: "#/components/schemas/BackupSnapshot" } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /backup/repositories/{id}/snapshots/{snapshot}:
+    get:
+      operationId: getBackupSnapshot
+      x-permission: backup.read
+      description: The snapshot's authenticated manifest (objects and stacks).
+      parameters: [{ $ref: "#/components/parameters/RouteID" }, { $ref: "#/components/parameters/SnapshotID" }]
+      responses:
+        "200": { description: Manifest, content: { application/json: { schema: { $ref: "#/components/schemas/BackupManifest" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /backup/repositories/{id}/snapshots/{snapshot}/restore:
+    post:
+      operationId: restoreBackupStack
+      x-permission: backup.manage
+      description: Queues the restore of one stack's volumes from the snapshot. The stack is stopped, its current data kept until the restored stack runs healthy, and put back if anything fails. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }, { $ref: "#/components/parameters/SnapshotID" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [stack], properties: { stack: { type: string } } } } } }
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /backup/plans:
+    get:
+      operationId: listBackupPlans
+      x-permission: backup.read
+      description: Backup plans with their next run and the state of the last run.
+      responses:
+        "200": { description: Plans, content: { application/json: { schema: { type: object, properties: { plans: { type: array, items: { $ref: "#/components/schemas/BackupPlan" } } } } } } }
+    post:
+      operationId: createBackupPlan
+      x-permission: backup.manage
+      description: Creates a plan. schedule is a five-field cron expression (local time) or @hourly, @daily, @weekly, @monthly, at most four runs an hour. stacks lists stack names or ["*"] for all deployed stacks.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlanInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlan" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /backup/plans/{id}:
+    put:
+      operationId: updateBackupPlan
+      x-permission: backup.manage
+      description: Replaces a plan.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlanInput" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlan" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteBackupPlan
+      x-permission: backup.manage
+      description: Deletes a plan; its snapshots stay.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /backup/plans/{id}/run:
+    post:
+      operationId: runBackupPlan
+      x-permission: backup.run
+      description: Queues a backup now.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { type: object, properties: { job_id: { type: integer } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/sftp-key:
+    get:
+      operationId: getBackupSFTPKey
+      x-permission: backup.manage
+      description: The public key Kernhaven uses for SFTP targets (created on first use), for the server's authorized_keys.
+      responses:
+        "200": { description: Key, content: { application/json: { schema: { type: object, properties: { public_key: { type: string } } } } } }
+  /backup/sftp-scan:
+    post:
+      operationId: scanBackupSFTPHostKey
+      x-permission: backup.manage
+      description: Reads an SFTP server's host key and its SHA-256 fingerprint so the administrator can compare it before saving it.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [host], properties: { host: { type: string }, port: { type: integer } } } } } }
+      responses:
+        "200": { description: Host key, content: { application/json: { schema: { type: object, properties: { host_key: { type: string }, fingerprint: { type: string } } } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -1359,6 +1504,11 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    SnapshotID:
+      name: snapshot
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$" }
     FileRootQuery:
       name: root
       in: query
@@ -1394,6 +1544,98 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    BackupRepository:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [local, sftp, s3] }
+        config: { type: object, description: "local: {path}; sftp: {host, port, user, path, host_key}; s3: {endpoint, region, bucket, prefix, access_key_id, path_style}" }
+        has_secret: { type: boolean }
+        repo_id: { type: string }
+        verify_schedule: { type: string }
+        verify_next: { type: string, format: date-time }
+        verified_at: { type: string, format: date-time }
+        verify_ok: { type: boolean }
+        verify_message: { type: string }
+        snapshots: { type: integer }
+        size: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BackupRepositoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 64 }
+        kind: { type: string, enum: [local, sftp, s3] }
+        config: { type: object }
+        secret: { type: object, description: "Write-only. sftp: {password} (omit to use Kernhaven's key); s3: {secret_access_key}", properties: { password: { type: string }, secret_access_key: { type: string } } }
+        passphrase: { type: string, minLength: 12, description: Encrypts the repository key on the target; never stored. Needed again to restore on another host. }
+        connect: { type: boolean }
+        verify_schedule: { type: string }
+    BackupSnapshot:
+      type: object
+      properties:
+        repo: { type: integer }
+        id: { type: string }
+        plan: { type: string }
+        created_at: { type: string, format: date-time }
+        size: { type: integer }
+        objects: { type: integer }
+        platform: { type: boolean }
+        stacks: { type: array, items: { type: string } }
+        verified_at: { type: string, format: date-time }
+        verify_ok: { type: boolean }
+        verify_message: { type: string }
+    BackupManifest:
+      type: object
+      properties:
+        version: { type: integer }
+        repo: { type: string }
+        id: { type: string }
+        plan: { type: string }
+        created_ms: { type: integer }
+        host: { type: string }
+        kernhaven: { type: string }
+        platform: { type: boolean }
+        objects: { type: array, items: { type: object, properties: { file: { type: integer }, kind: { type: string, enum: [database, secrets, config, volume] }, stack: { type: string }, volume: { type: string }, size: { type: integer }, stored: { type: integer }, sha256: { type: string } } } }
+        stacks: { type: array, items: { type: object, properties: { name: { type: string }, deployed_revision: { type: integer }, volumes: { type: array, items: { type: string } } } } }
+    BackupRetention:
+      type: object
+      description: A snapshot is kept if any rule keeps it; the newest is always kept.
+      properties:
+        keep_last: { type: integer, minimum: 0, maximum: 1000 }
+        keep_daily: { type: integer, minimum: 0, maximum: 1000 }
+        keep_weekly: { type: integer, minimum: 0, maximum: 1000 }
+        keep_monthly: { type: integer, minimum: 0, maximum: 1000 }
+    BackupPlan:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        repo: { type: integer }
+        schedule: { type: string }
+        platform: { type: boolean }
+        stacks: { type: array, items: { type: string } }
+        quiesce: { type: boolean }
+        retention: { $ref: "#/components/schemas/BackupRetention" }
+        enabled: { type: boolean }
+        next: { type: string, format: date-time }
+        last_job: { type: integer }
+        last_state: { type: string }
+        last_at: { type: string, format: date-time }
+    BackupPlanInput:
+      type: object
+      required: [name, repo, schedule, retention]
+      properties:
+        name: { type: string, maxLength: 64 }
+        repo: { type: integer }
+        schedule: { type: string }
+        platform: { type: boolean }
+        stacks: { type: array, items: { type: string } }
+        quiesce: { type: boolean, description: Stop each stack while its volumes are copied (default true). }
+        retention: { $ref: "#/components/schemas/BackupRetention" }
+        enabled: { type: boolean }
     LoginResponse:
       type: object
       description: A session (as GET /auth/session) or, with mfa_required, a challenge for the second factor.

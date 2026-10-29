@@ -300,6 +300,18 @@ type VolumeCopyResult struct {
 	Helper string `json:"helper"`
 }
 
+// VolumeArchive names a stack volume to export or import (M16).
+type VolumeArchive struct {
+	Stack  string `json:"stack"`
+	Volume string `json:"volume"`
+}
+
+// VolumeImportResult counts what was imported.
+type VolumeImportResult struct {
+	Entries int   `json:"entries"`
+	Bytes   int64 `json:"bytes"`
+}
+
 // ---- M9: storage ----
 
 // SMART is the health summary of a disk.

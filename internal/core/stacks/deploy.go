@@ -583,6 +583,12 @@ func (s *Service) snapshotStep(p deployPayload) jobs.Step {
 	}
 }
 
+// CopyVolume replaces dst with a copy of src for another module's job;
+// restores keep a stack's current data with it (M16).
+func (s *Service) CopyVolume(ctx context.Context, sc *jobs.StepContext, actor, stack, src, dst string) error {
+	return s.copyVolume(ctx, sc, actor, stack, src, dst)
+}
+
 // copyVolume replaces dst with a copy of src through the agent's helper
 // container and waits until it has finished.
 func (s *Service) copyVolume(ctx context.Context, sc *jobs.StepContext, actor, stack, src, dst string) error {

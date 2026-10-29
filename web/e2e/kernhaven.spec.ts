@@ -479,7 +479,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring", "/alerts"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring", "/alerts", "/backups"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -607,6 +607,35 @@ test("AT-F16-01..03: a webhook channel, a test message and a rule", async () => 
 
   await page.getByRole("button", { name: "Delete e2e hook" }).click();
   await expect(page.getByText("e2e hook was deleted.")).toBeVisible();
+});
+
+test("AT-F14-01..04, AT-F14-06: an encrypted repository, a plan, a backup and a check", async () => {
+  await page.goto("/backups");
+  await expect(page.getByRole("heading", { name: "Backups", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add a repository" }).click();
+  const dlg = page.getByRole("dialog", { name: "Add a repository" });
+  await dlg.getByLabel("Name").fill("usb disk");
+  await dlg.getByLabel("Directory").fill(process.env.KH_E2E_BACKUP_DIR ?? "");
+  await dlg.getByLabel("Passphrase", { exact: true }).fill("e2e repository passphrase");
+  await dlg.getByLabel("Repeat the passphrase").fill("e2e repository passphrase");
+  await expectAccessible(page, "repository dialog");
+  await dlg.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByText(/usb disk is ready/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Add a plan" }).click();
+  const plan = page.getByRole("dialog", { name: "Add a plan" });
+  await plan.getByLabel("Name").fill("nightly");
+  await expectAccessible(page, "plan dialog");
+  await plan.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("nightly was saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Back up now nightly" }).click();
+  await expect(page.getByText(/Backup nightly started/)).toBeVisible();
+  await expect(page.getByRole("table", { name: "Backup plans" }).getByText("succeeded")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("table", { name: "Snapshots in usb disk" }).getByRole("row")).toHaveCount(2, { timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Check now usb disk" }).click();
+  await expect(page.getByRole("table", { name: "Backup repositories" }).getByText("intact")).toBeVisible({ timeout: 60_000 });
+  await expectAccessible(page, "backups");
 });
 
 const proxy = process.env.KH_E2E_PROXY === "1";

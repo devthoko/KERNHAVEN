@@ -41,6 +41,7 @@ if [ ! -S "$DOCKER_SOCK" ]; then
 fi
 
 mkdir -m 700 "$WORK/data"
+mkdir -m 700 "$WORK/backups" "$WORK/backups/usb"
 cat > "$WORK/core.toml" <<CFG
 [server]
 listen = "127.0.0.1:$PORT"
@@ -54,6 +55,9 @@ files_socket = "$WORK/files.sock"
 monitor_socket = "$WORK/monitor.sock"
 [alerts]
 allow_loopback_for_tests = true
+
+[backup]
+local_roots = ["$WORK/backups"]
 CFG
 # Reverse proxy (M12) with a real Caddy: KH_E2E_CADDY=/path/to/caddy.
 if [ -n "${KH_E2E_CADDY:-}" ]; then
@@ -148,6 +152,7 @@ TOKEN=$(grep -o '"setup_token":"[^"]*"' "$WORK/core.log" | head -1 | cut -d'"' -
 if [ -z "$TOKEN" ]; then echo "no setup token in log"; cat "$WORK/core.log"; exit 1; fi
 
 status=0
+export KH_E2E_BACKUP_DIR="$WORK/backups/usb"
 (cd web && KH_BASE_URL="http://localhost:$PORT" KH_SETUP_TOKEN="$TOKEN" npx playwright test) || status=$?
 if [ $status -ne 0 ]; then
   echo "--- core log"; tail -50 "$WORK/core.log"

@@ -17,6 +17,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/alerts"
 	"github.com/devthoko/KERNHAVEN/internal/core/apps"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
+	"github.com/devthoko/KERNHAVEN/internal/core/backup"
 	"github.com/devthoko/KERNHAVEN/internal/core/certs"
 	"github.com/devthoko/KERNHAVEN/internal/core/containers"
 	khfiles "github.com/devthoko/KERNHAVEN/internal/core/files"
@@ -30,6 +31,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/platform/config"
 	"github.com/devthoko/KERNHAVEN/internal/platform/health"
 	"github.com/devthoko/KERNHAVEN/internal/platform/httpserver"
+	"github.com/devthoko/KERNHAVEN/internal/platform/netguard"
 	"github.com/devthoko/KERNHAVEN/internal/platform/secretbox"
 )
 
@@ -47,6 +49,7 @@ type App struct {
 	Certs    *certs.Service
 	Metrics  *metrics.Service
 	Alerts   *alerts.Service
+	Backup   *backup.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -65,6 +68,12 @@ type Options struct {
 	TLS certs.Config
 	// AlertRoots replaces the system roots for notification channels (tests).
 	AlertRoots *x509.CertPool
+	// BackupRoots replaces the system roots for S3 targets (tests).
+	BackupRoots *x509.CertPool
+	// ConfigPath is core.toml, copied into platform backups for reference.
+	ConfigPath string
+	// BackupHealthTimeout bounds waiting for restored stacks (tests).
+	BackupHealthTimeout time.Duration
 }
 
 // New builds the Core from an open database and validated config.
@@ -191,6 +200,12 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	alertSvc := alerts.New(db, box, auditLog, alerts.Sender{Guard: alerts.Guard{AllowLoopback: cfg.Alerts.AllowLoopbackForTests}, Roots: opts.AlertRoots},
 		src, cfg.Server.Origin(), log, now)
 	alertSvc.Register(rt)
+	// Backups stream volumes through the Docker agent (M16, ADR-0030).
+	backupSvc := backup.New(db, box, auditLog, jobSvc, runner.Wake, agent, stackSvc, backup.Config{
+		LocalRoots: cfg.Backup.LocalRoots, Guard: netguard.Guard{AllowLoopback: cfg.Backup.AllowLoopbackForTests}, Roots: opts.BackupRoots,
+		DataDir: cfg.Storage.DataDir, ConfigPath: opts.ConfigPath, HealthTimeout: opts.BackupHealthTimeout,
+	}, log, now)
+	backupSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
@@ -213,6 +228,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Certs:    certSvc,
 		Metrics:  metricSvc,
 		Alerts:   alertSvc,
+		Backup:   backupSvc,
 		Runner:   runner,
 		now:      now,
 	}

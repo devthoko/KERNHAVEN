@@ -28,7 +28,10 @@ export type Permission =
   | "network.read"
   | "network.manage"
   | "alerts.read"
-  | "alerts.manage";
+  | "alerts.manage"
+  | "backup.read"
+  | "backup.run"
+  | "backup.manage";
 
 export interface User {
   id: number;
@@ -796,4 +799,75 @@ export interface Delivery {
   created_at: string;
   sent_at?: string;
   next_at?: string;
+}
+
+// ---- M16: backups ----
+
+export type BackupTargetKind = "local" | "sftp" | "s3";
+
+export interface BackupTargetConfig {
+  path?: string;
+  host?: string;
+  port?: number;
+  user?: string;
+  host_key?: string;
+  endpoint?: string;
+  region?: string;
+  bucket?: string;
+  prefix?: string;
+  access_key_id?: string;
+  path_style?: boolean;
+}
+
+export interface BackupRepository {
+  id: number;
+  name: string;
+  kind: BackupTargetKind;
+  config: BackupTargetConfig;
+  has_secret: boolean;
+  repo_id: string;
+  verify_schedule: string;
+  verify_next?: string;
+  verified_at?: string;
+  verify_ok?: boolean;
+  verify_message: string;
+  snapshots: number;
+  size: number;
+}
+
+export interface BackupRetention {
+  keep_last: number;
+  keep_daily: number;
+  keep_weekly: number;
+  keep_monthly: number;
+}
+
+export interface BackupPlan {
+  id: number;
+  name: string;
+  repo: number;
+  schedule: string;
+  platform: boolean;
+  stacks: string[];
+  quiesce: boolean;
+  retention: BackupRetention;
+  enabled: boolean;
+  next?: string;
+  last_job?: number;
+  last_state: string;
+  last_at?: string;
+}
+
+export interface BackupSnapshot {
+  repo: number;
+  id: string;
+  plan: string;
+  created_at: string;
+  size: number;
+  objects: number;
+  platform: boolean;
+  stacks: string[];
+  verified_at?: string;
+  verify_ok?: boolean;
+  verify_message: string;
 }

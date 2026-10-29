@@ -70,6 +70,9 @@ const (
 	// Stream operations (POST /v1/stream/{op}, M10).
 	OpFilesRead         = "files.read"
 	OpFilesUploadAppend = "files.upload.append"
+	// M16: volume contents as tar streams (Docker agent).
+	OpVolumesExport = "volumes.export"
+	OpVolumesImport = "volumes.import"
 )
 
 // Grant limits.

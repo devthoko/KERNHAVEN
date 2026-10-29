@@ -34,3 +34,5 @@ ADR that supersedes the old one.
 | [0026](0026-certificates.md) | Certificates: Caddy for internal and HTTP-01, the Core for DNS-01 | Accepted |
 | [0027](0027-monitor-role-and-metric-storage.md) | A monitor role for host readings; metrics in SQLite with fixed downsampling | Accepted |
 | [0028](0028-notification-channels.md) | Notification channels without SDKs, LAN destinations allowed, dial-time address checks | Accepted |
+| [0029](0029-backup-format.md) | Own backup format: STREAM encryption with AES-256-GCM, Argon2id-wrapped key | Accepted |
+| [0030](0030-backup-targets-and-volume-streams.md) | Backup targets (local, SFTP with pinned host keys, own S3 client) and volume streams through the Docker agent | Accepted |

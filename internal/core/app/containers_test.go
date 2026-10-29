@@ -2,10 +2,7 @@ package app
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -125,6 +122,14 @@ func (m *memDocker) Start(_ context.Context, id string) (bool, error) {
 	name := m.key(id)
 	c := m.containers[name]
 	spec := m.specs[name]
+	if c.Labels[agent.LabelHelper] == "volume-clear" {
+		m.data[spec.Mounts[0].Source] = ""
+		m.exitCodes[name] = 0
+		c.State = "exited"
+		m.containers[name] = c
+		m.mu.Unlock()
+		return true, nil
+	}
 	if c.Labels[agent.LabelHelper] == "volume-copy" {
 		var from, to string
 		for _, mt := range spec.Mounts {
@@ -278,22 +283,21 @@ func withAgent(t *testing.T) (*harness, *memDocker) {
 // withAgentOpts also adjusts the Core options.
 func withAgentOpts(t *testing.T, adjust func(*Options)) (*harness, *memDocker) {
 	t.Helper()
+	return withAgentConfig(t, nil, adjust)
+}
+
+// withAgentConfig also adjusts the configuration.
+func withAgentConfig(t *testing.T, adjustCfg func(*config.Config), adjust func(*Options)) (*harness, *memDocker) {
+	t.Helper()
 	sock := filepath.Join(t.TempDir(), "agent.sock")
-	h := newHarnessFull(t, func(c *config.Config) { c.Agent.Socket = sock }, adjust)
-	pub, err := agentproto.ReadPublicKey(filepath.Join(h.dataDir, "agent-grant.pub"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	h := newHarnessFull(t, func(c *config.Config) {
+		c.Agent.Socket = sock
+		if adjustCfg != nil {
+			adjustCfg(c)
+		}
+	}, adjust)
 	md := newMemDocker()
-	srv := agent.NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), pub, []uint32{uint32(os.Getuid())}, md, agent.Options{})
-	ln, err := agent.Listen(sock)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() { _ = srv.Serve(ctx, ln); close(done) }()
-	t.Cleanup(func() { cancel(); <-done })
+	serveAgent(t, h, sock, md, agent.Options{})
 	return h, md
 }
 

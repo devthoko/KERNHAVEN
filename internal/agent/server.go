@@ -40,7 +40,7 @@ func NewServer(log *slog.Logger, pub ed25519.PublicKey, allowedUIDs []uint32, d 
 	for _, u := range allowedUIDs {
 		allowed[u] = true
 	}
-	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now(), o), streams: streamOperations(o), nonces: newNonceCache(100000), now: time.Now}
+	return &Server{log: log, pub: pub, allowed: allowed, ops: operations(d, time.Now(), o), streams: streamOperations(d, o), nonces: newNonceCache(100000), now: time.Now}
 }
 
 // Listen creates the unix socket with mode 0660. An existing socket file is
@@ -264,7 +264,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	// Transfers may take long; extend the deadlines for this request only.
 	rc := http.NewResponseController(w)
-	_ = rc.SetReadDeadline(time.Now().Add(15 * time.Minute))
+	read := 15 * time.Minute
+	if op == agentproto.OpVolumesImport {
+		read = 6 * time.Hour // a restore uploads a whole volume
+	}
+	_ = rc.SetReadDeadline(time.Now().Add(read))
 	_ = rc.SetWriteDeadline(time.Now().Add(6 * time.Hour))
 	err = h(context.WithValue(r.Context(), actorKey{}, g.Actor), json.RawMessage(params), r.Body, w)
 	attrs := []any{"op", op, "actor", g.Actor, "request_id", g.RequestID, "duration", time.Since(start).String()}

@@ -73,6 +73,12 @@ func newHarnessFull(t *testing.T, adjust func(*config.Config), adjustOpts func(*
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	return newHarnessAt(t, dir, adjust, adjustOpts)
+}
+
+// newHarnessAt runs a Core on an existing data directory (M16 restores).
+func newHarnessAt(t *testing.T, dir string, adjust func(*config.Config), adjustOpts func(*Options)) *harness {
+	t.Helper()
 	db, err := store.Open(context.Background(), filepath.Join(dir, store.FileName))
 	if err != nil {
 		t.Fatal(err)

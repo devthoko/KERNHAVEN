@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/devthoko/KERNHAVEN/internal/agent/docker"
 	"github.com/devthoko/KERNHAVEN/internal/agent/files"
 	"github.com/devthoko/KERNHAVEN/internal/agentproto"
 )
@@ -58,11 +59,15 @@ func fileOperations(f *files.Service) map[string]handler {
 	}
 }
 
-// streamOperations are offered only by the files role.
-func streamOperations(o Options) map[string]streamHandler {
+// streamOperations are offered by the files role (file contents) and the
+// Docker agent (volume contents, M16).
+func streamOperations(d Docker, o Options) map[string]streamHandler {
 	f := o.Files
-	if f == nil || o.Storage != nil {
+	if o.Storage != nil || o.Proxy != nil || o.Monitor != nil {
 		return map[string]streamHandler{}
+	}
+	if f == nil {
+		return volumeStreamOperations(d, o)
 	}
 	return map[string]streamHandler{
 		agentproto.OpFilesRead: func(ctx context.Context, raw json.RawMessage, _ io.Reader, w http.ResponseWriter) error {
@@ -99,7 +104,17 @@ func streamOperations(o Options) map[string]streamHandler {
 
 // StreamOperationNames lists the stream operations of the files role.
 func StreamOperationNames() []string {
-	ops := streamOperations(Options{Files: &files.Service{}})
+	ops := streamOperations(nil, Options{Files: &files.Service{}})
+	m := map[string]handler{}
+	for n := range ops {
+		m[n] = nil
+	}
+	return sortedNames(m)
+}
+
+// DockerStreamOperationNames lists the Docker agent's stream operations.
+func DockerStreamOperationNames() []string {
+	ops := volumeStreamOperations(docker.New("/nonexistent", 0), Options{})
 	m := map[string]handler{}
 	for n := range ops {
 		m[n] = nil

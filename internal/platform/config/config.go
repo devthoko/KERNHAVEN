@@ -43,6 +43,17 @@ type Config struct {
 	TLS        TLS        `toml:"tls"`
 	Metrics    Metrics    `toml:"metrics"`
 	Alerts     Alerts     `toml:"alerts"`
+	Backup     Backup     `toml:"backup"`
+}
+
+// Backup configures backups (M16).
+type Backup struct {
+	// LocalRoots are the directories below which local repositories may be
+	// created (ADR-0030); they must be writable by the Core's user.
+	LocalRoots []string `toml:"local_roots"`
+	// AllowLoopbackForTests lets SFTP and S3 targets on 127.0.0.1 be used
+	// (tests only).
+	AllowLoopbackForTests bool `toml:"allow_loopback_for_tests"`
 }
 
 // Alerts configures notifications (M15).
@@ -161,6 +172,7 @@ func Default() Config {
 		Files:   Files{MaxUploadBytes: 20 << 30},
 		TLS:     TLS{DNSPropagation: Duration{time.Minute}},
 		Metrics: Metrics{Interval: Duration{15 * time.Second}},
+		Backup:  Backup{LocalRoots: []string{"/var/lib/kernhaven-backups"}},
 		Agent:   Agent{Socket: "/run/kernhaven/agent.sock", StorageSocket: "/run/kernhaven-storage/storage.sock", FilesSocket: "/run/kernhaven-files/files.sock", ProxySocket: "/run/kernhaven-proxy/proxy.sock", MonitorSocket: "/run/kernhaven-monitor/monitor.sock"},
 		Auth: Auth{
 			SessionIdleTimeout:     Duration{30 * time.Minute},
@@ -225,6 +237,11 @@ func (c Config) Validate() error {
 	}
 	if p := c.TLS.ACMERootForTests; p != "" && (!filepath.IsAbs(p) || filepath.Clean(p) != p) {
 		errs = append(errs, fmt.Errorf("tls.acme_ca_root_for_tests: %q must be an absolute, clean path", p))
+	}
+	for _, r := range c.Backup.LocalRoots {
+		if !filepath.IsAbs(r) || filepath.Clean(r) != r || r == "/" {
+			errs = append(errs, fmt.Errorf("backup.local_roots: %q must be an absolute, clean directory other than /", r))
+		}
 	}
 	if n := c.Files.MaxUploadBytes; n < 1 || n > 1<<42 {
 		errs = append(errs, fmt.Errorf("files.max_upload_bytes: %d is outside 1..%d", n, int64(1)<<42))

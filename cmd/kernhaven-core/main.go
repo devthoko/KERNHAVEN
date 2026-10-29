@@ -40,6 +40,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "restore" {
+		return runRestore(ctx, args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "version" {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
@@ -71,6 +74,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	info := version.Get()
 	log.Info("starting kernhaven-core", "version", info.Version, "commit", info.Commit)
 
+	// An offline restore must not replace the database under a running Core.
+	unlock, err := store.LockDir(cfg.Storage.DataDir)
+	if err != nil {
+		log.Error("data directory", "error", err.Error())
+		return exitDatabase
+	}
+	defer unlock()
 	db, err := store.Open(ctx, filepath.Join(cfg.Storage.DataDir, store.FileName))
 	if err != nil {
 		log.Error("database error", "error", err.Error())
@@ -87,7 +97,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitDatabase
 	}
 
-	core, err := app.New(db, cfg, log, app.Options{})
+	core, err := app.New(db, cfg, log, app.Options{ConfigPath: *configPath})
 	if err != nil {
 		log.Error("initialization failed", "error", err.Error())
 		return exitRuntime
@@ -121,9 +131,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	go func() {
 		defer close(maintenanceDone)
 		var wg sync.WaitGroup
-		wg.Add(2)
+		wg.Add(3)
 		go func() { defer wg.Done(); core.Metrics.Run(mctx) }() // sampling stops with maintenance (M14)
 		go func() { defer wg.Done(); core.Alerts.Run(mctx) }()  // and alerts (M15)
+		go func() { defer wg.Done(); core.Backup.Run(mctx) }()  // and backup schedules (M16)
 		scheduleMaintenance(mctx, core, log)
 		wg.Wait()
 	}()
