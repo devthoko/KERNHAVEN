@@ -78,7 +78,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F06-01 | Inventory | Disks, partitions, filesystems, usage and SMART health are shown | M9 | Done (CI 40601258272; merge pending owner review) |
 | AT-F06-02 | Mount management | Mount/unmount data disks to allow-listed mount roots; persistent via systemd mount units | M9 | Done (CI 40601258272; merge pending owner review) |
 | AT-F06-03 | Format | Format a non-system disk (ext4, xfs, btrfs) with typed confirmation; system disk is never offered | M9 | Done (CI 40601258272; merge pending owner review) |
-| AT-F06-04 | Usage alerts | Threshold alerts for capacity and SMART failures | M15 | Implemented on `m15-alerts` (CI pending; merge pending owner review) |
+| AT-F06-04 | Usage alerts | Threshold alerts for capacity and SMART failures | M15 | Done (CI 40901885634; merge pending owner review) |
 
 ## F07 — Web-based file manager
 
@@ -136,7 +136,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F12-01 | ACME | Automatic certificates via ACME (HTTP-01 and DNS-01 for supported providers) | M13 | Done (CI 40773688023; merge pending owner review) |
 | AT-F12-02 | Internal CA | LAN-only hosts use a local CA; root certificate downloadable for client trust | M13 | Done (CI 40773688023; merge pending owner review) |
 | AT-F12-03 | Custom certificates | Upload certificate and key; validated (chain, key match, expiry) before use | M13 | Done (CI 40773688023; merge pending owner review) |
-| AT-F12-04 | Expiry monitoring | Expiry warnings at 30/14/3 days | M15 | Implemented on `m15-alerts` (CI pending; merge pending owner review) |
+| AT-F12-04 | Expiry monitoring | Expiry warnings at 30/14/3 days | M15 | Done (CI 40901885634; merge pending owner review) |
 
 ## F13 — System and container monitoring
 
@@ -171,9 +171,9 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F16-01 | Channels | E-mail (SMTP), webhook, ntfy, Gotify | M15 | Implemented on `m15-alerts` (CI pending; merge pending owner review) |
-| AT-F16-02 | Rules | Alert rules for health, resources, certificates, backups, security events | M15 | Implemented on `m15-alerts` (CI pending; merge pending owner review) |
-| AT-F16-03 | Delivery | Retries with backoff, deduplication, rate limiting, delivery log | M15 | Implemented on `m15-alerts` (CI pending; merge pending owner review) |
+| AT-F16-01 | Channels | E-mail (SMTP), webhook, ntfy, Gotify | M15 | Done (CI 40901885634; merge pending owner review) |
+| AT-F16-02 | Rules | Alert rules for health, resources, certificates, backups, security events | M15 | Done (CI 40901885634; merge pending owner review) |
+| AT-F16-03 | Delivery | Retries with backoff, deduplication, rate limiting, delivery log | M15 | Done (CI 40901885634; merge pending owner review) |
 
 ## F17 — Safe installation and uninstall
 

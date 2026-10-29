@@ -1,6 +1,6 @@
 # M15 — Notifications and Alerts
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40901885634); merge pending owner review
 Depends on: M3, M9, M13, M14
 Acceptance tests: AT-F16-01 … AT-F16-03, AT-F06-04, AT-F12-04
 Threats addressed: TH-19, TH-20 (below), TH-15 (credentials of channels)
@@ -107,4 +107,4 @@ redirects are not followed; responses are read up to 64 KiB (ADR-0028).
 | `TestAlertsAPI`, contract (141 operations), RBAC | `khv01-dev` | Passed |
 | Mutation checks: link-local allowed, no rate limit, no backoff, STARTTLS optional — each makes a test fail. Removing the deduplication check in code leaves the unique index `alerts_firing`, which still prevents a second firing alert (defence in depth, no duplicate sent) | `khv01-dev` | Passed |
 | Live with the real Core: HMAC-signed test message, "Monitor service is down" delivered after two checks, the metadata address refused at connection (now also on save) | `khv01-dev` | Passed |
-| CI full suite incl. browser E2E | GitHub Actions | pending |
+| CI full suite: unit and API tests on amd64/arm64 and Debian 13, browser E2E (webhook channel against a local receiver, test message, rule with a channel, delivery log, axe) | GitHub Actions | Passed (run 40901885634) |
