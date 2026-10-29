@@ -26,7 +26,9 @@ export type Permission =
   | "files.write"
   | "security.manage"
   | "network.read"
-  | "network.manage";
+  | "network.manage"
+  | "alerts.read"
+  | "alerts.manage";
 
 export interface User {
   id: number;
@@ -733,4 +735,65 @@ export interface ServiceCheck {
   label: string;
   status: "ok" | "down" | "not_configured";
   detail?: string;
+}
+
+// ---- M15: alerts ----
+
+export interface Alert {
+  id: number;
+  rule: string;
+  key: string;
+  severity: "warning" | "critical";
+  title: string;
+  body: string;
+  state: "firing" | "resolved" | "event";
+  fired_at: string;
+  resolved_at?: string;
+}
+
+export interface AlertRule {
+  rule: string;
+  title: string;
+  enabled: boolean;
+  params: Record<string, number>;
+  channels: number[];
+}
+
+export type ChannelKind = "smtp" | "webhook" | "ntfy" | "gotify";
+
+export interface ChannelConfig {
+  host?: string;
+  port?: number;
+  security?: "starttls" | "tls" | "none";
+  username?: string;
+  from?: string;
+  to?: string[];
+  url?: string;
+  topic?: string;
+}
+
+export interface NotifyChannel {
+  id: number;
+  name: string;
+  kind: ChannelKind;
+  config: ChannelConfig;
+  has_secret: boolean;
+  enabled: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Delivery {
+  id: number;
+  alert_id: number | null;
+  title: string;
+  channel: string;
+  kind: "fire" | "resolve" | "test";
+  status: "pending" | "sent" | "failed" | "dropped";
+  attempts: number;
+  last_error?: string;
+  created_at: string;
+  sent_at?: string;
+  next_at?: string;
 }

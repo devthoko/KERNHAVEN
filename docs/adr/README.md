@@ -33,3 +33,4 @@ ADR that supersedes the old one.
 | [0025](0025-caddy-configured-by-proxy-service.md) | Caddy in its own unit, configured only by a proxy service from typed routes | Accepted |
 | [0026](0026-certificates.md) | Certificates: Caddy for internal and HTTP-01, the Core for DNS-01 | Accepted |
 | [0027](0027-monitor-role-and-metric-storage.md) | A monitor role for host readings; metrics in SQLite with fixed downsampling | Accepted |
+| [0028](0028-notification-channels.md) | Notification channels without SDKs, LAN destinations allowed, dial-time address checks | Accepted |

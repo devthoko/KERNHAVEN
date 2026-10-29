@@ -4,8 +4,9 @@ import { api } from "../lib/api";
 import { formatDateTime, formatRelative } from "../lib/format";
 import { Link } from "../lib/router";
 import { useCurrentSession, useSession } from "../lib/session";
-import { ACTIVE_JOB_STATES, type AgentStatus, type AuditEvent, type HostMetrics, type Job, type JobState, type Version } from "../lib/types";
+import { ACTIVE_JOB_STATES, type AgentStatus, type Alert as AlertItem, type AuditEvent, type HostMetrics, type Job, type JobState, type Version } from "../lib/types";
 import { useData } from "../lib/useData";
+import { AlertList } from "./AlertsPage";
 import { HostSummary, ServiceList } from "./MonitoringPage";
 
 function PlatformCard() {
@@ -68,6 +69,22 @@ function HostCard() {
       }
     >
       {data ? <HostSummary host={data} /> : error ? <p className="text-sm text-slate-600 dark:text-slate-400">{error}</p> : <Spinner />}
+    </Card>
+  );
+}
+
+function AlertsCard() {
+  const { data, error } = useData(() => api.get<{ alerts: AlertItem[] }>("/alerts?state=firing"), [], { refreshMs: 15000 });
+  return (
+    <Card
+      title="Alerts"
+      actions={
+        <Link to="/alerts" className="text-sm text-brand-700 underline dark:text-brand-500">
+          All alerts
+        </Link>
+      }
+    >
+      {data ? <AlertList alerts={data.alerts.slice(0, 5)} empty="Nothing is wrong right now." /> : error ? <p className="text-sm">{error}</p> : <Spinner />}
     </Card>
   );
 }
@@ -174,6 +191,7 @@ export function DashboardPage() {
       <PageHeader title="Dashboard" description="Current state of this Kernhaven instance." />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PlatformCard />
+        {can("alerts.read") && <AlertsCard />}
         {can("system.read") && <HostCard />}
         {can("system.read") && (
           <Card title="Services">

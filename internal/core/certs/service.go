@@ -230,6 +230,11 @@ type Certificate struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Certificates lists the stored certificates with the hosts using them.
+func (s *Service) Certificates(ctx context.Context) ([]Certificate, error) {
+	return s.certificates(ctx)
+}
+
 func (s *Service) certificates(ctx context.Context) ([]Certificate, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT c.id, c.source, c.names, c.issuer, c.not_before_ms, c.not_after_ms, c.sha256, c.created_by, c.created_ms,
 		COALESCE((SELECT json_group_array(h.host) FROM tls_hosts h WHERE h.certificate_id = c.id), '[]')

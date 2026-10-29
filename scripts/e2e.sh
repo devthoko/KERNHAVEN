@@ -10,7 +10,7 @@ cleanup() {
   if [ -n "${AGENT_PID:-}" ]; then kill -TERM "$AGENT_PID" 2>/dev/null || true; wait "$AGENT_PID" 2>/dev/null || true; fi
   if [ -n "${STORAGE_PID:-}" ]; then kill -TERM "$STORAGE_PID" 2>/dev/null || true; wait "$STORAGE_PID" 2>/dev/null || true; fi
   if [ -n "${FILES_PID:-}" ]; then kill -TERM "$FILES_PID" 2>/dev/null || true; wait "$FILES_PID" 2>/dev/null || true; fi
-  for pid in "${PROXY_PID:-}" "${CADDY_PID:-}" "${SITE_PID:-}" "${MONITOR_PID:-}"; do
+  for pid in "${PROXY_PID:-}" "${CADDY_PID:-}" "${SITE_PID:-}" "${MONITOR_PID:-}" "${HOOK_PID:-}"; do
     if [ -n "$pid" ]; then kill -TERM "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; fi
   done
   if [ -n "${DOCKER_SOCK:-}" ] && command -v docker >/dev/null; then
@@ -52,6 +52,8 @@ socket = "$WORK/agent.sock"
 storage_socket = "$WORK/storage.sock"
 files_socket = "$WORK/files.sock"
 monitor_socket = "$WORK/monitor.sock"
+[alerts]
+allow_loopback_for_tests = true
 CFG
 # Reverse proxy (M12) with a real Caddy: KH_E2E_CADDY=/path/to/caddy.
 if [ -n "${KH_E2E_CADDY:-}" ]; then
@@ -92,6 +94,16 @@ STORAGE_PID=$!
 sed -e 's/^role = "storage"/role = "files"/' -e 's/storage.sock/files.sock/' "$WORK/storage.toml" > "$WORK/files.toml"
 "$WORK/kernhaven-agent" -config "$WORK/files.toml" 2> "$WORK/files.log" &
 FILES_PID=$!
+# A webhook receiver for the alerts test (M15): answers 204 to every POST.
+python3 -c '
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length", 0))); self.send_response(204); self.end_headers()
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", 18492), H).serve_forever()
+' &
+HOOK_PID=$!
 # Monitor service (M14): host metrics.
 sed -e 's/^role = "storage"/role = "monitor"/' -e 's/storage.sock/monitor.sock/' -e '/^mount_root/d' "$WORK/storage.toml" > "$WORK/monitor.toml"
 "$WORK/kernhaven-agent" -config "$WORK/monitor.toml" 2> "$WORK/monitor.log" &

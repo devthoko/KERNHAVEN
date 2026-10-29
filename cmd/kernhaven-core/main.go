@@ -121,8 +121,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	go func() {
 		defer close(maintenanceDone)
 		var wg sync.WaitGroup
-		wg.Add(1)
+		wg.Add(2)
 		go func() { defer wg.Done(); core.Metrics.Run(mctx) }() // sampling stops with maintenance (M14)
+		go func() { defer wg.Done(); core.Alerts.Run(mctx) }()  // and alerts (M15)
 		scheduleMaintenance(mctx, core, log)
 		wg.Wait()
 	}()

@@ -261,6 +261,24 @@ type Filter struct {
 	Limit int // 1..200, default 50
 }
 
+// FailedSince returns jobs that failed after since, oldest first (M15).
+func (s *Service) FailedSince(ctx context.Context, since time.Time) ([]Job, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT `+jobColumns+` FROM jobs j WHERE j.state = 'failed' AND j.finished_ms > ? ORDER BY j.finished_ms LIMIT 200`, since.UnixMilli())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Job{}
+	for rows.Next() {
+		j, err := scanJob(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
 // List returns jobs, newest first.
 func (s *Service) List(ctx context.Context, f Filter) ([]Job, error) {
 	if f.Limit <= 0 || f.Limit > 200 {

@@ -144,6 +144,19 @@ func (s *Service) record(r *http.Request, action, target string, err error, kv .
 	_ = s.audit.Record(context.WithoutCancel(r.Context()), ev)
 }
 
+// Inventory returns the disks and file systems (M15 alerts); ErrUnavailable
+// from agentclient when no storage service is configured.
+func (s *Service) Inventory(ctx context.Context) (agentproto.StorageInventory, error) {
+	var inv agentproto.StorageInventory
+	if s.client == nil {
+		return inv, agentclient.ErrUnavailable
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	err := s.client.Do(ctx, agentclient.Call{Op: agentproto.OpStorageInventory, Actor: "system", RequestID: "alerts"}, &inv)
+	return inv, err
+}
+
 // FormatRequest is the API input for formatting.
 type FormatRequest struct {
 	agentproto.StorageFormat

@@ -216,8 +216,7 @@ func (l *Log) List(ctx context.Context, f Filter) ([]Record, error) {
 	if f.Limit > 500 {
 		f.Limit = 500
 	}
-	q := `SELECT seq, ts_ms, actor_id, actor, action, target, result, request_id, ip, details, prev_hash, hash
-		FROM audit_events WHERE 1=1`
+	q := `SELECT ` + recordColumns + ` FROM audit_events WHERE 1=1`
 	var args []any
 	if f.BeforeSeq > 0 {
 		q += ` AND seq < ?`
@@ -264,6 +263,26 @@ func scan(rows *sql.Rows) (Record, []byte, error) {
 		r.Details = map[string]string{"_invalid_details": details}
 	}
 	return r, []byte(details), nil
+}
+
+const recordColumns = `seq, ts_ms, actor_id, actor, action, target, result, request_id, ip, details, prev_hash, hash`
+
+// Since returns up to limit records with seq > after, oldest first (M15).
+func (l *Log) Since(ctx context.Context, after int64, limit int) ([]Record, error) {
+	rows, err := l.db.QueryContext(ctx, `SELECT `+recordColumns+` FROM audit_events WHERE seq > ? ORDER BY seq LIMIT ?`, after, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Record{}
+	for rows.Next() {
+		r, _, err := scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // VerifyResult reports the outcome of a chain verification.

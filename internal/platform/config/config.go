@@ -42,6 +42,13 @@ type Config struct {
 	Files      Files      `toml:"files"`
 	TLS        TLS        `toml:"tls"`
 	Metrics    Metrics    `toml:"metrics"`
+	Alerts     Alerts     `toml:"alerts"`
+}
+
+// Alerts configures notifications (M15).
+type Alerts struct {
+	// AllowLoopbackForTests lets channels reach 127.0.0.1 (tests only, ADR-0028).
+	AllowLoopbackForTests bool `toml:"allow_loopback_for_tests"`
 }
 
 // Metrics configures monitoring (M14).

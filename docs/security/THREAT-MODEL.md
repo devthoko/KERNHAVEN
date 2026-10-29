@@ -71,6 +71,8 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-16 | T | A wrong, broken or foreign certificate is served | Validated in the Core (chain, key, validity, purpose, signatures) and again in the proxy service (parse, key, host); one certificate per host selected by SNI | M13 | Mitigated (`TestValidateUpload`, `TestBuildTLS`, real Caddy) |
 | TH-17 | S/T | The Core points Caddy at a foreign ACME CA or obtains certificates for foreign names | CA chosen by the proxy service from Let's Encrypt only; ACME only for hosts with routes; DNS-01 only in zones the token can edit; every issuance audited | M13 | Mitigated |
 | TH-18 | D | Monitoring exhausts disk, CPU or the Docker daemon | Sampling interval 5–60 s, 300-series cap, retention pruning (bounded at about 25 MB), one stats call per running container with a timeout; the monitor role has no capabilities and no IP traffic | M14 | Mitigated (`TestMetricsHistory`, ADR-0027) |
+| TH-19 | S/I | The Core is used to reach internal endpoints (SSRF) through notification channels | Owners/admins with step-up only; loopback, link-local (metadata), unspecified and multicast refused on save and at every connection; no redirects; bounded responses (ADR-0028) | M15 | Mitigated (`TestGuard`, live check) |
+| TH-20 | D | Alert floods hide real problems or exhaust a channel | Deduplication per alert (code and unique index), 20 deliveries per channel and hour, drops recorded | M15 | Mitigated (`TestDelivery`) |
 
 ### TB-3 — Core ↔ Agent
 
@@ -137,3 +139,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-28 | M12 | New TH-11…TH-14 (reverse proxy, sign-in gate); TH-11–TH-13 mitigated, TH-14 partially; fourth privilege domain: proxy service, the only client of Caddy's admin socket (ADR-0025) |
 | 2026-10-28 | M13 | New TH-15…TH-17 (certificates); TB-6 now includes Let's Encrypt and the Cloudflare API, both fixed endpoints (ADR-0026) |
 | 2026-10-29 | M14 | New TH-18 (resource use of monitoring), mitigated; fifth privilege domain: monitor service, read-only host counters (ADR-0027) |
+| 2026-10-29 | M15 | New TH-19 (SSRF through channels) and TH-20 (alert floods), mitigated; TB-6 now includes notification endpoints (ADR-0028) |

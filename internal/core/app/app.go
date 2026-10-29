@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/agentclient"
+	"github.com/devthoko/KERNHAVEN/internal/core/alerts"
 	"github.com/devthoko/KERNHAVEN/internal/core/apps"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/certs"
@@ -45,6 +46,7 @@ type App struct {
 	Network  *network.Service
 	Certs    *certs.Service
 	Metrics  *metrics.Service
+	Alerts   *alerts.Service
 	Runner   *jobs.Runner
 
 	now func() time.Time
@@ -61,6 +63,8 @@ type Options struct {
 	Fetcher *stacks.Fetcher
 	// TLS overrides the DNS-01 issuer, DNS providers and trusted roots (tests).
 	TLS certs.Config
+	// AlertRoots replaces the system roots for notification channels (tests).
+	AlertRoots *x509.CertPool
 }
 
 // New builds the Core from an open database and validated config.
@@ -112,7 +116,8 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		}
 		storageClient = agentclient.New(cfg.Agent.StorageSocket, key)
 	}
-	khstorage.New(storageClient, auditLog, ids, jobSvc, runner.Wake).Register(rt)
+	storageSvc := khstorage.New(storageClient, auditLog, ids, jobSvc, runner.Wake)
+	storageSvc.Register(rt)
 	// The file manager talks to the separate file service (M10).
 	var filesClient *agentclient.Client
 	if cfg.Agent.FilesSocket != "" {
@@ -170,6 +175,22 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 			return st.Configured, st.Reachable, st.InSync, st.Error
 		}}
 	metricSvc.Register(rt, func(r *http.Request) []metrics.Check { return metrics.Health(r.Context(), deps, now()) })
+	// Alerts read the other modules through their APIs (M15).
+	src := alerts.Sources{
+		Health:       func(ctx context.Context) []metrics.Check { return metrics.Health(ctx, deps, now()) },
+		Host:         metricSvc.HostNow,
+		CPUAverage:   func(d time.Duration) (float64, int) { return metricSvc.Average("host.cpu", d) },
+		Certificates: certSvc.Certificates,
+		FailedJobs:   jobSvc.FailedSince,
+		Audit:        auditLog.Since,
+		VerifyAudit:  auditLog.Verify,
+	}
+	if storageClient != nil {
+		src.Storage = storageSvc.Inventory
+	}
+	alertSvc := alerts.New(db, box, auditLog, alerts.Sender{Guard: alerts.Guard{AllowLoopback: cfg.Alerts.AllowLoopbackForTests}, Roots: opts.AlertRoots},
+		src, cfg.Server.Origin(), log, now)
+	alertSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
@@ -191,6 +212,7 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 		Network:  netSvc,
 		Certs:    certSvc,
 		Metrics:  metricSvc,
+		Alerts:   alertSvc,
 		Runner:   runner,
 		now:      now,
 	}

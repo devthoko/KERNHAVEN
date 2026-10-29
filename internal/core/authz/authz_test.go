@@ -26,6 +26,8 @@ func TestRolePermissionMatrix(t *testing.T) {
 		SecurityManage:    {Owner},
 		NetworkRead:       {Owner, Admin, Operator},
 		NetworkManage:     {Owner, Admin},
+		AlertsRead:        {Owner, Admin, Operator},
+		AlertsManage:      {Owner, Admin},
 	}
 	for p, roles := range want {
 		granted := map[Role]bool{}

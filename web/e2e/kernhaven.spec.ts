@@ -479,7 +479,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring", "/alerts"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -581,6 +581,32 @@ test("AT-F13-01..04: host and container metrics, history and service health", as
     await expect(page.getByRole("table", { name: "Running containers" }).or(page.getByText("No running containers."))).toBeVisible();
   }
   await expectAccessible(page, "monitoring");
+});
+
+test("AT-F16-01..03: a webhook channel, a test message and a rule", async () => {
+  await page.goto("/alerts");
+  await expect(page.getByRole("heading", { name: "Alerts", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add a channel" }).click();
+  const dlg = page.getByRole("dialog", { name: "Add a channel" });
+  await dlg.getByLabel("Name").fill("e2e hook");
+  await dlg.getByLabel("Kind").selectOption("webhook");
+  await dlg.getByLabel("Webhook URL").fill("http://127.0.0.1:18492/hook");
+  await dlg.getByLabel(/Signing secret/).fill("e2e-signing-secret");
+  await expectAccessible(page, "channel dialog");
+  await dlg.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("e2e hook was saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Send test to e2e hook" }).click();
+  await expect(page.getByText("Test message sent to e2e hook.")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Delivery log" }).getByText("sent", { exact: true }).first()).toBeVisible();
+
+  const rule = page.getByRole("listitem").filter({ hasText: "A job failed" });
+  await rule.getByLabel("e2e hook").check();
+  await rule.getByRole("button", { name: /Save/ }).click();
+  await expect(page.getByText("“A job failed” was saved.")).toBeVisible();
+  await expectAccessible(page, "alerts");
+
+  await page.getByRole("button", { name: "Delete e2e hook" }).click();
+  await expect(page.getByText("e2e hook was deleted.")).toBeVisible();
 });
 
 const proxy = process.env.KH_E2E_PROXY === "1";

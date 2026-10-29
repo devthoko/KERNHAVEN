@@ -1272,6 +1272,86 @@ paths:
       description: Health of the Core, the Docker agent and Engine, the storage, file, proxy and monitor services and Caddy (AT-F13-04); each ok, down (with the reason) or not_configured.
       responses:
         "200": { description: Services, content: { application/json: { schema: { type: object, properties: { services: { type: array, items: { $ref: "#/components/schemas/ServiceCheck" } } } } } } }
+  /alerts:
+    get:
+      operationId: listAlerts
+      x-permission: alerts.read
+      description: Alerts (M15), newest first; state=firing for the active ones only.
+      parameters: [{ name: state, in: query, schema: { type: string, enum: [firing] } }]
+      responses:
+        "200": { description: Alerts, content: { application/json: { schema: { type: object, properties: { alerts: { type: array, items: { $ref: "#/components/schemas/Alert" } } } } } } }
+  /alerts/rules:
+    get:
+      operationId: listAlertRules
+      x-permission: alerts.read
+      description: One rule per kind with thresholds (defaults filled in) and channels.
+      responses:
+        "200": { description: Rules, content: { application/json: { schema: { type: object, properties: { rules: { type: array, items: { $ref: "#/components/schemas/AlertRule" } } } } } } }
+  /alerts/rules/{rule}:
+    put:
+      operationId: setAlertRule
+      x-permission: alerts.manage
+      description: Changes a rule's state, thresholds (validated ranges) and channels. Disabling a rule ends its alerts without notifying.
+      parameters: [{ name: rule, in: path, required: true, schema: { type: string, enum: [service_down, cpu_high, memory_high, disk_full, smart_failed, cert_expiry, job_failed, security] } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: { enabled: { type: boolean }, params: { type: object, additionalProperties: { type: number } }, channels: { type: array, items: { type: integer } } } } } } }
+      responses:
+        "200": { description: Rule, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /alerts/deliveries:
+    get:
+      operationId: listDeliveries
+      x-permission: alerts.read
+      description: Delivery log (30 days) — pending with the next attempt, sent, failed after retries, or dropped by the rate limit.
+      responses:
+        "200": { description: Deliveries, content: { application/json: { schema: { type: object, properties: { deliveries: { type: array, items: { $ref: "#/components/schemas/Delivery" } } } } } } }
+  /notify/channels:
+    get:
+      operationId: listChannels
+      x-permission: alerts.read
+      description: Notification channels without their secrets.
+      responses:
+        "200": { description: Channels, content: { application/json: { schema: { type: object, properties: { channels: { type: array, items: { $ref: "#/components/schemas/Channel" } } } } } } }
+    post:
+      operationId: createChannel
+      x-permission: alerts.manage
+      description: Creates an SMTP, webhook, ntfy or Gotify channel. The secret (SMTP password, webhook signing secret, ntfy or Gotify token) is write-only and stored encrypted. Destinations may be in the LAN; loopback, link-local and multicast addresses are refused when connecting (ADR-0028). Needs a recent step-up.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChannelInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Channel" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /notify/channels/{id}:
+    put:
+      operationId: updateChannel
+      x-permission: alerts.manage
+      description: Replaces a channel's settings; secret null keeps the stored one. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChannelInput" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Channel" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteChannel
+      x-permission: alerts.manage
+      description: Deletes a channel and removes it from every rule. Needs a recent step-up.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /notify/channels/{id}/test:
+    post:
+      operationId: testChannel
+      x-permission: alerts.manage
+      description: Sends a test message now (no retries, not rate-limited) and returns the delivery with its outcome.
+      parameters: [{ $ref: "#/components/parameters/RouteID" }]
+      responses:
+        "200": { description: Delivery, content: { application/json: { schema: { $ref: "#/components/schemas/Delivery" } } } }
+        "404": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     session:
@@ -1607,6 +1687,74 @@ components:
         error: { type: string }
         error_at: { type: string, format: date-time }
         https_port: { type: integer }
+    Alert:
+      type: object
+      properties:
+        id: { type: integer }
+        rule: { type: string }
+        key: { type: string }
+        severity: { type: string, enum: [warning, critical] }
+        title: { type: string }
+        body: { type: string }
+        state: { type: string, enum: [firing, resolved, event] }
+        fired_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time }
+    AlertRule:
+      type: object
+      properties:
+        rule: { type: string }
+        title: { type: string }
+        enabled: { type: boolean }
+        params: { type: object, additionalProperties: { type: number } }
+        channels: { type: array, items: { type: integer } }
+    Delivery:
+      type: object
+      properties:
+        id: { type: integer }
+        alert_id: { type: [integer, "null"] }
+        title: { type: string }
+        channel: { type: string }
+        kind: { type: string, enum: [fire, resolve, test] }
+        status: { type: string, enum: [pending, sent, failed, dropped] }
+        attempts: { type: integer }
+        last_error: { type: string }
+        created_at: { type: string, format: date-time }
+        sent_at: { type: string, format: date-time }
+        next_at: { type: string, format: date-time }
+    ChannelConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        host: { type: string }
+        port: { type: integer }
+        security: { type: string, enum: [starttls, tls, none] }
+        username: { type: string }
+        from: { type: string }
+        to: { type: array, items: { type: string }, maxItems: 10 }
+        url: { type: string, format: uri }
+        topic: { type: string }
+    Channel:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [smtp, webhook, ntfy, gotify] }
+        config: { $ref: "#/components/schemas/ChannelConfig" }
+        has_secret: { type: boolean }
+        enabled: { type: boolean }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ChannelInput:
+      type: object
+      required: [name, kind, config]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 64 }
+        kind: { type: string, enum: [smtp, webhook, ntfy, gotify] }
+        config: { $ref: "#/components/schemas/ChannelConfig" }
+        secret: { type: [string, "null"], description: write-only }
+        enabled: { type: boolean }
     HostMetrics:
       type: object
       properties:

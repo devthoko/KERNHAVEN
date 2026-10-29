@@ -133,6 +133,29 @@ func (s *Service) History(ctx context.Context, key, rng string) (History, error)
 	return h, rows.Err()
 }
 
+// Average is the mean of the raw samples of key within d and how many there are.
+func (s *Service) Average(key string, d time.Duration) (float64, int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sr := s.series[key]
+	if sr == nil {
+		return 0, 0
+	}
+	from := s.now().Add(-d)
+	var sum float64
+	n := 0
+	for _, p := range sr.raw {
+		if !p.T.Before(from) {
+			sum += p.Avg
+			n++
+		}
+	}
+	if n == 0 {
+		return 0, 0
+	}
+	return sum / float64(n), n
+}
+
 // IsContainerSeries reports whether key belongs to a container.
 func IsContainerSeries(key string) bool { return strings.HasPrefix(key, "container.") }
 

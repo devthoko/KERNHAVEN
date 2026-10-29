@@ -9,6 +9,7 @@ import { Button } from "./ui";
 const nav: { to: string; label: string; permission?: Permission }[] = [
   { to: "/", label: "Dashboard" },
   { to: "/monitoring", label: "Monitoring", permission: "system.read" },
+  { to: "/alerts", label: "Alerts", permission: "alerts.read" },
   { to: "/apps", label: "Apps", permission: "apps.read" },
   { to: "/apps/store", label: "App store", permission: "apps.read" },
   { to: "/stacks", label: "Stacks", permission: "containers.read" },
