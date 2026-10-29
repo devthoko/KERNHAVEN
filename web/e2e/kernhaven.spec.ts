@@ -179,7 +179,8 @@ test("AT-F02-04: the create form shows policy findings and exceptions", async ()
 test("AT-F02-02, AT-F02-03: create, inspect, read logs, stop and start a container", async () => {
   test.skip(!docker, "needs the agent with Docker");
   await page.getByRole("button", { name: "Create container" }).click();
-  await expect(page.getByRole("heading", { name: "e2e-web" })).toBeVisible();
+  // Creating checks the image and starts the container; slow runners need more than 5 s.
+  await expect(page.getByRole("heading", { name: "e2e-web" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/created by owner/)).toBeVisible();
   await expect(page.getByLabel("Container log output")).toContainText("e2e-hello", { timeout: 15_000 });
