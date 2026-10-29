@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -167,7 +168,7 @@ func (h *Hub) containers(ctx context.Context) (string, error) {
 	}
 	lines := make([]string, 0, len(list))
 	for _, c := range list {
-		lines = append(lines, c.ID+" "+c.State+" "+c.Status)
+		lines = append(lines, c.ID+" "+c.State+" "+healthOf(c.Status))
 	}
 	sort.Strings(lines)
 	sum := sha256.New()
@@ -175,6 +176,17 @@ func (h *Hub) containers(ctx context.Context) (string, error) {
 		fmt.Fprintln(sum, l)
 	}
 	return hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+// healthOf keeps the health part of Docker's status text ("Up 3 minutes
+// (healthy)" → "healthy"); the uptime changes every second and is not a
+// change worth announcing.
+func healthOf(status string) string {
+	i, j := strings.LastIndex(status, "("), strings.LastIndex(status, ")")
+	if i < 0 || j < i {
+		return ""
+	}
+	return status[i+1 : j]
 }
 
 // Register adds GET /api/v1/events.

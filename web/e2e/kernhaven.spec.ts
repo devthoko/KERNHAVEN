@@ -209,16 +209,17 @@ test("AT-F02-07, AT-F01-05: a console in the container; status changes arrive li
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/The shell ended with exit code 7/)).toBeVisible({ timeout: 15_000 });
 
-  // The container list in another tab learns of the stop without polling
-  // (the fallback poll is 30 s).
+  // The container list in another tab learns of the stop without polling:
+  // its fallback poll comes 30 s after it loaded; stopping takes up to 10 s
+  // (sh ignores SIGTERM), the pushed change about 2 s more.
   const list = await page.context().newPage();
   await list.goto("/containers");
   const row = list.getByRole("row", { name: /e2e-web/ });
   await expect(row).toContainText("running");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(row).toContainText("exited", { timeout: 10_000 });
+  await expect(row).toContainText("exited", { timeout: 25_000 });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  await expect(row).toContainText("running", { timeout: 10_000 });
+  await expect(row).toContainText("running", { timeout: 25_000 });
   await list.close();
 });
 
