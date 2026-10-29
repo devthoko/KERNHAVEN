@@ -296,6 +296,7 @@ func TestLiveEventsAndLogFollow(t *testing.T) {
 		t.Fatalf("anonymous events: %d", code)
 	}
 
+	time.Sleep(200 * time.Millisecond)   // the poller's first round sets the baseline
 	id := deployedContainer(t, h, owner) // a job and new containers
 	waitChanges(t, events, "jobs", "containers")
 	waitEvent(t, vEvents, "change", `"containers"`)

@@ -133,8 +133,10 @@ func (h *Hub) check() {
 	defer cancel()
 	for kind, f := range map[string]func(context.Context) (string, error){
 		"containers": h.containers,
-		"jobs":       h.query(`SELECT coalesce(max(updated_ms), 0) || ':' || count(*) FROM jobs`),
-		"alerts":     h.query(`SELECT coalesce(max(id), 0) || ':' || (SELECT count(*) FROM alerts WHERE state = 'firing') FROM alerts`),
+		// States of the latest jobs, so every transition counts even when
+		// timestamps do not move.
+		"jobs":   h.query(`SELECT coalesce(max(updated_ms), 0) || ':' || coalesce((SELECT group_concat(id || state, ',') FROM (SELECT id, state FROM jobs ORDER BY id DESC LIMIT 50)), '') FROM jobs`),
+		"alerts": h.query(`SELECT coalesce(max(id), 0) || ':' || (SELECT count(*) FROM alerts WHERE state = 'firing') FROM alerts`),
 	} {
 		fp, err := f(ctx)
 		if err != nil {
