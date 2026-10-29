@@ -32,7 +32,8 @@ export type Permission =
   | "backup.read"
   | "backup.run"
   | "backup.manage"
-  | "security.read";
+  | "security.read"
+  | "containers.exec";
 
 export interface User {
   id: number;

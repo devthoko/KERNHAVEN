@@ -21,7 +21,7 @@ export function ports(c: ContainerSummary): string {
 export function ContainersPage() {
   const { can } = useSession();
   const { navigate } = useRouter();
-  const { data, error, loading, reload } = useData(() => api.get<{ containers: ContainerSummary[] }>("/containers"), [], { refreshMs: 3000 });
+  const { data, error, loading, reload } = useData(() => api.get<{ containers: ContainerSummary[] }>("/containers"), [], { refreshMs: 3000, live: ["containers"] });
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 

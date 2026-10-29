@@ -74,7 +74,7 @@ function HostCard() {
 }
 
 function AlertsCard() {
-  const { data, error } = useData(() => api.get<{ alerts: AlertItem[] }>("/alerts?state=firing"), [], { refreshMs: 15000 });
+  const { data, error } = useData(() => api.get<{ alerts: AlertItem[] }>("/alerts?state=firing"), [], { refreshMs: 15000, live: ["alerts"] });
   return (
     <Card
       title="Alerts"
@@ -93,6 +93,7 @@ function JobsCard() {
   const { data, error, loading } = useData(() => api.get<{ jobs: Job[] }>("/jobs?limit=200"), [], {
     refreshMs: 3000,
     shouldPoll: (d) => d.jobs.some((j) => ACTIVE_JOB_STATES.includes(j.state)),
+    live: ["jobs"],
   });
   const counts = new Map<JobState, number>();
   data?.jobs.forEach((j) => counts.set(j.state, (counts.get(j.state) ?? 0) + 1));

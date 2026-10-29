@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/devthoko/KERNHAVEN/internal/core/authz"
 )
@@ -159,9 +160,13 @@ func TestRBACMatrix(t *testing.T) {
 			t.Errorf("anonymous %s: got %d %s, want 401", route.Pattern, r.Code, r.errorCode())
 		}
 
+		var opts []reqOpt
+		if strings.HasSuffix(path, "/stream") || path == "/api/v1/events" {
+			opts = append(opts, withTimeout(200*time.Millisecond)) // event streams stay open (M6b)
+		}
 		for _, role := range authz.Roles() {
 			c := h.loginAs(users[role])
-			r := c.do(method, path, body)
+			r := c.do(method, path, body, opts...)
 			allowed := route.Access.IsPublic() || role.Has(authz.Permission(route.Access.Permission()))
 			if allowed && authzCodes[r.errorCode()] {
 				t.Errorf("%s %s: allowed role was refused: %d %s", role, route.Pattern, r.Code, r.errorCode())

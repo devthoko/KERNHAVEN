@@ -14,7 +14,7 @@ export function JobsPage() {
   const { data, error, loading } = useData(
     () => api.get<{ jobs: Job[] }>(`/jobs?limit=100${state ? `&state=${state}` : ""}`),
     [state],
-    { refreshMs: 2000, shouldPoll: (d) => d.jobs.some((j) => ACTIVE_JOB_STATES.includes(j.state)) },
+    { refreshMs: 2000, shouldPoll: (d) => d.jobs.some((j) => ACTIVE_JOB_STATES.includes(j.state)), live: ["jobs"] },
   );
 
   return (

@@ -67,7 +67,11 @@ func streamOperations(d Docker, o Options) map[string]streamHandler {
 		return map[string]streamHandler{}
 	}
 	if f == nil {
-		return volumeStreamOperations(d, o)
+		ops := volumeStreamOperations(d, o)
+		for n, h := range containerStreamOperations(d) {
+			ops[n] = h
+		}
+		return ops
 	}
 	return map[string]streamHandler{
 		agentproto.OpFilesRead: func(ctx context.Context, raw json.RawMessage, _ io.Reader, w http.ResponseWriter) error {
@@ -114,7 +118,7 @@ func StreamOperationNames() []string {
 
 // DockerStreamOperationNames lists the Docker agent's stream operations.
 func DockerStreamOperationNames() []string {
-	ops := volumeStreamOperations(docker.New("/nonexistent", 0), Options{})
+	ops := streamOperations(docker.New("/nonexistent", 0), Options{})
 	m := map[string]handler{}
 	for n := range ops {
 		m[n] = nil

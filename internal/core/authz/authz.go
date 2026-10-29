@@ -41,6 +41,7 @@ const (
 	BackupRun         Permission = "backup.run"
 	BackupManage      Permission = "backup.manage"
 	SecurityRead      Permission = "security.read"
+	ContainersExec    Permission = "containers.exec"
 	PolicyExceptions  Permission = "policy.exceptions"
 
 	AppsRead      Permission = "apps.read"
@@ -50,9 +51,9 @@ const (
 
 var rolePermissions = map[Role][]Permission{
 	Owner: {SelfManage, SystemRead, UsersRead, UsersManage, SessionsManage, AuditRead, JobsRead, JobsManage,
-		ContainersRead, ContainersOperate, ContainersManage, PolicyExceptions, AppsRead, AppsManage, CatalogManage, StorageRead, StorageManage, FilesRead, FilesWrite, SecurityManage, NetworkRead, NetworkManage, AlertsRead, AlertsManage, BackupRead, BackupRun, BackupManage, SecurityRead},
+		ContainersRead, ContainersOperate, ContainersManage, PolicyExceptions, AppsRead, AppsManage, CatalogManage, StorageRead, StorageManage, FilesRead, FilesWrite, SecurityManage, NetworkRead, NetworkManage, AlertsRead, AlertsManage, BackupRead, BackupRun, BackupManage, SecurityRead, ContainersExec},
 	Admin: {SelfManage, SystemRead, UsersRead, UsersManage, AuditRead, JobsRead, JobsManage,
-		ContainersRead, ContainersOperate, ContainersManage, AppsRead, AppsManage, StorageRead, StorageManage, FilesRead, FilesWrite, NetworkRead, NetworkManage, AlertsRead, AlertsManage, BackupRead, BackupRun, BackupManage, SecurityRead},
+		ContainersRead, ContainersOperate, ContainersManage, AppsRead, AppsManage, StorageRead, StorageManage, FilesRead, FilesWrite, NetworkRead, NetworkManage, AlertsRead, AlertsManage, BackupRead, BackupRun, BackupManage, SecurityRead, ContainersExec},
 	Operator: {SelfManage, SystemRead, JobsRead, JobsManage, ContainersRead, ContainersOperate, AppsRead, StorageRead, FilesRead, NetworkRead, AlertsRead, BackupRead, BackupRun},
 	Viewer:   {SelfManage, SystemRead, JobsRead, ContainersRead, AppsRead},
 }

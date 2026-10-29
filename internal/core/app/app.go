@@ -23,6 +23,7 @@ import (
 	khfiles "github.com/devthoko/KERNHAVEN/internal/core/files"
 	"github.com/devthoko/KERNHAVEN/internal/core/identity"
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
+	"github.com/devthoko/KERNHAVEN/internal/core/live"
 	"github.com/devthoko/KERNHAVEN/internal/core/metrics"
 	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/security"
@@ -75,6 +76,8 @@ type Options struct {
 	ConfigPath string
 	// BackupHealthTimeout bounds waiting for restored stacks (tests).
 	BackupHealthTimeout time.Duration
+	// LiveInterval is how often live events are checked (tests).
+	LiveInterval time.Duration
 }
 
 // New builds the Core from an open database and validated config.
@@ -215,6 +218,8 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
+	// Live change notifications (M6b).
+	live.New(db, agent, log, opts.LiveInterval).Register(rt)
 	// The security dashboard reads the other modules (M17).
 	security.New(security.Sources{DB: db, Audit: auditLog, Apps: appSvc.List, Certificates: certSvc.Certificates, Agent: agent}, now).Register(rt)
 	ui := opts.UI

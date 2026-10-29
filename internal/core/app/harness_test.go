@@ -163,6 +163,15 @@ type reqOpt func(*http.Request)
 func withHeader(k, v string) reqOpt { return func(r *http.Request) { r.Header.Set(k, v) } }
 func withoutHeader(k string) reqOpt { return func(r *http.Request) { r.Header.Del(k) } }
 
+// withTimeout ends the request's context after d (streaming routes).
+func withTimeout(d time.Duration) reqOpt {
+	return func(r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), d)
+		time.AfterFunc(d+time.Second, cancel)
+		*r = *r.WithContext(ctx)
+	}
+}
+
 func (c *client) do(method, path string, body any, opts ...reqOpt) response {
 	c.h.t.Helper()
 	var rd io.Reader

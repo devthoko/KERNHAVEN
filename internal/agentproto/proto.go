@@ -73,6 +73,9 @@ const (
 	// M16: volume contents as tar streams (Docker agent).
 	OpVolumesExport = "volumes.export"
 	OpVolumesImport = "volumes.import"
+	// M6b: log follow and the exec console (Docker agent).
+	OpContainersLogsFollow = "containers.logs.follow"
+	OpContainersExec       = "containers.exec"
 )
 
 // Grant limits.

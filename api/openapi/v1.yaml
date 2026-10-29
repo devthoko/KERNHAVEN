@@ -1371,6 +1371,68 @@ paths:
       responses:
         "200": { description: Delivery, content: { application/json: { schema: { $ref: "#/components/schemas/Delivery" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /events:
+    get:
+      operationId: streamEvents
+      x-permission: system.read
+      description: "Server-sent events (AT-F01-05): `hello` lists the kinds this user receives (containers, jobs, alerts — by permission); `change` says that a kind changed, and the page reloads it through the normal API. The server ends the stream after 5 minutes with `reconnect`; browsers reconnect automatically, so the session is checked again."
+      responses:
+        "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /containers/{id}/logs/stream:
+    get:
+      operationId: followContainerLogs
+      x-permission: containers.operate
+      description: Server-sent events with the last 200 lines and then new lines as they are written (`log` with stream and text; `end`). At most 30 minutes.
+      parameters: [{ $ref: "#/components/parameters/ContainerID" }]
+      responses:
+        "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /containers/{id}/console:
+    post:
+      operationId: openContainerConsole
+      x-permission: containers.exec
+      description: "Opens a shell (sh or bash, never another command) in a running container Kernhaven manages; refused for privileged containers, containers sharing the host's processes and containers holding the Docker socket. Needs a recent step-up. At most 2 consoles per user and 8 in all; a console ends after 15 minutes without input or 1 hour. Opening and closing are audited with metadata (shell, duration, bytes, exit code), never the content (ADR-0031)."
+      parameters: [{ $ref: "#/components/parameters/ContainerID" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [shell], properties: { shell: { type: string, enum: [sh, bash] } } } } } }
+      responses:
+        "201": { description: Console, content: { application/json: { schema: { type: object, properties: { console: { type: string }, idle_timeout_seconds: { type: integer } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /consoles/{sid}/stream:
+    get:
+      operationId: streamConsole
+      x-permission: containers.exec
+      description: The console's output as server-sent events (`output` with text, `end` with exit code and reason); recent output is sent again after a reconnect. Only the browser session that opened the console.
+      parameters: [{ $ref: "#/components/parameters/ConsoleID" }]
+      responses:
+        "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /consoles/{sid}/input:
+    post:
+      operationId: sendConsoleInput
+      x-permission: containers.exec
+      description: Sends typed text (up to 4 KiB) to the shell.
+      parameters: [{ $ref: "#/components/parameters/ConsoleID" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 4096 } } } } } }
+      responses:
+        "204": { description: Sent }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+  /consoles/{sid}:
+    delete:
+      operationId: closeConsole
+      x-permission: containers.exec
+      description: Ends the console (end of input; the shell is stopped after 5 seconds if it does not exit).
+      parameters: [{ $ref: "#/components/parameters/ConsoleID" }]
+      responses:
+        "204": { description: Closed }
+        "404": { $ref: "#/components/responses/Error" }
   /security/overview:
     get:
       operationId: getSecurityOverview
@@ -1530,6 +1592,11 @@ components:
       in: cookie
       name: __Host-kh_session
   parameters:
+    ConsoleID:
+      name: sid
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[0-9a-f]{32}$" }
     SnapshotID:
       name: snapshot
       in: path

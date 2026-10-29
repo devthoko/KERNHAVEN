@@ -17,7 +17,7 @@ export function webURL(port: number): string {
 /** AppsPage lists the installed apps. */
 export function AppsPage() {
   const { navigate } = useRouter();
-  const { data, error, loading } = useData(() => api.get<{ apps: InstalledApp[] }>("/apps"), [], { refreshMs: 3000 });
+  const { data, error, loading } = useData(() => api.get<{ apps: InstalledApp[] }>("/apps"), [], { refreshMs: 3000, live: ["containers", "jobs"] });
   return (
     <>
       <PageHeader

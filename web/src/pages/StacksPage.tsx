@@ -13,7 +13,7 @@ export const statusTone = { new: "gray", deploying: "blue", deployed: "green", f
 export function StacksPage() {
   const { can } = useSession();
   const { navigate } = useRouter();
-  const { data, error, loading } = useData(() => api.get<{ stacks: Stack[] }>("/stacks"), [], { refreshMs: 3000 });
+  const { data, error, loading } = useData(() => api.get<{ stacks: Stack[] }>("/stacks"), [], { refreshMs: 3000, live: ["containers", "jobs"] });
   return (
     <>
       <PageHeader

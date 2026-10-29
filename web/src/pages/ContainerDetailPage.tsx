@@ -7,25 +7,51 @@ import { Link, useRouter } from "../lib/router";
 import { useSession } from "../lib/session";
 import type { ContainerDetail, LogLine } from "../lib/types";
 import { useData } from "../lib/useData";
+import { Console } from "./ContainerConsole";
+
+const MAX_FOLLOW_LINES = 2000;
+
+/** useFollow streams new log lines while on (M6b); null when off or unsupported. */
+function useFollow(id: string, on: boolean): { lines: LogLine[]; ended: boolean } | null {
+  const [state, setState] = useState<{ lines: LogLine[]; ended: boolean }>({ lines: [], ended: false });
+  useEffect(() => {
+    if (!on || typeof EventSource === "undefined") return;
+    setState({ lines: [], ended: false });
+    const es = new EventSource(`/api/v1/containers/${encodeURIComponent(id)}/logs/stream`);
+    es.addEventListener("log", (e) => {
+      const { stream, text } = JSON.parse((e as MessageEvent).data) as { stream: "stdout" | "stderr"; text: string };
+      const add = text.replace(/\n$/, "").split("\n").map((t) => ({ stream, text: t }) as LogLine);
+      setState((st) => ({ ended: false, lines: [...st.lines, ...add].slice(-MAX_FOLLOW_LINES) }));
+    });
+    es.addEventListener("end", () => {
+      es.close();
+      setState((st) => ({ ...st, ended: true }));
+    });
+    return () => es.close();
+  }, [id, on]);
+  return on && typeof EventSource !== "undefined" ? state : null;
+}
 
 function Logs({ id }: { id: string }) {
   const [tail, setTail] = useState("200");
   const [follow, setFollow] = useState(true);
   const [timestamps, setTimestamps] = useState(false);
+  const streaming = useFollow(id, follow && !timestamps);
   const { data, error } = useData(
     () => api.get<{ lines: LogLine[]; truncated: boolean }>(`/containers/${encodeURIComponent(id)}/logs?tail=${tail}&timestamps=${timestamps}`),
     [id, tail, timestamps, follow],
-    { refreshMs: 2000, shouldPoll: () => follow },
+    { refreshMs: 2000, shouldPoll: () => follow && streaming === null },
   );
+  const lines = streaming ? streaming.lines : data?.lines;
   const box = useRef<HTMLPreElement>(null);
   useEffect(() => {
     if (follow && box.current) box.current.scrollTop = box.current.scrollHeight;
-  }, [data, follow]);
+  }, [lines, follow]);
   return (
     <Card title="Logs">
       <div className="mb-3 flex flex-wrap items-end gap-4">
         <div className="w-36">
-          <SelectField label="Lines" value={tail} onChange={(e) => setTail(e.target.value)}>
+          <SelectField label="Lines" value={tail} disabled={streaming !== null} onChange={(e) => setTail(e.target.value)}>
             {["100", "200", "1000", "5000"].map((n) => (
               <option key={n} value={n}>
                 last {n}
@@ -35,23 +61,24 @@ function Logs({ id }: { id: string }) {
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="size-4" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
-          Follow (refresh every 2 s)
+          Follow (live)
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="size-4" checked={timestamps} onChange={(e) => setTimestamps(e.target.checked)} />
           Timestamps
         </label>
       </div>
-      {error && <Alert>{error}</Alert>}
-      {data?.truncated && <Alert kind="info">Output truncated to 2 MB; choose fewer lines.</Alert>}
+      {error && !streaming && <Alert>{error}</Alert>}
+      {data?.truncated && !streaming && <Alert kind="info">Output truncated to 2 MB; choose fewer lines.</Alert>}
+      {streaming?.ended && <Alert kind="info">The log stream ended (the container stopped or 30 minutes passed). Turn Follow off and on to continue.</Alert>}
       <pre
         ref={box}
         tabIndex={0}
         aria-label="Container log output"
         className="max-h-[28rem] overflow-auto rounded-md bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100"
       >
-        {data?.lines.length
-          ? data.lines.map((l, i) => (
+        {lines?.length
+          ? lines.map((l, i) => (
               <div key={i} className={l.stream === "stderr" ? "text-amber-300" : undefined}>
                 {l.text}
               </div>
@@ -65,7 +92,7 @@ function Logs({ id }: { id: string }) {
 export function ContainerDetailPage({ id }: { id: string }) {
   const { can } = useSession();
   const { navigate } = useRouter();
-  const { data: c, error, loading, reload } = useData(() => api.get<ContainerDetail>(`/containers/${encodeURIComponent(id)}`), [id], { refreshMs: 3000 });
+  const { data: c, error, loading, reload } = useData(() => api.get<ContainerDetail>(`/containers/${encodeURIComponent(id)}`), [id], { refreshMs: 3000, live: ["containers"] });
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -182,6 +209,11 @@ export function ContainerDetailPage({ id }: { id: string }) {
           )}
         </Card>
         <div className="lg:col-span-2">{can("containers.operate") ? <Logs id={id} /> : <Alert kind="info">Viewing logs requires the operator role, because logs often contain secrets.</Alert>}</div>
+        {can("containers.exec") && c.running && c.labels["io.kernhaven.managed"] === "true" && (
+          <div className="lg:col-span-2">
+            <Console id={id} name={c.name} />
+          </div>
+        )}
       </div>
       <ConfirmByName
         open={removing}

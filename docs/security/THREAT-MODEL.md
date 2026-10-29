@@ -83,6 +83,8 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | TH-22 | S | Local user (T8) connects to the agent socket | Socket mode 0660 owned by agent group with only `kernhaven` member; `SO_PEERCRED` check | M4 | Mitigated (AT-M4-02: socket 0660 + SO_PEERCRED allow-list) |
 | TH-23 | T/R | Replay of a captured grant | Grants bound to operation+target, short expiry, nonce cache | M4 | Mitigated (AT-M4-03/04: Ed25519 grants bound to op and params hash, 60 s lifetime, nonce cache) |
 | TH-24 | D | Malformed requests crash the agent | Strict decoding, size limits, fuzzing in CI | M4 | Mitigated (AT-M4-05: strict decoding, 64 KiB limit, timeouts; fuzzing in CI) |
+| TH-25 | E | The exec console is used to reach the host | Only sh/bash (no command from the API) in managed running containers; agent refuses privileged, host-PID and Docker-socket containers; container's own user; owner/admin with step-up; bound to the opening browser session; 2 per user, 15 min idle, 1 h; audited without content (ADR-0031) | M6b | Mitigated (`TestCheckExec`, `TestM6bConsoleAndFollow`, `TestConsoleThroughCore`) |
+| TH-26 | I/D | Long-lived streams outlive a sign-out or exhaust the Core | Event streams end after 5 min and re-authenticate; listener cap; one shared poller; console and log-follow time limits | M6b | Mitigated (`TestLiveEventsAndLogFollow`) |
 
 ### TB-4/TB-5 — Host resources and containers
 
@@ -145,3 +147,4 @@ Each threat has an owner milestone and verifying tests. Status: **Open**
 | 2026-10-29 | M15 | New TH-19 (SSRF through channels) and TH-60 (alert floods; first numbered TH-20, which M4 already used — corrected in M16), mitigated; TB-6 now includes notification endpoints (ADR-0028) |
 | 2026-10-29 | M16 | TH-50 mitigated; new TH-55 (tampered backups), TH-56 (backup operations of a compromised Core), TH-57 (backup targets), mitigated; TB-6 includes backup targets (ADR-0029, ADR-0030); M15's alert-flood threat renumbered TH-60 |
 | 2026-10-29 | M17 | TH-52: verifiable exports and continuation check detect tail truncation against a kept export (still partial: no automatic remote sink); the security dashboard surfaces MFA gaps, open routes, exceptions and a broken chain |
+| 2026-10-29 | M6b | New TH-25 (exec console) and TH-26 (long-lived streams), mitigated; TH-20 still holds: the console starts only sh or bash, never a command from the API (ADR-0031) |

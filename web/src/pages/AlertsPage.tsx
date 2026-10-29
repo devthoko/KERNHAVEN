@@ -191,7 +191,7 @@ function RuleRow({ rule, channels, manage, onSaved }: { rule: AlertRule; channel
 export function AlertsPage() {
   const { can } = useSession();
   const manage = can("alerts.manage");
-  const alerts = useData(() => api.get<{ alerts: AlertItem[] }>("/alerts"), [], { refreshMs: 15000 });
+  const alerts = useData(() => api.get<{ alerts: AlertItem[] }>("/alerts"), [], { refreshMs: 15000, live: ["alerts"] });
   const rules = useData(() => api.get<{ rules: AlertRule[] }>("/alerts/rules"), []);
   const channels = useData(() => api.get<{ channels: NotifyChannel[] }>("/notify/channels"), []);
   const deliveries = useData(() => api.get<{ deliveries: Delivery[] }>("/alerts/deliveries"), [], { refreshMs: 15000 });

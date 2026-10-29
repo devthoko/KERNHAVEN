@@ -36,12 +36,13 @@ type Service struct {
 	bindRoots  []string
 	opTimeout  time.Duration
 	pullBudget time.Duration
+	cons       consoles // M6b
 }
 
 // New returns the service and registers the image pull job kind.
 func New(agent *agentclient.Client, auditLog *audit.Log, js *jobs.Service, wake func(), bindRoots []string) *Service {
 	s := &Service{agent: agent, audit: auditLog, jobs: js, wake: wake, bindRoots: bindRoots,
-		opTimeout: 2 * time.Minute, pullBudget: 6 * time.Minute}
+		opTimeout: 2 * time.Minute, pullBudget: 6 * time.Minute, cons: consoles{list: map[string]*consoleSession{}}}
 	js.Register(jobs.Kind{Name: KindImagePull, MaxAttempts: 3, Plan: s.planPull})
 	return s
 }
@@ -272,6 +273,7 @@ func (s *Service) Register(rt *httpserver.Router) {
 	read := httpserver.RequirePermission(string(authz.ContainersRead))
 	operate := httpserver.RequirePermission(string(authz.ContainersOperate))
 	manage := httpserver.RequirePermission(string(authz.ContainersManage))
+	s.registerConsole(rt)
 
 	rt.HandleFunc("GET /api/v1/containers", read, func(w http.ResponseWriter, r *http.Request) {
 		var out []agentproto.ContainerSummary

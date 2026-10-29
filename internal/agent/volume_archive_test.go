@@ -87,7 +87,7 @@ func TestFilterTar(t *testing.T) {
 }
 
 func TestDockerStreamOperations(t *testing.T) {
-	if got := DockerStreamOperationNames(); !reflect.DeepEqual(got, []string{"volumes.export", "volumes.import"}) {
+	if got := DockerStreamOperationNames(); !reflect.DeepEqual(got, []string{"containers.exec", "containers.logs.follow", "volumes.export", "volumes.import"}) {
 		t.Fatalf("docker stream operations = %v", got)
 	}
 	// The other roles offer none of them.

@@ -312,6 +312,32 @@ type VolumeImportResult struct {
 	Bytes   int64 `json:"bytes"`
 }
 
+// LogsFollow streams a container's log (M6b).
+type LogsFollow struct {
+	ID   string `json:"id"`
+	Tail int    `json:"tail"`
+}
+
+// ExecStart opens a console in a container (M6b): only a shell, named by
+// sh or bash, never a command.
+type ExecStart struct {
+	ID    string `json:"id"`
+	Shell string `json:"shell"`
+}
+
+// StreamChunk is one JSON line of a log follow or console stream: output
+// (base64 in JSON), the exec ID first, and a final line with End set.
+type StreamChunk struct {
+	Stream   string `json:"s,omitempty"`
+	Data     []byte `json:"d,omitempty"`
+	Exec     string `json:"exec,omitempty"`
+	End      bool   `json:"end,omitempty"`
+	ExitCode *int   `json:"exit_code,omitempty"`
+	Error    string `json:"error,omitempty"`
+	Code     string `json:"code,omitempty"` // a refusal's error code
+	Bytes    int64  `json:"bytes,omitempty"`
+}
+
 // ---- M9: storage ----
 
 // SMART is the health summary of a disk.

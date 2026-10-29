@@ -194,6 +194,34 @@ test("AT-F02-02, AT-F02-03: create, inspect, read logs, stop and start a contain
   await expectAccessible(page, "containers");
 });
 
+test("AT-F02-07, AT-F01-05: a console in the container; status changes arrive live", async () => {
+  test.skip(!docker, "needs the agent with Docker");
+  await page.goto("/containers/e2e-web");
+  await page.getByRole("button", { name: "Open console" }).click();
+  const out = page.getByRole("log", { name: "Console output" });
+  await expect(out).toBeVisible();
+  await page.getByLabel("Command").fill("echo console-$((40+2)); id -u");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(out).toContainText("console-42", { timeout: 15_000 });
+  await expect(out).toContainText("65534");
+  await expectAccessible(page, "console");
+  await page.getByLabel("Command").fill("exit 7");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText(/The shell ended with exit code 7/)).toBeVisible({ timeout: 15_000 });
+
+  // The container list in another tab learns of the stop without polling
+  // (the fallback poll is 30 s).
+  const list = await page.context().newPage();
+  await list.goto("/containers");
+  const row = list.getByRole("row", { name: /e2e-web/ });
+  await expect(row).toContainText("running");
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(row).toContainText("exited", { timeout: 10_000 });
+  await page.getByRole("button", { name: "Start", exact: true }).click();
+  await expect(row).toContainText("running", { timeout: 10_000 });
+  await list.close();
+});
+
 test("AT-F02-06: volumes and networks", async () => {
   test.skip(!docker, "needs the agent with Docker");
   await page.goto("/volumes");

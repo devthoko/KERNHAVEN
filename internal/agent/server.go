@@ -265,8 +265,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	// Transfers may take long; extend the deadlines for this request only.
 	rc := http.NewResponseController(w)
 	read := 15 * time.Minute
-	if op == agentproto.OpVolumesImport {
+	switch op {
+	case agentproto.OpVolumesImport:
 		read = 6 * time.Hour // a restore uploads a whole volume
+	case agentproto.OpContainersExec:
+		read = MaxExec + time.Minute // console input arrives while the session lasts
 	}
 	_ = rc.SetReadDeadline(time.Now().Add(read))
 	_ = rc.SetWriteDeadline(time.Now().Add(6 * time.Hour))

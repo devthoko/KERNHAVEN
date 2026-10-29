@@ -6,8 +6,8 @@ sessions. It states only verified facts; see the linked evidence.
 ## Overall status
 
 **Kernhaven 1.0 is not complete.** 2 of 20 milestones are merged (M0, M1). M2, M3 and M5 are implemented with
-green CI on stacked branches awaiting owner review; M4 and M6–M17 are implemented on
-stacked branches up to `m17-security`. Installer functionality does not exist yet.
+green CI on stacked branches awaiting owner review; M4, M6–M17 and M6b are implemented on
+stacked branches up to `m6b-streaming`. Installer functionality does not exist yet.
 
 | MS | Name | State | Evidence |
 |---|---|---|---|
@@ -29,7 +29,8 @@ stacked branches up to `m17-security`. Installer functionality does not exist ye
 | M15 | Notifications and alerts (F16, F06-04, F12-04) | Done on branch `m15-alerts` (stacked on M14), CI 40901885634, merge pending owner review | [M15 evidence](milestones/M15-alerts.md#verification-evidence-2026-10-29-branch-m15-alerts) |
 | M16 | Encrypted backup and restore (F14) | Done on branch `m16-backup` (stacked on M15), CI 40949090854, merge pending owner review | [M16 evidence](milestones/M16-backup.md#verification-evidence-2026-10-29-branch-m16-backup) |
 | M17 | Security dashboard, audit search and export (F10-03/04) | Done on branch `m17-security` (stacked on M16), CI 40950899401, merge pending owner review | [M17 evidence](milestones/M17-security.md#verification-evidence-2026-10-29-branch-m17-security) |
-| M6b, M18, M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
+| M6b | Exec console, live status, log follow (F02-07, F01-05) | Implemented on branch `m6b-streaming` (stacked on M17), CI pending, merge pending owner review | [M6b evidence](milestones/M6b-streaming.md#verification-evidence-2026-10-29-branch-m6b-streaming) |
+| M18, M19 | see [milestones](milestones/MILESTONES.md) | Not started | — |
 
 ## Environment blockers
 
@@ -45,7 +46,7 @@ stacked branches up to `m17-security`. Installer functionality does not exist ye
 
 1. Owner reviews and merges `m2-identity`, then `m3-jobs`.
 2. Owner reviews `m5-dashboard`.
-3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa`, `m12-network`, `m13-tls`, `m14-monitoring`, `m15-alerts`, `m16-backup` and `m17-security`. Next: M6b, M18, M19 (owner review of all branches at the end).
+3. Owner reviews PR #1 (`m7-compose`, M2–M7), then `m8-apps`, `m9-storage`, `m10-files`, `m11-mfa`, `m12-network`, `m13-tls`, `m14-monitoring`, `m15-alerts`, `m16-backup`, `m17-security` and `m6b-streaming`. Next: M18, M19 (owner review of all branches at the end).
 4. Release evidence for M4+ still requires B-2 (Debian 13 VMs, rootful Docker with separate service users).
 
 ## Development environment

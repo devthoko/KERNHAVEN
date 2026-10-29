@@ -54,7 +54,7 @@ graph TD
 | M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Implemented on branch `m4-agent` (based on `m5-dashboard`), CI green, owner review pending — [design](M4-agent.md) |
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Implemented on branch `m5-dashboard` (based on `m3-jobs`), CI green, owner review pending — [design](M5-dashboard.md) |
 | M6 | Container management | M4, M5 | F02, F01-05 | Implemented on branch `m6-containers` (F02-01..06), CI green, owner review pending — [design](M6-containers.md) |
-| M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Not started |
+| M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Implemented on branch `m6b-streaming` (based on `m17-security`), CI pending, merge pending owner review — [design](M6b-streaming.md) |
 | M7 | Compose import, validation, deploy | M6 | F03 | Done on branch `m7-compose` (based on `m6-containers`), CI 40565761279; merge pending owner review — [design](M7-compose.md) |
 | M8 | App store and app lifecycle | M7 | F04, F05 | Done on branch `m8-apps` (based on `m7-compose`), CI 40574613677, merge pending owner review; reverse proxy route of AT-F05-01 added in M12 (`m12-network`) — [design](M8-apps.md) |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Done on branch `m9-storage` (based on `m8-apps`), CI 40601258272, merge pending owner review — [design](M9-storage.md) |
