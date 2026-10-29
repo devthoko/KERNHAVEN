@@ -16,7 +16,9 @@ TimeoutStopSec=30s
 StateDirectory=kernhaven
 StateDirectoryMode=0700
 ConfigurationDirectory=kernhaven
-ConfigurationDirectoryMode=0750
+# 0755: the services' own users read their files in it; core.toml
+# itself is 0640 root:kernhaven.
+ConfigurationDirectoryMode=0755
 UMask=0077
 
 # Sandboxing (ADR-0008). The Core needs no privileges at all.

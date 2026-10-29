@@ -94,6 +94,7 @@ run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 sed -i 's|^public_origin = .*|public_origin = "http://localhost:8470"|' /etc/kernhaven/core.toml
 systemctl restart kernhaven-core
 wait_ready
+sleep 3 # a service that cannot start fails within a moment
 systemctl is-active kernhaven-core kernhaven-agent kernhaven-storage kernhaven-files kernhaven-monitor
 
 step "first-run setup and data"
@@ -111,7 +112,8 @@ run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 [ -s /etc/kernhaven/agent-grant.pub ] || fail "grant key not repaired"
 grep -q 'public_origin = "http://localhost:8470"' /etc/kernhaven/core.toml || fail "the administrator's configuration was replaced"
 wait_ready
-systemctl is-active kernhaven-agent
+sleep 3
+systemctl is-active kernhaven-agent kernhaven-monitor
 login alice 'Viewer-Test-Passw0rd!'
 
 step "unsigned and tampered releases are refused (AT-F15-01)"
