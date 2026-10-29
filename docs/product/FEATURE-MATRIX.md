@@ -28,7 +28,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F01-02 | Responsive layout | All primary views usable at 360 px, 768 px and 1440 px widths (Playwright visual checks) | M5 | Done (CI 40519204275; merge pending owner review) |
 | AT-F01-03 | Light and dark theme | Theme follows OS preference and can be overridden per user | M5 | Done (CI 40519204275; merge pending owner review) |
 | AT-F01-04 | Accessibility | Automated axe checks pass with no serious/critical violations; keyboard-only navigation works | M5 | Done (CI 40519204275; merge pending owner review) |
-| AT-F01-05 | Live status | Container/app status updates without page reload (SSE) | M6b | Implemented on `m6b-streaming` (CI pending; merge pending owner review) |
+| AT-F01-05 | Live status | Container/app status updates without page reload (SSE) | M6b | Done (CI 40958468980; merge pending owner review) |
 
 ## F02 — Complete Docker container management
 
@@ -40,7 +40,7 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 | AT-F02-04 | Create from spec | Create a container from a validated spec; policy violations (privileged, host PID/network, dangerous mounts, added capabilities) are rejected unless explicitly allowed by an Owner-approved exception | M6 | Done (CI 40559956035; merge pending owner review) |
 | AT-F02-05 | Images | Pull (with digest pinning), list, remove, prune | M6 | Done (CI 40559956035; merge pending owner review) |
 | AT-F02-06 | Volumes and networks | Create, inspect, remove; in-use resources cannot be removed | M6 | Done (CI 40559956035; merge pending owner review) |
-| AT-F02-07 | Exec console | Interactive shell into a container for Admin+, audited, with session recording of metadata (not content) | M6b | Implemented on `m6b-streaming` (CI pending; merge pending owner review) |
+| AT-F02-07 | Exec console | Interactive shell into a container for Admin+, audited, with session recording of metadata (not content) | M6b | Done (CI 40958468980; merge pending owner review) |
 
 ## F03 — Docker Compose import, validation, editing and deployment
 
@@ -162,10 +162,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F15-01 | Signed releases | Release artifacts are signed; unsigned or mismatched artifacts are refused | M18 | Not started |
-| AT-F15-02 | Upgrade | In-place upgrade with automatic pre-upgrade DB snapshot | M18 | Not started |
-| AT-F15-03 | Rollback | Failed post-upgrade health check rolls back binaries and DB automatically; manual rollback available | M18 | Not started |
-| AT-F15-04 | Upgrade path test | Upgrade from N-1 to N with real data passes on both architectures | M18 | Not started |
+| AT-F15-01 | Signed releases | Release artifacts are signed; unsigned or mismatched artifacts are refused | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F15-02 | Upgrade | In-place upgrade with automatic pre-upgrade DB snapshot | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F15-03 | Rollback | Failed post-upgrade health check rolls back binaries and DB automatically; manual rollback available | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F15-04 | Upgrade path test | Upgrade from N-1 to N with real data passes on both architectures | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
 
 ## F16 — Notifications and operational alerts
 
@@ -179,10 +179,10 @@ Milestones are defined in [Milestones](../milestones/MILESTONES.md).
 
 | ID | Capability | Acceptance criterion | MS | Status |
 |---|---|---|---|---|
-| AT-F17-01 | Installer | `.deb` packages for amd64 and arm64 plus a verified install script; pre-flight checks (OS, arch, systemd, Docker, ports, disk) | M18 | Not started |
-| AT-F17-02 | Idempotency | Re-running the installer is safe and repairs a partial install | M18 | Not started |
-| AT-F17-03 | Uninstall | Uninstall removes services, users and units; data removal is opt-in; apps keep running unless removal is requested | M18 | Not started |
-| AT-F17-04 | No host side effects | Installer does not change firewall, SSH config or unrelated packages | M18 | Not started |
+| AT-F17-01 | Installer | `.deb` packages for amd64 and arm64 plus a verified install script; pre-flight checks (OS, arch, systemd, Docker, ports, disk) | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F17-02 | Idempotency | Re-running the installer is safe and repairs a partial install | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F17-03 | Uninstall | Uninstall removes services, users and units; data removal is opt-in; apps keep running unless removal is requested | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
+| AT-F17-04 | No host side effects | Installer does not change firewall, SSH config or unrelated packages | M18 | Implemented on `m18-installer` (CI pending; Debian 13 VM run pending B-2; release key pending B-3) |
 
 ## F18 — Crash recovery and persistent background jobs
 

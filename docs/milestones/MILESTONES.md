@@ -54,7 +54,7 @@ graph TD
 | M4 | Host agent and privilege boundary | M2, M3 | TH-20..24 | Implemented on branch `m4-agent` (based on `m5-dashboard`), CI green, owner review pending — [design](M4-agent.md) |
 | M5 | Web dashboard shell | M2 | F01 (01–04), F08-05, F18-03 | Implemented on branch `m5-dashboard` (based on `m3-jobs`), CI green, owner review pending — [design](M5-dashboard.md) |
 | M6 | Container management | M4, M5 | F02, F01-05 | Implemented on branch `m6-containers` (F02-01..06), CI green, owner review pending — [design](M6-containers.md) |
-| M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Implemented on branch `m6b-streaming` (based on `m17-security`), CI pending, merge pending owner review — [design](M6b-streaming.md) |
+| M6b | Streaming: exec console, live events, log follow | M6 | F02-07, F01-05 | Done on branch `m6b-streaming` (based on `m17-security`), CI 40958468980, merge pending owner review — [design](M6b-streaming.md) |
 | M7 | Compose import, validation, deploy | M6 | F03 | Done on branch `m7-compose` (based on `m6-containers`), CI 40565761279; merge pending owner review — [design](M7-compose.md) |
 | M8 | App store and app lifecycle | M7 | F04, F05 | Done on branch `m8-apps` (based on `m7-compose`), CI 40574613677, merge pending owner review; reverse proxy route of AT-F05-01 added in M12 (`m12-network`) — [design](M8-apps.md) |
 | M9 | Storage and disk management | M4, M5 | F06 (01–03) | Done on branch `m9-storage` (based on `m8-apps`), CI 40601258272, merge pending owner review — [design](M9-storage.md) |
@@ -66,7 +66,7 @@ graph TD
 | M15 | Notifications and alerts | M3, M14 | F16, F06-04, F12-04 | Done on branch `m15-alerts` (based on `m14-monitoring`), CI 40901885634, merge pending owner review — [design](M15-alerts.md) |
 | M16 | Encrypted backup and restore | M3, M9 | F14 | Done on branch `m16-backup` (based on `m15-alerts`), CI 40949090854, merge pending owner review — [design](M16-backup.md) |
 | M17 | Security dashboard | M11, M14 | F10 (03–04) | Done on branch `m17-security` (based on `m16-backup`), CI 40950899401, merge pending owner review — [design](M17-security.md) |
-| M18 | Installer, upgrades, rollback, signed releases | M16 | F15, F17 | Not started |
+| M18 | Installer, upgrades, rollback, signed releases | M16 | F15, F17 | Implemented on branch `m18-installer` (based on `m6b-streaming`), CI pending, merge pending owner review; Debian 13 run pending B-2, release key pending B-3 — [design](M18-installer.md) |
 | M19 | Release hardening and 1.0 verification | all | Release gate G4 | Not started |
 
 ## Known blockers

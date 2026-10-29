@@ -1,6 +1,6 @@
 # M6b — Streaming: Exec Console, Live Status, Log Follow
 
-Status: Implemented (CI pending); merge pending owner review
+Status: Implemented (CI 40958468980); merge pending owner review
 Depends on: M4, M6, M11
 Acceptance tests: AT-F02-07, AT-F01-05
 Threats addressed: TH-25, TH-26 (below), TH-20 (no command from API input)
@@ -45,4 +45,4 @@ detail, stacks, apps, jobs, alerts.
 | `scripts/check.sh` (Go + web) | `khv01-dev` | Passed |
 | `TestM6bConsoleAndFollow` on real rootless Docker 29.9.2 | `khv01-dev` | Passed |
 | `TestConsoleThroughCore`, `TestLiveEventsAndLogFollow` (5 runs), `TestCheckExec`, `live.test.ts`, contract, RBAC | `khv01-dev` | Passed — the first run hung: a refused console start was answered while the Core still streamed input, and Go's client waited for the input to end; the agent now confirms the stream first and sends refusals as the first line, and the Core bounds the start with a 30 s guard |
-| CI full suite incl. race detector and browser E2E | GitHub Actions | pending |
+| CI full suite incl. race detector, real Docker on amd64/arm64 and browser E2E (console with exit code, a stop pushed to another tab's container list within its 30 s fallback, axe) | GitHub Actions | Passed (run 40958468980) — earlier runs found: (1) the container fingerprint included Docker's uptime text, so a change was announced every 2 s — now state and health only; (2) with a frozen test clock job transitions went unannounced on arm64 — the fingerprint now includes the latest jobs' states; (3) a slow runner needed more than 5 s to show a created container (E2E wait raised) |
