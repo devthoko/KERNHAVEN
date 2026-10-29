@@ -14,12 +14,20 @@ ORIGIN=http://localhost:8470
 JAR=$(mktemp)
 STEP=start
 exec 3>&1 # annotations reach the log even from redirected blocks
+# diag: unit states and the last journal lines of the agent and the Core,
+# on one line for an annotation.
+diag() {
+  local u
+  for u in core agent storage files monitor; do printf '%s=%s ' "$u" "$(systemctl is-active "kernhaven-$u" 2>/dev/null || true)"; done
+  for u in agent core; do printf '| %s: %s ' "$u" "$(journalctl -u "kernhaven-$u" --no-pager -n 4 -o cat 2>/dev/null | tr '\n' ' ' | cut -c1-600)"; done
+}
 fail() {
   echo "::error::package test, step '$STEP': $*" >&3
+  echo "::error::state: $(diag)" >&3
   journalctl -u kernhaven-core --no-pager -n 50 >&2 || true
   exit 1
 }
-trap 'echo "::error::package test, step '"'"'$STEP'"'"', line $LINENO: $BASH_COMMAND" >&3' ERR
+trap 'echo "::error::package test, step '"'"'$STEP'"'"', line $LINENO: $BASH_COMMAND" >&3; echo "::error::state: $(diag)" >&3' ERR
 step() { STEP=$*; echo; echo "=== $*"; }
 
 # run COMMAND...: shows the output; a failure is reported with its last lines.
