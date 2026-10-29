@@ -25,6 +25,7 @@ import { StoragePage } from "./pages/StoragePage";
 import { CertificatesPage } from "./pages/CertificatesPage";
 import { AlertsPage } from "./pages/AlertsPage";
 import { BackupsPage } from "./pages/BackupsPage";
+import { SecurityPage } from "./pages/SecurityPage";
 import { FilesPage } from "./pages/FilesPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
 import { GatePage } from "./pages/GatePage";
@@ -43,6 +44,7 @@ const routes: RouteDef[] = [
   { pattern: "/monitoring", title: "Monitoring", permission: "system.read", render: () => <MonitoringPage /> },
   { pattern: "/alerts", title: "Alerts", permission: "alerts.read", render: () => <AlertsPage /> },
   { pattern: "/backups", title: "Backups", permission: "backup.read", render: () => <BackupsPage /> },
+  { pattern: "/security", title: "Security", permission: "security.read", render: () => <SecurityPage /> },
   { pattern: "/apps", title: "Apps", permission: "apps.read", render: () => <AppsPage /> },
   { pattern: "/apps/store", title: "App store", permission: "apps.read", render: () => <AppStorePage /> },
   { pattern: "/apps/sources", title: "Catalog sources", permission: "apps.read", render: () => <SourcesPage /> },

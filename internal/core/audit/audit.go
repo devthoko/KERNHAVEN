@@ -200,23 +200,26 @@ func (l *Log) Record(ctx context.Context, ev Event) error {
 	return tx.Commit()
 }
 
-// Filter selects records for List.
+// Filter selects records for List and Export.
 type Filter struct {
-	Limit     int    // 1..500, default 100
+	Limit     int    // 1..500, default 100 (List only)
 	BeforeSeq int64  // only records with seq < BeforeSeq (0 = newest)
 	Action    string // exact match
 	Actor     string // exact match
+	// M17 (AT-F10-03)
+	Query   string // substring of action, actor, target, request ID, IP or details
+	Result  Result // exact match
+	SinceMS int64  // ts_ms >= SinceMS
+	UntilMS int64  // ts_ms < UntilMS
 }
 
-// List returns matching records, newest first.
-func (l *Log) List(ctx context.Context, f Filter) ([]Record, error) {
-	if f.Limit <= 0 {
-		f.Limit = 100
-	}
-	if f.Limit > 500 {
-		f.Limit = 500
-	}
-	q := `SELECT ` + recordColumns + ` FROM audit_events WHERE 1=1`
+// likeEscape makes s a literal LIKE pattern (escape character '\').
+func likeEscape(s string) string {
+	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s) + "%"
+}
+
+func (f Filter) where() (string, []any) {
+	q := ` WHERE 1=1`
 	var args []any
 	if f.BeforeSeq > 0 {
 		q += ` AND seq < ?`
@@ -230,7 +233,36 @@ func (l *Log) List(ctx context.Context, f Filter) ([]Record, error) {
 		q += ` AND actor = ?`
 		args = append(args, f.Actor)
 	}
-	q += ` ORDER BY seq DESC LIMIT ?`
+	if f.Result != "" {
+		q += ` AND result = ?`
+		args = append(args, string(f.Result))
+	}
+	if f.SinceMS > 0 {
+		q += ` AND ts_ms >= ?`
+		args = append(args, f.SinceMS)
+	}
+	if f.UntilMS > 0 {
+		q += ` AND ts_ms < ?`
+		args = append(args, f.UntilMS)
+	}
+	if f.Query != "" {
+		p := likeEscape(f.Query)
+		q += ` AND (action LIKE ? ESCAPE '\' OR actor LIKE ? ESCAPE '\' OR target LIKE ? ESCAPE '\' OR request_id LIKE ? ESCAPE '\' OR ip LIKE ? ESCAPE '\' OR details LIKE ? ESCAPE '\')`
+		args = append(args, p, p, p, p, p, p)
+	}
+	return q, args
+}
+
+// List returns matching records, newest first.
+func (l *Log) List(ctx context.Context, f Filter) ([]Record, error) {
+	if f.Limit <= 0 {
+		f.Limit = 100
+	}
+	if f.Limit > 500 {
+		f.Limit = 500
+	}
+	where, args := f.where()
+	q := `SELECT ` + recordColumns + ` FROM audit_events` + where + ` ORDER BY seq DESC LIMIT ?`
 	args = append(args, f.Limit)
 
 	rows, err := l.db.QueryContext(ctx, q, args...)

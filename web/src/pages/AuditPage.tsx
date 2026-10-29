@@ -1,13 +1,29 @@
 import { useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import type { AuditEvent, VerifyResult } from "../lib/types";
 
 const PAGE = 50;
 
+type Filters = { q: string; action: string; actor: string; result: string; since: string; until: string };
+const empty: Filters = { q: "", action: "", actor: "", result: "", since: "", until: "" };
+
+/** query turns the form into API parameters; dates are local days. */
+function query(f: Filters): URLSearchParams {
+  const q = new URLSearchParams();
+  for (const k of ["q", "action", "actor", "result"] as const) if (f[k].trim()) q.set(k, f[k].trim());
+  if (f.since) q.set("since", new Date(`${f.since}T00:00:00`).toISOString().replace(/\.\d{3}Z$/, "Z"));
+  if (f.until) {
+    const d = new Date(`${f.until}T00:00:00`);
+    d.setDate(d.getDate() + 1); // the whole "until" day
+    q.set("until", d.toISOString().replace(/\.\d{3}Z$/, "Z"));
+  }
+  return q;
+}
+
 export function AuditPage() {
-  const [filters, setFilters] = useState({ action: "", actor: "" });
+  const [filters, setFilters] = useState<Filters>(empty);
   const [applied, setApplied] = useState(filters);
   const [events, setEvents] = useState<AuditEvent[] | null>(null);
   const [more, setMore] = useState(false);
@@ -19,9 +35,8 @@ export function AuditPage() {
   const load = async (f: typeof filters, before?: number) => {
     setBusy(true);
     setError(null);
-    const q = new URLSearchParams({ limit: String(PAGE) });
-    if (f.action) q.set("action", f.action);
-    if (f.actor) q.set("actor", f.actor);
+    const q = query(f);
+    q.set("limit", String(PAGE));
     if (before) q.set("before", String(before));
     try {
       const res = await api.get<{ events: AuditEvent[] }>(`/audit?${q}`);
@@ -38,9 +53,8 @@ export function AuditPage() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const f = { action: filters.action.trim(), actor: filters.actor.trim() };
-    setApplied(f);
-    void load(f);
+    setApplied(filters);
+    void load(filters);
   };
 
   const runVerify = async () => {
@@ -60,9 +74,18 @@ export function AuditPage() {
         title="Audit log"
         description="Tamper-evident record of security-relevant actions."
         actions={
-          <Button variant="secondary" busy={verifying} onClick={runVerify}>
-            Verify integrity
-          </Button>
+          <span className="flex gap-2">
+            <a
+              className="inline-flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              href={`/api/v1/audit/export?${query(applied)}`}
+              download
+            >
+              Export (JSON Lines)
+            </a>
+            <Button variant="secondary" busy={verifying} onClick={runVerify}>
+              Verify integrity
+            </Button>
+          </span>
         }
       />
       {verify && (
@@ -77,13 +100,25 @@ export function AuditPage() {
         </div>
       )}
       <Card>
-        <form onSubmit={submit} className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <form onSubmit={submit} className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] lg:items-end">
+          <TextField label="Search" type="search" placeholder="host, IP, request ID…" maxLength={200} value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
           <TextField label="Action" placeholder="e.g. auth.login" value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })} />
           <TextField label="Actor" placeholder="username" value={filters.actor} onChange={(e) => setFilters({ ...filters, actor: e.target.value })} />
+          <SelectField label="Result" value={filters.result} onChange={(e) => setFilters({ ...filters, result: e.target.value })}>
+            <option value="">Any</option>
+            <option value="success">success</option>
+            <option value="failure">failure</option>
+            <option value="denied">denied</option>
+          </SelectField>
+          <TextField label="From" type="date" value={filters.since} onChange={(e) => setFilters({ ...filters, since: e.target.value })} />
+          <TextField label="To" type="date" value={filters.until} onChange={(e) => setFilters({ ...filters, until: e.target.value })} />
           <Button type="submit" variant="secondary">
             Filter
           </Button>
         </form>
+        <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
+          The export contains the chain hashes. Keep exports outside this server; <code>kernhaven-core audit-check new.jsonl old.jsonl</code> shows whether the log was truncated or rewritten in between.
+        </p>
         {error && <Alert>{error}</Alert>}
         {events === null && busy && <Spinner />}
         {events && events.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-400">No events match.</p>}

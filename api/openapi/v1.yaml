@@ -258,12 +258,31 @@ paths:
         - { name: before, in: query, schema: { type: integer, minimum: 1 } }
         - { name: action, in: query, schema: { type: string } }
         - { name: actor, in: query, schema: { type: string } }
+        - { name: q, in: query, description: "Substring of action, actor, target, request ID, IP or details (wildcards are literal)", schema: { type: string, maxLength: 200 } }
+        - { name: result, in: query, schema: { type: string, enum: [success, failure, denied] } }
+        - { name: since, in: query, description: RFC 3339, schema: { type: string, format: date-time } }
+        - { name: until, in: query, description: RFC 3339 (exclusive), schema: { type: string, format: date-time } }
       responses:
         "200":
           description: Audit events, newest first
           content:
             application/json:
               schema: { type: object, properties: { events: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /audit/export:
+    get:
+      operationId: exportAuditEvents
+      x-permission: audit.read
+      description: Matching records, oldest first, as JSON Lines with their chain hashes (seq, prev_hash, hash), for keeping a copy elsewhere. `kernhaven-core audit-check` verifies a file and, given an older full export, that the log was not truncated or rewritten in between. The export is recorded as audit.export.
+      parameters:
+        - { name: action, in: query, schema: { type: string } }
+        - { name: actor, in: query, schema: { type: string } }
+        - { name: q, in: query, description: "Substring of action, actor, target, request ID, IP or details (wildcards are literal)", schema: { type: string, maxLength: 200 } }
+        - { name: result, in: query, schema: { type: string, enum: [success, failure, denied] } }
+        - { name: since, in: query, description: RFC 3339, schema: { type: string, format: date-time } }
+        - { name: until, in: query, description: RFC 3339 (exclusive), schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: JSON Lines, content: { application/x-ndjson: { schema: { type: string } } } }
         "400": { $ref: "#/components/responses/Error" }
   /audit/verify:
     get:
@@ -1352,6 +1371,13 @@ paths:
       responses:
         "200": { description: Delivery, content: { application/json: { schema: { $ref: "#/components/schemas/Delivery" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /security/overview:
+    get:
+      operationId: getSecurityOverview
+      x-permission: security.read
+      description: The security dashboard (AT-F10-04) — findings ordered by severity, MFA coverage and policy, published routes and their protection, approved policy exceptions of deployed stacks, app updates and old images in use, failed sign-ins of the last 24 hours, certificates, audit chain and backup state.
+      responses:
+        "200": { description: Overview, content: { application/json: { schema: { $ref: "#/components/schemas/SecurityOverview" } } } }
   /backup/repositories:
     get:
       operationId: listBackupRepositories
@@ -1544,6 +1570,21 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    SecurityOverview:
+      type: object
+      properties:
+        generated_at: { type: string, format: date-time }
+        findings: { type: array, items: { type: object, properties: { severity: { type: string, enum: [critical, warning, info] }, area: { type: string }, title: { type: string }, link: { type: string } } } }
+        mfa: { type: object, properties: { users: { type: integer }, covered: { type: integer }, policy: { type: object, additionalProperties: { type: boolean } }, accounts: { type: array, items: { type: object } } } }
+        routes: { type: array, items: { type: object, properties: { host: { type: string }, path: { type: string }, app: { type: string }, sign_in: { type: boolean }, lan_only: { type: boolean }, allow_list: { type: boolean }, unprotected: { type: boolean } } } }
+        exceptions: { type: array, items: { type: object, properties: { stack: { type: string }, revision: { type: integer }, service: { type: string }, rule: { type: string }, reason: { type: string }, approved_by: { type: string } } } }
+        updates: { type: array, items: { type: object } }
+        old_images: { type: array, items: { type: object, properties: { image: { type: string }, created: { type: string, format: date-time }, containers: { type: integer } } } }
+        images_checked: { type: boolean }
+        logins: { type: object, properties: { failed_24h: { type: integer }, lockouts_24h: { type: integer }, by_source: { type: object, additionalProperties: { type: integer } }, recent: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }
+        certificates: { type: array, items: { type: object } }
+        audit: { type: object, properties: { ok: { type: boolean }, records: { type: integer }, broken_at: { type: integer }, reason: { type: string } } }
+        backup: { type: object, properties: { plans: { type: integer }, last_succeeded: { type: string, format: date-time } } }
     BackupRepository:
       type: object
       properties:

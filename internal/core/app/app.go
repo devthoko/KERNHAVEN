@@ -25,6 +25,7 @@ import (
 	"github.com/devthoko/KERNHAVEN/internal/core/jobs"
 	"github.com/devthoko/KERNHAVEN/internal/core/metrics"
 	"github.com/devthoko/KERNHAVEN/internal/core/network"
+	"github.com/devthoko/KERNHAVEN/internal/core/security"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
 	khstorage "github.com/devthoko/KERNHAVEN/internal/core/storage"
 	"github.com/devthoko/KERNHAVEN/internal/core/webui"
@@ -105,7 +106,12 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	rt := httpserver.NewRouter(ids.Guard)
 	health.Register(rt, db, log)
 	ids.Register(rt)
-	audit.Register(rt, auditLog)
+	audit.Register(rt, auditLog, func(r *http.Request) (int64, string) {
+		if p, ok := identity.FromContext(r.Context()); ok {
+			return p.User.ID, p.User.Username
+		}
+		return 0, "anonymous"
+	})
 	jobs.RegisterRoutes(rt, jobSvc, auditLog, runner.Wake)
 	var agent *agentclient.Client
 	if cfg.Agent.Socket != "" {
@@ -209,6 +215,8 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
+	// The security dashboard reads the other modules (M17).
+	security.New(security.Sources{DB: db, Audit: auditLog, Apps: appSvc.List, Certificates: certSvc.Certificates, Agent: agent}, now).Register(rt)
 	ui := opts.UI
 	if ui == nil {
 		ui = webui.Dist()

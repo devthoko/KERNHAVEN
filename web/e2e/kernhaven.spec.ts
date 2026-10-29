@@ -479,7 +479,7 @@ test("AT-F08-05: a user sees and revokes their other sessions", async ({ browser
 test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", async () => {
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring", "/alerts", "/backups"]) {
+    for (const path of ["/", "/jobs", "/users", "/audit", "/account", "/containers", "/containers/new", "/images", "/volumes", "/networks", "/stacks", "/stacks/new", "/apps", "/apps/store", "/apps/sources", "/storage", "/files", "/proxy", "/certificates", "/monitoring", "/alerts", "/backups", "/security"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await expectNoHorizontalOverflow(page, `${path}@${width}`);
@@ -636,6 +636,32 @@ test("AT-F14-01..04, AT-F14-06: an encrypted repository, a plan, a backup and a 
   await page.getByRole("button", { name: "Check now usb disk" }).click();
   await expect(page.getByRole("table", { name: "Backup repositories" }).getByText("intact")).toBeVisible({ timeout: 60_000 });
   await expectAccessible(page, "backups");
+});
+
+test("AT-F10-03, AT-F10-04: the security dashboard, audit search and export", async () => {
+  await page.goto("/security");
+  await expect(page.getByRole("heading", { name: "Security", exact: true })).toBeVisible();
+  const findings = page.getByRole("list", { name: "Findings" });
+  await expect(findings.getByText(/signs in with a password only|second factor is not required/).first()).toBeVisible();
+  await expect(page.getByRole("table", { name: "Second factors by account" })).toBeVisible();
+  await expectAccessible(page, "security");
+
+  await page.goto("/audit");
+  await page.getByLabel("Search").fill("backup");
+  await page.getByLabel("Result").selectOption("success");
+  await page.getByRole("button", { name: "Filter" }).click();
+  await expect(page.getByRole("table", { name: "Audit events" }).getByText("backup.repo_create")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Audit events" }).getByText("auth.login")).toHaveCount(0);
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Export (JSON Lines)" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^kernhaven-audit-.*\.jsonl$/);
+  const body = await (await file.createReadStream()).toArray();
+  const lines = Buffer.concat(body).toString().trim().split("\n");
+  expect(lines.length).toBeGreaterThan(0);
+  // Every record matches the search (the export itself is recorded first, with the search in its details).
+  for (const l of lines) expect(JSON.stringify(JSON.parse(l)).toLowerCase()).toContain("backup");
+  await expectAccessible(page, "audit");
 });
 
 const proxy = process.env.KH_E2E_PROXY === "1";

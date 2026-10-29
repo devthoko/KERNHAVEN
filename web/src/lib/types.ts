@@ -31,7 +31,8 @@ export type Permission =
   | "alerts.manage"
   | "backup.read"
   | "backup.run"
-  | "backup.manage";
+  | "backup.manage"
+  | "security.read";
 
 export interface User {
   id: number;
@@ -870,4 +871,26 @@ export interface BackupSnapshot {
   verified_at?: string;
   verify_ok?: boolean;
   verify_message: string;
+}
+
+// ---- M17: security dashboard ----
+
+export interface SecurityOverview {
+  generated_at: string;
+  findings: { severity: "critical" | "warning" | "info"; area: string; title: string; link: string }[];
+  mfa: {
+    users: number;
+    covered: number;
+    policy: Record<string, boolean>;
+    accounts: { username: string; role: string; passkeys: number; totp: boolean; required: boolean }[];
+  };
+  routes: { host: string; path: string; app?: string; sign_in: boolean; lan_only: boolean; allow_list: boolean; unprotected: boolean }[];
+  exceptions: { stack: string; revision: number; service: string; rule: string; reason: string; approved_by: string }[];
+  updates: InstalledApp[];
+  old_images: { image: string; created: string; containers: number }[];
+  images_checked: boolean;
+  logins: { failed_24h: number; lockouts_24h: number; by_source: Record<string, number>; recent: AuditEvent[] };
+  certificates: StoredCertificate[];
+  audit: VerifyResult;
+  backup: { plans: number; last_succeeded?: string };
 }
