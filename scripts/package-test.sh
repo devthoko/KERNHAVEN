@@ -93,8 +93,8 @@ token=$(journalctl -u kernhaven-core --no-pager | sed -n 's/.*"setup_token":"\([
 [ -n "$token" ] || fail "no setup token in the journal"
 rm -f "$JAR" "$JAR.csrf"
 http POST /setup "{\"token\":\"$token\",\"username\":\"owner\",\"password\":\"Package-Test-Passw0rd!\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])' > "$JAR.csrf"
-api POST /users '{"username":"alice","role":"viewer","password":"Alice-Test-Passw0rd!"}' >/dev/null
-login alice 'Alice-Test-Passw0rd!'
+api POST /users '{"username":"alice","role":"viewer","password":"Viewer-Test-Passw0rd!"}' >/dev/null
+login alice 'Viewer-Test-Passw0rd!'
 
 step "a second run of the installer repairs and changes nothing else (AT-F17-02)"
 rm -f /etc/kernhaven/agent-grant.pub
@@ -104,7 +104,7 @@ run "$REL/$OLD/install.sh" --pubkey "$PUB" --allow-unsupported "$REL/$OLD"
 grep -q 'public_origin = "http://localhost:8470"' /etc/kernhaven/core.toml || fail "the administrator's configuration was replaced"
 wait_ready
 systemctl is-active kernhaven-agent
-login alice 'Alice-Test-Passw0rd!'
+login alice 'Viewer-Test-Passw0rd!'
 
 step "unsigned and tampered releases are refused (AT-F15-01)"
 bad=$(mktemp -d)
@@ -120,7 +120,7 @@ step "upgrade $OLD → $NEW with the data (AT-F15-02, AT-F15-04)"
 run kernhaven-upgrade apply "$REL/$NEW"
 [ "$(version)" = "$NEW" ] || fail "version $(version), want $NEW"
 ls /var/lib/kernhaven-upgrade/snapshots/*/kernhaven.db >/dev/null || fail "no snapshot"
-login alice 'Alice-Test-Passw0rd!'
+login alice 'Viewer-Test-Passw0rd!'
 login owner 'Package-Test-Passw0rd!'
 api GET /backup/repositories >/dev/null || fail "the new version's migrations did not run"
 
@@ -132,13 +132,13 @@ set -e
 [ "$code" = 3 ] || fail "broken upgrade exited with $code, want 3 (rolled back)"
 [ "$(version)" = "$NEW" ] || fail "version $(version) after the rollback, want $NEW"
 wait_ready
-login alice 'Alice-Test-Passw0rd!'
+login alice 'Viewer-Test-Passw0rd!'
 
 step "manual rollback to $OLD with its database (AT-F15-03)"
 run kernhaven-upgrade rollback
 [ "$(version)" = "$OLD" ] || fail "version $(version), want $OLD"
 wait_ready
-login alice 'Alice-Test-Passw0rd!'
+login alice 'Viewer-Test-Passw0rd!'
 kernhaven-upgrade status
 
 step "no side effects on firewall, SSH or other packages (AT-F17-04)"
