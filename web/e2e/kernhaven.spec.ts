@@ -547,6 +547,8 @@ test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", as
 
 test("AT-F01-01 (UI): the command palette finds pages and the bell lists what needs attention", async () => {
   await page.goto("/");
+  // The shortcut works once the app shell is on the page.
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
   await page.keyboard.press("ControlOrMeta+k");
   const palette = page.getByRole("dialog", { name: "Quick find" });
   await palette.getByRole("combobox").fill("audit");
