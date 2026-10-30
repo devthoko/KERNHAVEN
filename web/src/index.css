@@ -22,6 +22,14 @@ body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
   font-feature-settings: "cv11", "ss01";
 }
+/* Underlined links: a quieter line that fills in on hover. */
+.underline {
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
+}
+.underline:hover {
+  text-decoration-color: currentColor;
+}
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-brand-600;
 }

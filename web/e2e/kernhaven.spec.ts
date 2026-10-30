@@ -87,10 +87,15 @@ test("AT-F08-01, AT-F01-04: first-run setup works by keyboard and is accessible"
   await page.keyboard.press("Enter");
 
   await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), / })).toBeVisible();
-  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(page.getByRole("term").filter({ hasText: "Host agent" })).toBeVisible();
-  await expect(page.getByText(docker ? "Connected" : "Unavailable", { exact: true })).toBeVisible();
-  await expectAccessible(page, "dashboard");
+  await expect(page.getByRole("heading", { name: "Your apps" })).toBeVisible();
+  await expectAccessible(page, "home");
+  // Platform details live under Monitoring.
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Monitoring" }).click();
+  const platform = page.getByRole("region", { name: "Platform" });
+  await expect(platform.getByText("Ready", { exact: true })).toBeVisible();
+  await expect(platform.getByRole("term").filter({ hasText: "Host agent" })).toBeVisible();
+  await expect(platform.getByText(docker ? "Connected" : "Unavailable", { exact: true })).toBeVisible();
+  await expectAccessible(page, "monitoring");
 });
 
 test("AT-F08-06: owner creates a viewer through the UI", async () => {

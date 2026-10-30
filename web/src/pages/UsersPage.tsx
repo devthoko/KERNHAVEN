@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Avatar, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime, roleLabel } from "../lib/format";
 import { canManage, useCurrentSession, useSession } from "../lib/session";
@@ -223,10 +223,15 @@ export function UsersPage() {
               return (
                 <tr key={u.id}>
                   <td className={td}>
-                    <div className="font-medium">{u.display_name || u.username}</div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
-                      {u.username}
-                      {self && " (you)"}
+                    <div className="flex items-center gap-3">
+                      <Avatar name={u.display_name || u.username} className="size-8 text-xs" />
+                      <div>
+                        <div className="font-medium">{u.display_name || u.username}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          {u.username}
+                          {self && " (you)"}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className={td}>{roleLabel(u.role)}</td>

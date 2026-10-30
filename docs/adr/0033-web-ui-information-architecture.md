@@ -40,7 +40,10 @@ or branding (SPECIFICATION); we take the interaction patterns only.
   rounded cards with soft borders and shadows, an own 24-px stroke icon set
   (`Icon.tsx`, no icon dependency), coloured initials as app and user
   pictures until catalogs carry icons, ring badges, segmented controls, empty
-  states that name the next step, back links on detail pages. Light and dark
+  states that name the next step, back links on detail pages. Row actions in
+  dense lists (files) are icon buttons whose accessible name and tooltip say
+  what they do ("Rename note.txt"); first-run pages show the steps to the
+  goal (backups). Light and dark
   themes stay; colours keep WCAG AA contrast (axe runs on every page in E2E).
 - **No new runtime dependencies** and no inline styles beyond width
   percentages set through the DOM (CSP `style-src 'self'`).

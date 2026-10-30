@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "../components/Icon";
 import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatBytes, formatDateTime, formatRelative } from "../lib/format";
@@ -405,6 +406,34 @@ function Snapshots({ repo, manage, onNotice }: { repo: BackupRepository; manage:
 }
 
 /** BackupsPage manages repositories, plans, snapshots and restores (AT-F14-01..06). */
+/** GettingStarted shows the steps to the first backup until a plan exists. */
+function GettingStarted({ steps }: { steps: { title: string; detail: string; done: boolean }[] }) {
+  return (
+    <Card title="Set up backups in three steps">
+      <ol className="grid gap-4 md:grid-cols-3">
+        {steps.map((s, i) => (
+          <li key={s.title} className="flex gap-3">
+            <span
+              className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                s.done ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200"
+              }`}
+            >
+              {s.done ? <Icon name="check" className="size-4" /> : i + 1}
+            </span>
+            <span className="text-sm">
+              <span className="block font-medium">
+                {s.title}
+                {s.done && <span className="sr-only"> (done)</span>}
+              </span>
+              <span className="text-slate-600 dark:text-slate-400">{s.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
 export function BackupsPage() {
   const { can } = useSession();
   const manage = can("backup.manage");
@@ -442,6 +471,15 @@ export function BackupsPage() {
       <PageHeader title="Backups" description="Encrypted copies of the platform and your apps' data, on a disk, an SFTP server or S3." />
       <div className="space-y-4">
         {notice && <Alert kind={notice.kind}>{notice.text}</Alert>}
+        {plans.data.plans.length === 0 && (
+          <GettingStarted
+            steps={[
+              { title: "Add a repository", detail: "Where backups go: a local disk, an SFTP server or S3. You choose a passphrase that encrypts everything.", done: repoList.length > 0 },
+              { title: "Add a plan", detail: "What to back up (the platform, app data) and when; old snapshots are thinned out automatically.", done: false },
+              { title: "Run it once", detail: "Start the plan by hand to check that it works, then keep the passphrase somewhere safe outside this server.", done: false },
+            ]}
+          />
+        )}
         <Card
           title="Repositories"
           actions={

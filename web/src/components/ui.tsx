@@ -1,5 +1,5 @@
 import { Link } from "../lib/router";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
@@ -92,12 +92,21 @@ export function Alert({ kind = "error", children }: { kind?: "error" | "success"
   );
 }
 
+/** Card is a titled section; with a title it is a named region for assistive technology. */
 export function Card({ title, actions, children, className = "" }: { title?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
+  const titleId = useId();
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-slate-900 ${className}`}>
+    <section
+      aria-labelledby={title ? titleId : undefined}
+      className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-slate-900 ${className}`}
+    >
       {(title || actions) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          {title && <h2 className="text-[15px] font-semibold">{title}</h2>}
+          {title && (
+            <h2 id={titleId} className="text-[15px] font-semibold">
+              {title}
+            </h2>
+          )}
           {actions}
         </div>
       )}
@@ -260,4 +269,31 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
       </Link>
     </p>
   );
+}
+
+/**
+ * IconButton is a compact action for rows and toolbars. The label is its
+ * accessible name and tooltip, so lists stay readable without hiding what
+ * each button does from assistive technology.
+ */
+export function IconButton({
+  icon,
+  label,
+  tone = "default",
+  className = "",
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string; tone?: "default" | "danger" }) {
+  return (
+    <button type="button" aria-label={label} title={label} className={`${iconButtonClass(tone)} ${className}`} {...rest}>
+      <Icon name={icon} className="size-[18px]" />
+    </button>
+  );
+}
+
+export function iconButtonClass(tone: "default" | "danger" = "default"): string {
+  return `inline-flex size-9 shrink-0 items-center justify-center rounded-lg disabled:opacity-50 ${
+    tone === "danger"
+      ? "text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+  }`;
 }

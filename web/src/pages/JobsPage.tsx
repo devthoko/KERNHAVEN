@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { JobProgress, JobStateBadge } from "../components/JobBits";
+import { JobProgress, JobStateBadge, jobTitle } from "../components/JobBits";
 import { Alert, Card, PageHeader, SelectField, Spinner, Table, td, th } from "../components/ui";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/format";
@@ -49,8 +49,11 @@ export function JobsPage() {
             {data.jobs.map((j) => (
               <tr key={j.id}>
                 <td className={td}>
-                  <Link to={`/jobs/${j.id}`} className="font-medium text-brand-700 underline dark:text-brand-500">
-                    #{j.id} {j.kind}
+                  <Link to={`/jobs/${j.id}`} className="group block">
+                    <span className="font-medium text-slate-900 group-hover:underline dark:text-white">{jobTitle(j.kind)}</span>
+                    <span className="block text-xs text-slate-600 dark:text-slate-400">
+                      #{j.id} · {j.kind}
+                    </span>
                   </Link>
                 </td>
                 <td className={td}>

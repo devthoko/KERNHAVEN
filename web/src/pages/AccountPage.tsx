@@ -1,6 +1,7 @@
 import { SecurityCard } from "../components/Security";
 import { useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Icon, type IconName } from "../components/Icon";
+import { Alert, Avatar, Badge, Button, Card, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime, formatRelative, roleLabel } from "../lib/format";
 import { useCurrentSession, useSession } from "../lib/session";
@@ -99,10 +100,10 @@ function SessionsCard() {
   );
 }
 
-const themes: { value: Theme; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+const themes: { value: Theme; label: string; icon: IconName }[] = [
+  { value: "system", label: "System", icon: "settings" },
+  { value: "light", label: "Light", icon: "sun" },
+  { value: "dark", label: "Dark", icon: "moon" },
 ];
 
 function AppearanceCard() {
@@ -121,11 +122,17 @@ function AppearanceCard() {
       {error && <Alert>{error}</Alert>}
       <fieldset>
         <legend className="mb-2 text-sm text-slate-600 dark:text-slate-400">Theme (saved to your account)</legend>
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {themes.map((t) => (
-            <label key={t.value} className="flex items-center gap-2 text-sm">
-              <input type="radio" name="theme" className="size-4" value={t.value} checked={theme === t.value} onChange={() => change(t.value)} />
-              {t.label}
+            <label
+              key={t.value}
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm font-medium has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-600 dark:border-white/10 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10"
+            >
+              <Icon name={t.icon} className="size-6 text-slate-600 dark:text-slate-300" />
+              <span className="flex items-center gap-2">
+                <input type="radio" name="theme" className="size-4 accent-brand-700" value={t.value} checked={theme === t.value} onChange={() => change(t.value)} />
+                {t.label}
+              </span>
             </label>
           ))}
         </div>
@@ -138,7 +145,15 @@ export function AccountPage() {
   const session = useCurrentSession();
   return (
     <>
-      <PageHeader title="Account" description={`${session.user.username} · ${roleLabel(session.user.role)}`} />
+      <div className="mb-6 flex items-center gap-4">
+        <Avatar name={session.user.display_name || session.user.username} className="size-14 text-lg" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            {session.user.display_name && session.user.display_name !== session.user.username ? `${session.user.display_name} (${session.user.username})` : session.user.username} · {roleLabel(session.user.role)}
+          </p>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PasswordCard />
         <AppearanceCard />

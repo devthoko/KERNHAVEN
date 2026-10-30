@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Icon } from "../components/Icon";
+import { Alert, Badge, Button, Card, Dialog, IconButton, PageHeader, SelectField, Spinner, Table, TextField, iconButtonClass, td, th } from "../components/ui";
 import { api, ApiError, errorMessage, putBinary } from "../lib/api";
 import { formatBytes, formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -194,7 +195,7 @@ export function FilesPage() {
             </button>
             {crumbs.map((c, i) => (
               <span key={i} className="flex items-center gap-1">
-                <span aria-hidden="true">/</span>
+                <Icon name="chevronRight" className="size-4 text-slate-400" />
                 <button type="button" className={`${link} break-all`} onClick={() => go(root, crumbs.slice(0, i + 1).join("/"))} aria-current={i === crumbs.length - 1 ? "location" : undefined}>
                   {c}
                 </button>
@@ -218,15 +219,18 @@ export function FilesPage() {
                         setDialog({ kind: "mkdir" });
                       }}
                     >
+                      <Icon name="folderPlus" className="size-4" />
                       New folder
                     </Button>
-                    <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 has-[:focus-visible]:outline-2">
+                    <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-800 has-[:focus-visible]:outline-2">
+                      <Icon name="upload" className="size-4" />
                       Upload
                       <input type="file" multiple className="sr-only" disabled={progress !== null} onChange={onUpload} />
                     </label>
                   </>
                 )}
                 <Button variant="ghost" onClick={() => go(root, dir, "trash")}>
+                  <Icon name="trash" className="size-4" />
                   Trash
                 </Button>
               </>
@@ -288,7 +292,12 @@ export function FilesPage() {
           <>
             {listing.loading && !listing.data && <Spinner />}
             {listing.error && <Alert>{listing.error}</Alert>}
-            {listing.data && listing.data.entries.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-400">This folder is empty.</p>}
+            {listing.data && listing.data.entries.length === 0 && (
+              <div className="flex flex-col items-center gap-2 py-10 text-sm text-slate-600 dark:text-slate-400">
+                <Icon name="folder" className="size-10 text-slate-300 dark:text-slate-600" />
+                <p>This folder is empty.</p>
+              </div>
+            )}
             {listing.data?.truncated && <Alert kind="warning">Only the first 10 000 entries are shown.</Alert>}
             {listing.data && listing.data.entries.length > 0 && (
               <Table
@@ -307,8 +316,9 @@ export function FilesPage() {
                 {dir && (
                   <tr>
                     <td className={td} colSpan={4}>
-                      <button type="button" className={link} onClick={() => go(root, parent(dir))}>
-                        .. (up)
+                      <button type="button" className="inline-flex items-center gap-2 font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white" onClick={() => go(root, parent(dir))}>
+                        <Icon name="chevronLeft" className="size-5" />
+                        Up one folder
                       </button>
                     </td>
                   </tr>
@@ -319,7 +329,7 @@ export function FilesPage() {
                     <tr key={e.name}>
                       <td className={`${td} max-w-xs`}>
                         <span className="flex min-w-0 items-center gap-2">
-                          <span aria-hidden="true">{e.type === "dir" ? "📁" : e.type === "symlink" ? "↪" : "📄"}</span>
+                          <Icon name={e.type === "dir" ? "folder" : e.type === "symlink" ? "link" : "file"} className={`size-5 ${e.type === "dir" ? "text-brand-700 dark:text-brand-500" : "text-slate-500 dark:text-slate-400"}`} />
                           {e.type === "dir" ? (
                             <button type="button" className={`${link} truncate`} onClick={() => go(root, p)}>
                               {e.name}
@@ -333,51 +343,44 @@ export function FilesPage() {
                       <td className={td}>{e.type === "dir" ? "—" : formatBytes(e.size)}</td>
                       <td className={td}>{formatDateTime(e.mod_time)}</td>
                       <td className="px-4 py-1">
-                        <span className="flex flex-wrap gap-x-1">
+                        <span className="flex justify-end gap-0.5">
                           {e.type === "file" && (
                             <>
-                              <Button variant="ghost" className="px-2" onClick={() => openPreview(e)}>
-                                View <span className="sr-only">{e.name}</span>
-                              </Button>
-                              <a className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800" href={`/api/v1/files/download?${query(root, p)}`} download>
-                                Download <span className="sr-only">{e.name}</span>
+                              <IconButton icon="eye" label={`View ${e.name}`} onClick={() => openPreview(e)} />
+                              <a className={iconButtonClass()} href={`/api/v1/files/download?${query(root, p)}`} download aria-label={`Download ${e.name}`} title={`Download ${e.name}`}>
+                                <Icon name="download" className="size-[18px]" />
                               </a>
                             </>
                           )}
                           {writable && (
                             <>
-                              <Button
-                                variant="ghost"
-                                className="px-2"
+                              <IconButton
+                                icon="pencil"
+                                label={`Rename ${e.name}`}
                                 onClick={() => {
                                   setName(e.name);
                                   setDialogError(null);
                                   setDialog({ kind: "rename", entry: e });
                                 }}
-                              >
-                                Rename <span className="sr-only">{e.name}</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="px-2"
+                              />
+                              <IconButton
+                                icon="copy"
+                                label={`Copy ${e.name}`}
                                 onClick={() => {
                                   setTarget({ root, path: `${p} copy` });
                                   setDialogError(null);
                                   setDialog({ kind: "copy", entry: e });
                                 }}
-                              >
-                                Copy <span className="sr-only">{e.name}</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="px-2 text-red-700 dark:text-red-400"
+                              />
+                              <IconButton
+                                icon="trash"
+                                tone="danger"
+                                label={`Delete ${e.name}`}
                                 onClick={() => {
                                   setDialogError(null);
                                   setDialog({ kind: "delete", entry: e });
                                 }}
-                              >
-                                Delete <span className="sr-only">{e.name}</span>
-                              </Button>
+                              />
                             </>
                           )}
                         </span>
