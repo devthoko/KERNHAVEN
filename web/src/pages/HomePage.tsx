@@ -6,7 +6,7 @@ import { api } from "../lib/api";
 import { formatBytes, formatRelative } from "../lib/format";
 import { Link } from "../lib/router";
 import { useCurrentSession, useSession } from "../lib/session";
-import { ACTIVE_JOB_STATES, type Alert as AlertItem, type FileSystemInfo, type HostMetrics, type InstalledApp, type Job, type ServiceCheck, type StorageInventory } from "../lib/types";
+import { ACTIVE_JOB_STATES, type Alert as AlertItem, type FileSystemInfo, type HostMetrics, type InstalledApp, type Job, type SecurityOverview, type ServiceCheck, type StorageInventory } from "../lib/types";
 import { useData } from "../lib/useData";
 import { webURL } from "./AppsPage";
 
@@ -201,8 +201,18 @@ interface Issue {
 }
 
 /** collectIssues turns the readings into one list of things to look at, most severe first. */
-export function collectIssues(input: { alerts?: AlertItem[]; services?: ServiceCheck[]; jobs?: Job[]; apps?: InstalledApp[] }): Issue[] {
+export function collectIssues(input: {
+  alerts?: AlertItem[];
+  services?: ServiceCheck[];
+  jobs?: Job[];
+  apps?: InstalledApp[];
+  findings?: SecurityOverview["findings"];
+}): Issue[] {
   const out: Issue[] = [];
+  // Security findings about updates repeat the app list below; info findings are not problems.
+  input.findings
+    ?.filter((f) => f.severity !== "info" && f.area !== "updates")
+    .forEach((f, i) => out.push({ key: `sec-${i}`, tone: f.severity === "critical" ? "red" : "amber", title: f.title, detail: `Security · ${f.area}`, to: f.link || "/security" }));
   for (const a of input.alerts ?? []) out.push({ key: `alert-${a.id}`, tone: a.severity === "critical" ? "red" : "amber", title: a.title, detail: a.body, to: "/alerts" });
   for (const s of input.services ?? []) if (s.status === "down") out.push({ key: `svc-${s.name}`, tone: "red", title: `${s.label} is down`, detail: s.detail, to: "/monitoring" });
   for (const j of input.jobs ?? []) if (j.needs_attention) out.push({ key: `job-${j.id}`, tone: "red", title: `${jobTitle(j.kind)} (job #${j.id}) needs attention`, detail: "A rollback failed; check the job.", to: `/jobs/${j.id}` });
@@ -228,8 +238,21 @@ function useIssues() {
     live: ["jobs"],
   });
   const apps = useData(() => (can("apps.read") ? api.get<{ apps: InstalledApp[] }>("/apps") : Promise.resolve({ apps: [] })), [], { refreshMs: 15000, live: ["jobs"] });
-  const loaded = !!(alerts.data && services.data && jobs.data && apps.data);
-  const issues = collectIssues({ alerts: alerts.data?.alerts, services: services.data?.services, jobs: jobs.data?.jobs, apps: apps.data?.apps });
+  const security = useData(() => (can("security.read") ? api.get<SecurityOverview>("/security/overview") : Promise.resolve({ findings: [] as SecurityOverview["findings"] })), [], {
+    refreshMs: 60000,
+  });
+  // A source that fails to load counts as empty rather than hiding the rest.
+  const loaded = [alerts, services, jobs, apps, security].every((d) => d.data || d.error);
+  const issues = collectIssues({
+    alerts: alerts.data?.alerts,
+    services: services.data?.services,
+    jobs: jobs.data?.jobs,
+    apps: apps.data?.apps,
+    findings: security.data?.findings,
+  });
+  // Never claim that all is well when a check could not run.
+  const failed = [alerts, services, jobs, apps, security].filter((d) => d.error).map((d) => d.error);
+  if (failed.length > 0) issues.push({ key: "unavailable", tone: "amber", title: "Some checks could not run", detail: failed.join(" · "), to: "/monitoring" });
   return { loaded, issues, jobs: jobs.data?.jobs ?? [] };
 }
 

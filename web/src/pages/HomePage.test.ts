@@ -45,6 +45,20 @@ describe("collectIssues", () => {
     expect(issues.map((i) => i.title)).toEqual(["Monitor service is down", "Deploy stack (job #7) needs attention", "Disk almost full", "Update for notes"]);
     expect(issues[1]?.to).toBe("/jobs/7");
   });
+  it("includes security findings but not info or update findings", () => {
+    const issues = collectIssues({
+      findings: [
+        { severity: "critical", area: "mfa", title: "owner signs in with a password only", link: "/users" },
+        { severity: "warning", area: "updates", title: "notes runs 1.0; 2.0 is available", link: "/apps/notes" },
+        { severity: "info", area: "updates", title: "old image", link: "/images" },
+        { severity: "warning", area: "backup", title: "No backup plan is enabled", link: "" },
+      ],
+    });
+    expect(issues.map((i) => [i.tone, i.title, i.to])).toEqual([
+      ["red", "owner signs in with a password only", "/users"],
+      ["amber", "No backup plan is enabled", "/security"],
+    ]);
+  });
   it("is empty when nothing is wrong", () => {
     expect(collectIssues({ alerts: [], services: [{ name: "core", label: "Core", status: "ok" }], jobs: [], apps: [] })).toEqual([]);
   });
