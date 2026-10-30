@@ -203,7 +203,7 @@ function SearchButton({ onOpen }: { onOpen: () => void }) {
       >
         <Icon name="search" className="size-4" />
         <span className="flex-1 text-left">Search or jump to…</span>
-        <kbd className="rounded-lg border border-slate-200 bg-white px-1.5 font-sans text-[11px] text-slate-500 dark:border-white/15 dark:bg-transparent">{mac ? "⌘K" : "Ctrl K"}</kbd>
+        <kbd className="rounded-lg border border-slate-200 bg-white px-1.5 font-sans text-[11px] text-slate-600 dark:border-white/15 dark:bg-transparent dark:text-slate-300">{mac ? "⌘K" : "Ctrl K"}</kbd>
       </button>
       <button
         type="button"
