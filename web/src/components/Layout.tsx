@@ -208,7 +208,7 @@ function SearchButton({ onOpen }: { onOpen: () => void }) {
       <button
         type="button"
         onClick={onOpen}
-        aria-label="Search"
+        aria-label="Quick find"
         className="inline-flex size-9 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 sm:hidden dark:text-slate-300 dark:hover:bg-white/10"
       >
         <Icon name="search" />

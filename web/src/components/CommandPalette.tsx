@@ -108,7 +108,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   return (
     <dialog
       ref={ref}
-      aria-label="Search and commands"
+      aria-label="Quick find"
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
       className="mx-auto mt-[12vh] w-[min(40rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
@@ -120,7 +120,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <input
               ref={input}
               role="combobox"
-              aria-label="Search pages, apps and actions"
+              aria-label="Find pages, apps and actions"
               aria-expanded="true"
               aria-controls={listId}
               aria-activedescendant={results[active] ? `${listId}-${active}` : undefined}
