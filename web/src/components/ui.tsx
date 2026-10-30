@@ -297,3 +297,34 @@ export function iconButtonClass(tone: "default" | "danger" = "default"): string 
       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
   }`;
 }
+
+const appGradients = [
+  "from-teal-500 to-emerald-700",
+  "from-sky-500 to-blue-700",
+  "from-indigo-500 to-violet-700",
+  "from-violet-500 to-fuchsia-700",
+  "from-rose-500 to-red-700",
+  "from-orange-500 to-rose-700",
+  "from-amber-500 to-orange-700",
+  "from-cyan-500 to-sky-700",
+];
+
+/**
+ * AppIcon is the picture of an app: a gradient tile with its initials, until
+ * catalogs carry icons. The colour is stable per name.
+ */
+export function AppIcon({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
+  const dims = { sm: "size-10 rounded-xl text-sm", md: "size-12 rounded-[14px] text-base", lg: "size-16 rounded-[20px] text-xl sm:size-[72px] sm:rounded-[22px]" }[size];
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex shrink-0 select-none items-center justify-center bg-gradient-to-br font-semibold tracking-tight text-white shadow-md shadow-slate-900/15 ring-1 ring-inset ring-white/20 ${dims} ${appGradients[hashName(name) % appGradients.length]}`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+/** Glass is the frosted surface of the home desktop. */
+export const glass =
+  "rounded-2xl border border-white/60 bg-white/70 shadow-lg shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60 dark:shadow-black/20";

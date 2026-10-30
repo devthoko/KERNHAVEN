@@ -45,6 +45,12 @@ async function login(p: Page, user: { username: string; password: string }) {
   await expect(p.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), / })).toBeVisible();
 }
 
+// Sign-out lives in the account menu of the top bar (ADR-0035).
+async function signOut(p: Page) {
+  await p.getByRole("button", { name: "Account menu" }).click();
+  await p.getByRole("dialog", { name: "Account menu" }).getByRole("button", { name: "Sign out" }).click();
+}
+
 async function freshLogin(browser: Browser, user: { username: string; password: string }) {
   const ctx = await browser.newContext();
   const p = await ctx.newPage();
@@ -529,11 +535,31 @@ test("AT-F01-02: pages fit 360, 768 and 1440 px without horizontal overflow", as
         await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Account" })).toBeVisible();
         await page.getByRole("button", { name: "Close" }).click();
       } else {
-        await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Account" })).toBeVisible();
+        await page.getByRole("button", { name: "Account menu" }).click();
+        await expect(page.getByRole("dialog", { name: "Account menu" }).getByRole("link", { name: "Account" })).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
       }
     }
   }
   await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test("AT-F01-01 (UI): the command palette finds pages and the bell lists what needs attention", async () => {
+  await page.goto("/");
+  await page.keyboard.press("ControlOrMeta+k");
+  const palette = page.getByRole("dialog", { name: "Search and commands" });
+  await palette.getByRole("combobox").fill("audit");
+  await expect(palette.getByRole("option", { name: "Security › Audit log" })).toBeVisible();
+  await expectAccessible(page, "command palette");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
+  await page.getByRole("button", { name: /^Notifications/ }).click();
+  const bell = page.getByRole("dialog", { name: /^Notifications/ });
+  // The owner has no second factor yet: the security finding is listed.
+  await expect(bell.getByRole("link", { name: /signs in with a password only/ })).toBeVisible();
+  await expectAccessible(page, "notifications");
+  await page.keyboard.press("Escape");
 });
 
 test("AT-F01-03: theme preference is stored per user", async () => {
@@ -541,7 +567,7 @@ test("AT-F01-03: theme preference is stored per user", async () => {
   await page.getByLabel("Dark", { exact: true }).check();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await expectAccessible(page, "account (dark)");
-  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await signOut(page);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
   await expectAccessible(page, "login");
@@ -848,14 +874,14 @@ test("AT-F09-02, AT-F09-03: authenticator app, recovery codes and passkey; sign 
   await expectAccessible(page, "account security");
 
   // Passkey alone.
-  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await signOut(page);
   await page.getByRole("button", { name: "Sign in with a passkey" }).click();
   // Signing out on /account returns there after the sign-in (?next=/account).
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 
   // Password, then a recovery code as second step.
-  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await signOut(page);
   await page.getByLabel("Username").fill(OWNER.username);
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { isHousekeeping, jobTitle } from "../components/JobBits";
 import type { Alert, FileSystemInfo, InstalledApp, Job, ServiceCheck, StorageInventory } from "../lib/types";
-import { collectIssues, largestFileSystem } from "./HomePage";
+import { collectIssues } from "../lib/status";
+import { greeting, largestFileSystem } from "./HomePage";
 
 const fs = (over: Partial<FileSystemInfo>): FileSystemInfo => ({
   path: "/dev/x",
@@ -70,5 +71,11 @@ describe("job names", () => {
     expect(jobTitle("maintenance.purge_sessions")).toBe("Purge sessions");
     expect(isHousekeeping("maintenance.tls_renew")).toBe(true);
     expect(isHousekeeping("backup.run")).toBe(false);
+  });
+});
+
+describe("greeting", () => {
+  it("follows the time of day", () => {
+    expect([3, 9, 14, 20].map(greeting)).toEqual(["Good evening", "Good morning", "Good afternoon", "Good evening"]);
   });
 });

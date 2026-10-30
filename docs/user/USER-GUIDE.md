@@ -4,9 +4,15 @@ What each page does and who may use it. Roles: **Owner** (everything),
 **Admin** (everything except owner management and policy downgrades),
 **Operator** (start/stop, logs, trigger backups), **Viewer** (read only).
 
-The sidebar groups the pages into areas; pages of one area are tabs at the
-top (for example Docker → Containers, Stacks, Images, Volumes, Networks).
-Your account settings and sign-out are at the bottom of the sidebar.
+Home is your desktop: your apps, the state of the server and what needs a
+look; the dock at the bottom leads to all areas. Elsewhere the sidebar
+groups the pages into areas, and pages of one area are tabs at the top (for
+example Docker → Containers, Stacks, Images, Volumes, Networks).
+
+The top bar is on every page: press Ctrl+K (⌘K on a Mac) or click the
+search field to jump to any page, app or action; the bell lists what needs
+attention; your picture opens the account menu with settings, theme and
+sign-out.
 
 | Area → page | What you do there | Roles |
 |---|---|---|
@@ -23,7 +29,7 @@ Your account settings and sign-out are at the bottom of the sidebar.
 | Users | Accounts and roles | Admin+ |
 | Security → Overview | Findings: missing second factors, open routes, exceptions, outdated apps, failed sign-ins, certificates, audit chain, backups | Admin+ |
 | Security → Audit log | Search, filter, export (JSON Lines), verify | Admin+ |
-| Account (gear in the user panel) | Password, passkeys, authenticator app, recovery codes, sessions, theme | all |
+| Account (account menu in the top bar) | Password, passkeys, authenticator app, recovery codes, sessions, theme | all |
 
 ## Kernhaven Essentials
 
