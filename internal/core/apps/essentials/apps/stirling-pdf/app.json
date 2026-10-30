@@ -1,0 +1,28 @@
+{
+  "id": "stirling-pdf",
+  "name": "Stirling PDF",
+  "version": "3.2.2",
+  "summary": "Merge, split, convert and sign PDFs in the browser, locally.",
+  "description": "Dozens of PDF tools in one web app. Files are processed on this server and not sent anywhere else.",
+  "categories": [
+    "Productivity"
+  ],
+  "homepage": "https://www.stirlingpdf.com",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8090",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    }
+  ],
+  "web": {
+    "service": "stirling-pdf",
+    "port": 8080
+  },
+  "exceptions": []
+}

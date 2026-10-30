@@ -1,0 +1,38 @@
+{
+  "id": "forgejo",
+  "name": "Forgejo",
+  "version": "17.0.1",
+  "summary": "Git hosting with issues, pull requests and CI, like a small GitHub.",
+  "description": "A lightweight software forge. The first visit opens the installer; keep the SQLite database for a single server. This is the image variant that runs without root; Git over SSH uses the SSH port.",
+  "categories": [
+    "Developer tools"
+  ],
+  "homepage": "https://forgejo.org",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "3000",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "SSH_PORT",
+      "label": "SSH port",
+      "description": "Port for Git over SSH.",
+      "type": "number",
+      "default": "2222",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    }
+  ],
+  "web": {
+    "service": "forgejo",
+    "port": 3000
+  },
+  "exceptions": []
+}

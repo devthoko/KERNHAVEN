@@ -1,0 +1,35 @@
+{
+  "id": "home-assistant",
+  "name": "Home Assistant",
+  "version": "2026.10.4",
+  "summary": "Control and automate your smart home locally.",
+  "description": "Home automation that runs on your own server. Kernhaven runs it in an isolated network, so automatic device discovery, Bluetooth and USB sticks are not available; integrations that connect over the network work.",
+  "categories": [
+    "Smart home"
+  ],
+  "homepage": "https://www.home-assistant.io",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8123",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "home-assistant",
+    "port": 8123
+  },
+  "exceptions": []
+}

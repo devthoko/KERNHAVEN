@@ -102,7 +102,10 @@ export function AppStorePage() {
   };
   return (
     <>
-      <PageHeader title="App store" description="Apps from catalogs whose signatures Kernhaven verified." />
+      <PageHeader
+        title="App store"
+        description="Kernhaven Essentials come with Kernhaven. More apps come from catalog sources you add; Kernhaven verifies their signatures."
+      />
       <div className="mb-6 space-y-3">
         <div className="max-w-md">
           <TextField label="Search apps" type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -156,7 +159,7 @@ export function AppStorePage() {
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                   <span>v{a.version}</span>
                   <span aria-hidden="true">·</span>
-                  <span>{a.source_name}</span>
+                  {a.builtin ? <Badge tone="blue">Essentials</Badge> : <span>{a.source_name}</span>}
                   {a.categories.map((c) => (
                     <Badge key={c}>{c}</Badge>
                   ))}
@@ -214,6 +217,11 @@ export function StoreAppPage({ source, app }: { source: string; app: string }) {
     <>
       <BackLink to="/apps/store">App store</BackLink>
       <PageHeader title={a.name} description={`${a.summary} · version ${a.version} · from ${data.source.name}`} />
+      {data.source.builtin && (
+        <div className="mb-4">
+          <Alert kind="info">Part of Kernhaven Essentials: tested with this Kernhaven version, image pinned by digest, no policy exceptions.</Alert>
+        </div>
+      )}
       {data.expired && (
         <div className="mb-4">
           <Alert kind="warning">The catalog of {data.source.name} has expired. An owner must sync it before apps can be installed.</Alert>
@@ -358,52 +366,84 @@ export function SourcesPage() {
       {error && <Alert>{error}</Alert>}
       {data && data.sources.length === 0 && (
         <Card>
-          <p className="text-sm text-slate-600 dark:text-slate-400">No sources yet. Kernhaven ships without a default catalog; add the sources you trust.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">No sources yet. Add the sources you trust.</p>
         </Card>
       )}
       <div className="space-y-4">
-        {data?.sources.map((s) => (
-          <Card
-            key={s.id}
-            title={s.name}
-            actions={
-              manage ? (
-                <div className="flex flex-wrap gap-2">
-                  {s.url && (
-                    <Button variant="secondary" busy={busy === `sync-${s.id}`} onClick={() => run(`sync-${s.id}`, () => api.post(`/catalog/sources/${s.id}/sync`), `${s.name} synced.`)}>
-                      Sync
+        {data?.sources.map((s) => {
+          const toggle = manage && (
+            <Button
+              variant="secondary"
+              busy={busy === `toggle-${s.id}`}
+              onClick={() =>
+                run(`toggle-${s.id}`, () => api.put(`/catalog/sources/${s.id}/enabled`, { enabled: s.disabled }), s.disabled ? `${s.name} is on again.` : `${s.name} is off. Installed apps keep running.`)
+              }
+            >
+              {s.disabled ? "Turn on" : "Turn off"} <span className="sr-only">{s.name}</span>
+            </Button>
+          );
+          const status = (
+            <p className="mb-3 flex flex-wrap gap-2">
+              {s.builtin && <Badge tone="blue">Comes with Kernhaven</Badge>}
+              {s.disabled && <Badge tone="amber">Off: offers no apps and no updates</Badge>}
+            </p>
+          );
+          if (s.builtin) {
+            return (
+              <Card key={s.id} title={s.name} actions={toggle || undefined}>
+                {status}
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {s.app_count} hand-picked apps, tested with this version of Kernhaven. Images are pinned by digest and no app needs a policy exception. The list is updated with
+                  Kernhaven itself, so there is nothing to sync and no key to trust.
+                </p>
+              </Card>
+            );
+          }
+          return (
+            <Card
+              key={s.id}
+              title={s.name}
+              actions={
+                manage ? (
+                  <div className="flex flex-wrap gap-2">
+                    {toggle}
+                    {s.url && (
+                      <Button variant="secondary" busy={busy === `sync-${s.id}`} onClick={() => run(`sync-${s.id}`, () => api.post(`/catalog/sources/${s.id}/sync`), `${s.name} synced.`)}>
+                        Sync
+                      </Button>
+                    )}
+                    <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 has-[:focus-visible]:outline-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                      Upload catalog
+                      <input type="file" accept=".json,application/json" className="sr-only" onChange={uploadFile(s)} />
+                    </label>
+                    <Button variant="ghost" className="text-red-700 dark:text-red-400" onClick={() => setRemove(s)}>
+                      Remove
                     </Button>
-                  )}
-                  <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 has-[:focus-visible]:outline-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
-                    Upload catalog
-                    <input type="file" accept=".json,application/json" className="sr-only" onChange={uploadFile(s)} />
-                  </label>
-                  <Button variant="ghost" className="text-red-700 dark:text-red-400" onClick={() => setRemove(s)}>
-                    Remove
-                  </Button>
+                  </div>
+                ) : undefined
+              }
+            >
+              {s.disabled && status}
+              <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+                <dt className="text-slate-600 dark:text-slate-400">URL</dt>
+                <dd className="break-all">{s.url || "upload only"}</dd>
+                <dt className="text-slate-600 dark:text-slate-400">Key ID</dt>
+                <dd className="font-mono">{s.key_id}</dd>
+                <dt className="text-slate-600 dark:text-slate-400">Catalog</dt>
+                <dd>{s.serial > 0 ? `${s.catalog_name} · serial ${s.serial} · ${s.app_count} apps` : "not synced yet"}</dd>
+                <dt className="text-slate-600 dark:text-slate-400">Synced</dt>
+                <dd>{s.synced_at ? formatDateTime(s.synced_at) : "—"}</dd>
+                <dt className="text-slate-600 dark:text-slate-400">Expires</dt>
+                <dd>{s.expires_at ? formatDateTime(s.expires_at) : "—"}</dd>
+              </dl>
+              {s.last_error && (
+                <div className="mt-3">
+                  <Alert>Last catalog rejected: {s.last_error}</Alert>
                 </div>
-              ) : undefined
-            }
-          >
-            <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-              <dt className="text-slate-600 dark:text-slate-400">URL</dt>
-              <dd className="break-all">{s.url || "upload only"}</dd>
-              <dt className="text-slate-600 dark:text-slate-400">Key ID</dt>
-              <dd className="font-mono">{s.key_id}</dd>
-              <dt className="text-slate-600 dark:text-slate-400">Catalog</dt>
-              <dd>{s.serial > 0 ? `${s.catalog_name} · serial ${s.serial} · ${s.app_count} apps` : "not synced yet"}</dd>
-              <dt className="text-slate-600 dark:text-slate-400">Synced</dt>
-              <dd>{s.synced_at ? formatDateTime(s.synced_at) : "—"}</dd>
-              <dt className="text-slate-600 dark:text-slate-400">Expires</dt>
-              <dd>{s.expires_at ? formatDateTime(s.expires_at) : "—"}</dd>
-            </dl>
-            {s.last_error && (
-              <div className="mt-3">
-                <Alert>Last catalog rejected: {s.last_error}</Alert>
-              </div>
-            )}
-          </Card>
-        ))}
+              )}
+            </Card>
+          );
+        })}
       </div>
       <Dialog open={adding} title="Add catalog source" onClose={() => setAdding(false)}>
         <form

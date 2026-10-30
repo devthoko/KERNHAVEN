@@ -1,0 +1,35 @@
+{
+  "id": "vaultwarden",
+  "name": "Vaultwarden",
+  "version": "1.37.4",
+  "summary": "Password manager compatible with the Bitwarden apps.",
+  "description": "A lightweight server for the Bitwarden password manager apps and browser extensions.\n\nThe web vault only works over HTTPS: publish it through Network → Reverse proxy with a certificate. Leave sign-ups open until your accounts exist, then turn them off.",
+  "categories": [
+    "Security"
+  ],
+  "homepage": "https://github.com/dani-garcia/vaultwarden",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8222",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "SIGNUPS_ALLOWED",
+      "label": "Allow new accounts",
+      "description": "Anyone who can reach the server may create an account while this is on.",
+      "type": "boolean",
+      "default": "true"
+    }
+  ],
+  "web": {
+    "service": "vaultwarden",
+    "port": 80
+  },
+  "exceptions": []
+}

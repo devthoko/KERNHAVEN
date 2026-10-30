@@ -1,0 +1,35 @@
+{
+  "id": "audiobookshelf",
+  "name": "Audiobookshelf",
+  "version": "2.37.2",
+  "summary": "Audiobooks and podcasts with progress sync across devices.",
+  "description": "A self-hosted audiobook and podcast server with apps for phones. Listening progress follows you between devices.",
+  "categories": [
+    "Media"
+  ],
+  "homepage": "https://www.audiobookshelf.org",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "13378",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "audiobookshelf",
+    "port": 80
+  },
+  "exceptions": []
+}

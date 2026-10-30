@@ -1,0 +1,35 @@
+{
+  "id": "uptime-kuma",
+  "name": "Uptime Kuma",
+  "version": "2.5.8",
+  "summary": "Watch websites and services and get told when they go down.",
+  "description": "Monitors HTTP, TCP, DNS and more, with status pages and many notification channels. This is the image variant that runs without root.",
+  "categories": [
+    "Monitoring"
+  ],
+  "homepage": "https://uptime.kuma.pet",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "3001",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "uptime-kuma",
+    "port": 3001
+  },
+  "exceptions": []
+}

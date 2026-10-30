@@ -614,11 +614,23 @@ paths:
     delete:
       operationId: removeCatalogSource
       x-permission: catalog.manage
-      description: Removes the source and its catalog. Installed apps stay but no longer receive updates. Needs a recent step-up (403 step_up_required, see /auth/step-up).
+      description: Removes the source and its catalog. Installed apps stay but no longer receive updates. The built-in catalog cannot be removed, only disabled (409). Needs a recent step-up (403 step_up_required, see /auth/step-up).
       parameters: [{ $ref: "#/components/parameters/SourceID" }]
       responses:
         "204": { description: Removed }
         "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /catalog/sources/{id}/enabled:
+    put:
+      operationId: setCatalogSourceEnabled
+      x-permission: catalog.manage
+      description: Turns a source on or off, including the built-in Kernhaven Essentials catalog (ADR-0034). A disabled source keeps its catalog but offers no apps and no updates; installed apps keep running. Needs a recent step-up (403 step_up_required, see /auth/step-up).
+      parameters: [{ $ref: "#/components/parameters/SourceID" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [enabled], additionalProperties: false, properties: { enabled: { type: boolean } } } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /catalog/sources/{id}/sync:
     post:
       operationId: syncCatalogSource
@@ -628,6 +640,7 @@ paths:
       responses:
         "200": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
         "422": { description: Rejected catalog (code catalog_rejected), blocked URL or source without URL, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: The built-in catalog is not synced, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
   /catalog/sources/{id}/upload:
     post:
       operationId: uploadCatalog
@@ -637,6 +650,7 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogEnvelope" } } } }
       responses:
         "200": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/CatalogSource" } } } }
+        "409": { description: The built-in catalog does not take uploads, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "413": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
   /catalog/apps:
@@ -1900,6 +1914,8 @@ components:
         synced_at: { type: [string, "null"], format: date-time }
         last_error: { type: string }
         app_count: { type: integer }
+        builtin: { type: boolean, description: "the catalog shipped with Kernhaven (ADR-0034): no key, no URL, no expiry; sync, upload and removal answer 409" }
+        disabled: { type: boolean, description: a disabled source offers no apps and no updates }
     CatalogSourceInput:
       type: object
       required: [name, public_key]
@@ -1927,6 +1943,7 @@ components:
         summary: { type: string }
         categories: { type: array, items: { type: string } }
         installed: { type: array, items: { type: string } }
+        builtin: { type: boolean, description: the app comes from the built-in Kernhaven Essentials catalog }
     CatalogAppDetail:
       type: object
       properties:

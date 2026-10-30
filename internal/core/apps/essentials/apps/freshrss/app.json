@@ -1,0 +1,35 @@
+{
+  "id": "freshrss",
+  "name": "FreshRSS",
+  "version": "1.30.4",
+  "summary": "A fast feed reader for news, blogs and podcasts.",
+  "description": "Follow websites through RSS and Atom feeds, with apps for phones. Feeds are refreshed every 20 minutes.",
+  "categories": [
+    "News"
+  ],
+  "homepage": "https://freshrss.org",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8081",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "freshrss",
+    "port": 80
+  },
+  "exceptions": []
+}

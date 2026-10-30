@@ -216,6 +216,11 @@ func New(db *sql.DB, cfg config.Config, log *slog.Logger, opts Options) (*App, e
 	}, log, now)
 	backupSvc.Register(rt)
 	appSvc := apps.New(db, auditLog, stackSvc, opts.Fetcher, now)
+	// The catalog shipped with this version (ADR-0034). A failure leaves the
+	// other sources and installed apps untouched.
+	if err := appSvc.EnsureBuiltin(context.Background()); err != nil {
+		log.Error("built-in app catalog", "error", err)
+	}
 	appSvc.SetRoutes(netSvc)
 	appSvc.Register(rt, ids)
 	// Live change notifications (M6b).

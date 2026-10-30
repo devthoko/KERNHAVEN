@@ -45,8 +45,14 @@ A source has a name, an optional HTTPS URL and its public key. URL sources are
 fetched through the SSRF-safe fetcher of M7 (public HTTPS only, checked after
 DNS resolution and on redirects). A signed catalog can also be uploaded to a
 source, for air-gapped hosts; the same checks apply. Only owners manage
-sources (AT-F04-03). Kernhaven ships without a default source; the
-`kernhaven-catalog` tool creates keys and signs catalogs.
+sources (AT-F04-03). The `kernhaven-catalog` tool creates keys and signs
+catalogs.
+
+Kernhaven ships one built-in source, **Kernhaven Essentials** (ADR-0034):
+part of the Core binary, trusted through the signed release instead of a key,
+without URL or expiry, updated with Kernhaven itself. It cannot be synced,
+replaced or removed; the owner can turn it off like any source
+(`PUT /catalog/sources/{id}/enabled`).
 
 ### App entry
 
@@ -161,8 +167,8 @@ upload it on the sources page. Increase `serial` for every new catalog.
   snapshot); there is no zero-downtime update.
 - Re-authentication for deleting data used the password; M11 replaced it
   with step-up (passkey or password plus second factor).
-- Kernhaven ships without a default catalog source; owners add the sources
-  they trust. There is no automatic periodic sync yet.
+- Besides the built-in Kernhaven Essentials (ADR-0034), owners add the
+  sources they trust. There is no automatic periodic sync yet.
 - Rootful Docker with separate service users is verified only as far as CI
   runners allow (B-2). Local browser tests need Playwright's system libraries
   (B-5); they run in CI.

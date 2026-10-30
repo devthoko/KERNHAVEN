@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/devthoko/KERNHAVEN/internal/catalog"
+	"github.com/devthoko/KERNHAVEN/internal/core/apps/essentials"
 	"github.com/devthoko/KERNHAVEN/internal/core/audit"
 	"github.com/devthoko/KERNHAVEN/internal/core/network"
 	"github.com/devthoko/KERNHAVEN/internal/core/stacks"
@@ -26,6 +27,7 @@ var (
 	ErrNotFound = errors.New("not found")
 	ErrExists   = errors.New("a source with this name already exists")
 	ErrNoURL    = errors.New("this source has no URL; upload a signed catalog instead")
+	ErrBuiltin  = errors.New("the built-in catalog comes with Kernhaven; it can only be turned on or off")
 )
 
 // ValidationError is a client error.
@@ -99,24 +101,34 @@ type Source struct {
 	SyncedAt    *time.Time `json:"synced_at"`
 	LastError   string     `json:"last_error"`
 	AppCount    int        `json:"app_count"`
+	// Builtin marks the catalog shipped with Kernhaven (ADR-0034).
+	Builtin bool `json:"builtin"`
+	// Disabled sources offer no apps and no updates.
+	Disabled bool `json:"disabled"`
 
 	payloadSHA256 string
 }
 
 // Expired reports whether the accepted catalog may no longer be used.
+// The built-in catalog does not expire: it is as current as the installed
+// Kernhaven version.
 func (src Source) expired(now time.Time) bool {
+	if src.Builtin {
+		return false
+	}
 	return src.ExpiresAt == nil || !src.ExpiresAt.After(now)
 }
 
 const sourceCols = `s.id, s.name, s.url, s.public_key, s.serial, s.payload_sha256, s.catalog_name, s.expires_ms, s.synced_ms, s.last_error,
-	(SELECT COUNT(*) FROM catalog_apps a WHERE a.source_id = s.id)`
+	(SELECT COUNT(*) FROM catalog_apps a WHERE a.source_id = s.id), s.builtin, s.disabled`
 
 type rowScanner interface{ Scan(...any) error }
 
 func scanSource(row rowScanner) (Source, error) {
 	var src Source
 	var expires, synced int64
-	err := row.Scan(&src.ID, &src.Name, &src.URL, &src.PublicKey, &src.Serial, &src.payloadSHA256, &src.CatalogName, &expires, &synced, &src.LastError, &src.AppCount)
+	err := row.Scan(&src.ID, &src.Name, &src.URL, &src.PublicKey, &src.Serial, &src.payloadSHA256, &src.CatalogName, &expires, &synced, &src.LastError, &src.AppCount,
+		&src.Builtin, &src.Disabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return src, ErrNotFound
 	}
@@ -139,7 +151,7 @@ func (s *Service) source(ctx context.Context, q querier, id int64) (Source, erro
 
 // Sources lists the catalog sources.
 func (s *Service) Sources(ctx context.Context) ([]Source, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+sourceCols+` FROM catalog_sources s ORDER BY s.name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT `+sourceCols+` FROM catalog_sources s ORDER BY s.builtin DESC, s.name`)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +235,9 @@ func (s *Service) DeleteSource(ctx context.Context, a stacks.Actor, id int64) er
 		if err != nil {
 			return err
 		}
+		if src.Builtin {
+			return ErrBuiltin
+		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM catalog_sources WHERE id = ?`, id); err != nil {
 			return err
 		}
@@ -236,6 +251,9 @@ func (s *Service) Sync(ctx context.Context, a stacks.Actor, id int64) (Source, e
 	src, err := s.source(ctx, s.db, id)
 	if err != nil {
 		return Source{}, err
+	}
+	if src.Builtin {
+		return src, ErrBuiltin
 	}
 	if src.URL == "" {
 		return src, ErrNoURL
@@ -256,7 +274,109 @@ func (s *Service) Upload(ctx context.Context, a stacks.Actor, id int64, data []b
 	if err != nil {
 		return Source{}, err
 	}
+	if src.Builtin {
+		return src, ErrBuiltin
+	}
 	return s.accept(ctx, a, src, data)
+}
+
+// SetEnabled turns a source on or off. A disabled source keeps its catalog
+// but offers no apps and no updates; installed apps keep running.
+func (s *Service) SetEnabled(ctx context.Context, a stacks.Actor, id int64, enabled bool) (Source, error) {
+	var out Source
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		src, err := s.source(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		if src.Disabled == !enabled {
+			out = src
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE catalog_sources SET disabled = ? WHERE id = ?`, !enabled, id); err != nil {
+			return err
+		}
+		action := "catalog.source.disable"
+		if enabled {
+			action = "catalog.source.enable"
+		}
+		if _, err := audit.Append(ctx, tx, s.now(), event(a, action, fmt.Sprintf("source:%d", id), audit.Success, "name", src.Name)); err != nil {
+			return err
+		}
+		out, err = s.source(ctx, tx, id)
+		return err
+	})
+	return out, err
+}
+
+// EnsureBuiltin creates the built-in source on first start and replaces its
+// catalog when this Kernhaven version ships a different one (ADR-0034). It
+// never re-enables a source the owner turned off.
+func (s *Service) EnsureBuiltin(ctx context.Context) error {
+	payload, err := essentials.Payload()
+	if err != nil {
+		return err
+	}
+	v, err := catalog.OpenBuiltin(payload)
+	if err != nil {
+		return err
+	}
+	system := stacks.Actor{Name: "system"}
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		var id int64
+		err := tx.QueryRowContext(ctx, `SELECT id FROM catalog_sources WHERE builtin = 1`).Scan(&id)
+		if errors.Is(err, sql.ErrNoRows) {
+			name := essentials.Name
+			var n int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_sources WHERE name = ?`, name).Scan(&n); err != nil {
+				return err
+			}
+			if n > 0 {
+				name += " (built in)"
+			}
+			res, err := tx.ExecContext(ctx, `INSERT INTO catalog_sources (name, url, public_key, builtin, created_by, created_ms) VALUES (?, '', '', 1, 0, ?)`, name, s.nowMS())
+			if err != nil {
+				return err
+			}
+			id, _ = res.LastInsertId()
+			if _, err := audit.Append(ctx, tx, s.now(), event(system, "catalog.source.add", fmt.Sprintf("source:%d", id), audit.Success, "name", name, "builtin", "true")); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+		src, err := s.source(ctx, tx, id)
+		if err != nil || src.payloadSHA256 == v.PayloadSHA256 {
+			return err
+		}
+		// The binary is the trust anchor: an older catalog after a Kernhaven
+		// rollback is as valid as a newer one after an upgrade.
+		if err := s.storeApps(ctx, tx, id, v.Catalog.Apps); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE catalog_sources SET serial = ?, payload_sha256 = ?, catalog_name = ?, expires_ms = 0, synced_ms = ?, last_error = ''
+			WHERE id = ?`, v.Catalog.Serial, v.PayloadSHA256, v.Catalog.Name, s.nowMS(), id); err != nil {
+			return err
+		}
+		_, err = audit.Append(ctx, tx, s.now(), event(system, "catalog.sync", fmt.Sprintf("source:%d", id), audit.Success,
+			"builtin", "true", "serial", fmt.Sprint(v.Catalog.Serial), "apps", fmt.Sprint(len(v.Catalog.Apps)), "sha256", v.PayloadSHA256))
+		return err
+	})
+}
+
+func (s *Service) storeApps(ctx context.Context, tx *sql.Tx, sourceID int64, list []catalog.App) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM catalog_apps WHERE source_id = ?`, sourceID); err != nil {
+		return err
+	}
+	for _, app := range list {
+		cats, _ := json.Marshal(orEmpty(app.Categories))
+		entry, _ := json.Marshal(app)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_apps (source_id, app_id, name, version, summary, categories, entry) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			sourceID, app.ID, app.Name, app.Version, app.Summary, string(cats), string(entry)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) reject(ctx context.Context, a stacks.Actor, src Source, err error) {
@@ -281,16 +401,8 @@ func (s *Service) accept(ctx context.Context, a stacks.Actor, src Source, data [
 	}
 	var out Source
 	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM catalog_apps WHERE source_id = ?`, src.ID); err != nil {
+		if err := s.storeApps(ctx, tx, src.ID, v.Catalog.Apps); err != nil {
 			return err
-		}
-		for _, app := range v.Catalog.Apps {
-			cats, _ := json.Marshal(orEmpty(app.Categories))
-			entry, _ := json.Marshal(app)
-			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_apps (source_id, app_id, name, version, summary, categories, entry) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				src.ID, app.ID, app.Name, app.Version, app.Summary, string(cats), string(entry)); err != nil {
-				return err
-			}
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE catalog_sources SET serial = ?, payload_sha256 = ?, catalog_name = ?, expires_ms = ?, synced_ms = ?, last_error = ''
 			WHERE id = ?`, v.Catalog.Serial, v.PayloadSHA256, v.Catalog.Name, v.Catalog.Expires.UnixMilli(), s.nowMS(), src.ID); err != nil {
@@ -331,13 +443,14 @@ type Listing struct {
 	Summary    string   `json:"summary"`
 	Categories []string `json:"categories"`
 	Installed  []string `json:"installed"`
+	Builtin    bool     `json:"builtin"`
 }
 
 // Browse lists catalog apps matching the query and category (AT-F04-02).
 // It also returns all categories for filtering.
 func (s *Service) Browse(ctx context.Context, query, category string, sourceID int64) ([]Listing, []string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT a.source_id, s.name, a.app_id, a.name, a.version, a.summary, a.categories
-		FROM catalog_apps a JOIN catalog_sources s ON s.id = a.source_id ORDER BY a.name COLLATE NOCASE, s.name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT a.source_id, s.name, s.builtin, a.app_id, a.name, a.version, a.summary, a.categories
+		FROM catalog_apps a JOIN catalog_sources s ON s.id = a.source_id WHERE s.disabled = 0 ORDER BY a.name COLLATE NOCASE, s.name`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -352,16 +465,16 @@ func (s *Service) Browse(ctx context.Context, query, category string, sourceID i
 	for rows.Next() {
 		var l Listing
 		var c string
-		if err := rows.Scan(&l.SourceID, &l.SourceName, &l.AppID, &l.Name, &l.Version, &l.Summary, &c); err != nil {
+		if err := rows.Scan(&l.SourceID, &l.SourceName, &l.Builtin, &l.AppID, &l.Name, &l.Version, &l.Summary, &c); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal([]byte(c), &l.Categories)
 		l.Categories = orEmpty(l.Categories)
-		for _, x := range l.Categories {
-			cats[x] = true
-		}
 		if sourceID > 0 && l.SourceID != sourceID {
 			continue
+		}
+		for _, x := range l.Categories {
+			cats[x] = true
 		}
 		if category != "" && !contains(l.Categories, category) {
 			continue
@@ -414,6 +527,9 @@ func (s *Service) entry(ctx context.Context, q querier, sourceID int64, appID st
 	src, err := s.source(ctx, q, sourceID)
 	if err != nil {
 		return src, catalog.App{}, err
+	}
+	if src.Disabled {
+		return src, catalog.App{}, ErrNotFound
 	}
 	var raw string
 	err = q.QueryRowContext(ctx, `SELECT entry FROM catalog_apps WHERE source_id = ? AND app_id = ?`, sourceID, appID).Scan(&raw)

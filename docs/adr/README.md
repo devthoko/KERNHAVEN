@@ -39,3 +39,4 @@ ADR that supersedes the old one.
 | [0031](0031-console-and-live-streams.md) | A line console and live updates over server-sent events | Accepted |
 | [0032](0032-packages-and-upgrades.md) | Debian packages, an idempotent installer and a CLI upgrader with automatic rollback | Accepted |
 | [0033](0033-web-ui-information-architecture.md) | Web UI: areas with tabs, apps-first home, own icon set | Proposed |
+| [0034](0034-built-in-essentials-catalog.md) | Built-in Kernhaven Essentials catalog, trusted through the release | Proposed |

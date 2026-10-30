@@ -341,6 +341,9 @@ export interface CatalogSource {
   synced_at: string | null;
   last_error: string;
   app_count: number;
+  /** The catalog shipped with Kernhaven (ADR-0034). */
+  builtin: boolean;
+  disabled: boolean;
 }
 
 export interface CatalogListing {
@@ -352,6 +355,7 @@ export interface CatalogListing {
   summary: string;
   categories: string[];
   installed: string[];
+  builtin: boolean;
 }
 
 export interface AppField {

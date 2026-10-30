@@ -1,0 +1,13 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.37.4@sha256:efb3cde962015fcc036b2ea625242248611943b27212ebf4392841fb30fad055
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "${PORT}:80"
+    environment:
+      SIGNUPS_ALLOWED: "${SIGNUPS_ALLOWED}"
+    volumes:
+      - data:/data
+volumes:
+  data:

@@ -58,7 +58,7 @@ type Envelope struct {
 type Catalog struct {
 	Name    string    `json:"name"`
 	Serial  int64     `json:"serial"`
-	Expires time.Time `json:"expires"`
+	Expires time.Time `json:"expires,omitzero"`
 	Apps    []App     `json:"apps"`
 }
 
@@ -165,7 +165,7 @@ func Sign(key ed25519.PrivateKey, c Catalog) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := c.validate(); err != nil {
+	if err := c.validate(true); err != nil {
 		return nil, err
 	}
 	env := Envelope{
@@ -226,10 +226,30 @@ func Open(data []byte, pub ed25519.PublicKey, prev State, now time.Time) (Verifi
 	case c.Expires.After(now.Add(MaxValidity)):
 		return Verified{}, fmt.Errorf("%w: expires more than 400 days ahead", ErrInvalid)
 	}
-	if err := c.validate(); err != nil {
+	if err := c.validate(true); err != nil {
 		return Verified{}, err
 	}
 	return Verified{Catalog: c, PayloadSHA256: digest}, nil
+}
+
+// OpenBuiltin validates a catalog that ships inside the Kernhaven binary
+// (ADR-0034). It has no signature of its own: the release signature covers
+// the binary, and with it this payload. It has no expiry either, because it
+// is replaced by the next Kernhaven version, not by a download. Every other
+// check of Open applies.
+func OpenBuiltin(payload []byte) (Verified, error) {
+	var c Catalog
+	if err := strictDecode(payload, &c); err != nil {
+		return Verified{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if !c.Expires.IsZero() {
+		return Verified{}, fmt.Errorf("%w: a built-in catalog has no expiry", ErrInvalid)
+	}
+	if err := c.validate(false); err != nil {
+		return Verified{}, err
+	}
+	sum := sha256.Sum256(payload)
+	return Verified{Catalog: c, PayloadSHA256: hex.EncodeToString(sum[:])}, nil
 }
 
 func truncate(s string, n int) string {
@@ -251,7 +271,7 @@ func plain(s string, max int, multiline bool) bool {
 	return true
 }
 
-func (c Catalog) validate() error {
+func (c Catalog) validate(signed bool) error {
 	var errs []string
 	add := func(format string, a ...any) { errs = append(errs, fmt.Sprintf(format, a...)) }
 	if strings.TrimSpace(c.Name) == "" || !plain(c.Name, maxText, false) {
@@ -260,7 +280,7 @@ func (c Catalog) validate() error {
 	if c.Serial < 1 {
 		add("serial: must be at least 1")
 	}
-	if c.Expires.IsZero() {
+	if signed && c.Expires.IsZero() {
 		add("expires: required")
 	}
 	if len(c.Apps) > MaxApps {

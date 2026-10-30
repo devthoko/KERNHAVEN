@@ -244,3 +244,42 @@ func FuzzOpen(f *testing.F) {
 		}
 	})
 }
+
+// ADR-0034: a built-in catalog has neither signature nor expiry; every
+// content check still applies.
+func TestOpenBuiltin(t *testing.T) {
+	c := sample()
+	c.Expires = time.Time{}
+	payload, err := json.Marshal(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(payload), "expires") {
+		t.Fatalf("zero expiry is serialised: %s", payload)
+	}
+	v, err := OpenBuiltin(payload)
+	if err != nil || v.Catalog.Apps[0].ID != "whoami" || len(v.PayloadSHA256) != 64 {
+		t.Fatalf("builtin %+v %v", v, err)
+	}
+
+	withExpiry, _ := json.Marshal(sample())
+	bad := sample()
+	bad.Expires = time.Time{}
+	bad.Apps[0].Compose = "services:\n  app:\n    build: .\n"
+	invalid, _ := json.Marshal(bad)
+	for name, data := range map[string][]byte{
+		"expiry":        withExpiry,
+		"compose":       invalid,
+		"unknown field": []byte(`{"name":"x","serial":1,"apps":[],"key":"x"}`),
+		"envelope":      sign(t, mustKey(t), sample()),
+	} {
+		if _, err := OpenBuiltin(data); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+func mustKey(t *testing.T) ed25519.PrivateKey {
+	_, priv := keys(t)
+	return priv
+}

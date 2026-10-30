@@ -1,0 +1,35 @@
+{
+  "id": "navidrome",
+  "name": "Navidrome",
+  "version": "0.64.2",
+  "summary": "Your music collection, streamed like a music service.",
+  "description": "A music server with a modern web player, compatible with Subsonic apps. Music goes into the app's music volume; the library is rescanned every hour.",
+  "categories": [
+    "Media"
+  ],
+  "homepage": "https://www.navidrome.org",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "4533",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "navidrome",
+    "port": 4533
+  },
+  "exceptions": []
+}

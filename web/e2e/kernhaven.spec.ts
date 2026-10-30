@@ -393,9 +393,14 @@ async function uploadCatalog(p: Page, data: Buffer) {
 
 test("AT-F04-01, AT-F04-03: the owner adds a source and uploads a signed catalog", async () => {
   test.skip(!docker, "needs the agent with Docker");
+  // ADR-0034: Kernhaven Essentials are there from the start.
   await page.goto("/apps/store");
+  await expect(page.getByRole("link", { name: "Vaultwarden" })).toBeVisible();
+  await page.getByLabel("Search apps").fill("nothing like this");
   await expect(page.getByText("No apps found.")).toBeVisible();
   await page.getByRole("navigation", { name: "Apps pages" }).getByRole("link", { name: "Catalog sources" }).click();
+  await expect(page.getByText("Comes with Kernhaven")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Turn off Kernhaven Essentials" })).toBeVisible();
   await page.getByRole("button", { name: "Add source" }).click();
   const dialog = page.getByRole("dialog", { name: "Add catalog source" });
   await dialog.getByLabel("Name").fill("E2E catalog");
@@ -571,6 +576,8 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
   await expect(viewer.getByRole("button", { name: "Add source" })).toHaveCount(0);
+  await expect(viewer.getByText("Comes with Kernhaven")).toBeVisible();
+  await expect(viewer.getByRole("button", { name: /^Turn (off|on)/ })).toHaveCount(0);
   await viewer.context().close();
 });
 

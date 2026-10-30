@@ -1,0 +1,35 @@
+{
+  "id": "jellyfin",
+  "name": "Jellyfin",
+  "version": "12.4",
+  "summary": "Stream your films, series and music to every device.",
+  "description": "A media server for films, series, music and photos with apps for TVs, phones and browsers.\n\nMedia go into the app's media volume. Hardware transcoding needs device access and is not enabled.",
+  "categories": [
+    "Media"
+  ],
+  "homepage": "https://jellyfin.org",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8096",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "jellyfin",
+    "port": 8096
+  },
+  "exceptions": []
+}

@@ -167,7 +167,8 @@ func TestCatalogSources(t *testing.T) {
 	}
 	var list struct{ Sources []apps.Source }
 	viewer.do("GET", "/api/v1/catalog/sources", nil).expect(200).json(&list)
-	if len(list.Sources) != 2 || list.Sources[0].Serial != 5 || list.Sources[0].AppCount != 1 || list.Sources[0].LastError == "" {
+	// The built-in catalog is listed first (ADR-0034).
+	if len(list.Sources) != 3 || !list.Sources[0].Builtin || list.Sources[1].Serial != 5 || list.Sources[1].AppCount != 1 || list.Sources[1].LastError == "" {
 		t.Fatalf("sources after rejections %+v", list.Sources)
 	}
 	if n := auditCount(t, h, "catalog.sync", "failure"); n != 3 {
@@ -190,8 +191,105 @@ func TestCatalogSources(t *testing.T) {
 	}
 	owner.do("DELETE", "/api/v1/catalog/sources/"+itoa(srcC.ID), nil).expect(204)
 	viewer.do("GET", "/api/v1/catalog/sources", nil).expect(200).json(&list)
-	if len(list.Sources) != 2 {
+	if len(list.Sources) != 3 {
 		t.Fatalf("after delete %+v", list.Sources)
+	}
+}
+
+// ADR-0034: the catalog that ships with Kernhaven is there from the first
+// start, cannot be synced, replaced or removed, and only the owner turns it
+// off. A restart restores a changed catalog but keeps the owner's choice.
+func TestBuiltinCatalog(t *testing.T) {
+	h, _ := withAgent(t)
+	owner := h.setupOwner()
+	h.createUser(owner, "admin", authz.Admin)
+	admin := h.loginAs("admin")
+	h.createUser(owner, "viewer", authz.Viewer)
+	viewer := h.loginAs("viewer")
+
+	var list struct{ Sources []apps.Source }
+	viewer.do("GET", "/api/v1/catalog/sources", nil).expect(200).json(&list)
+	if len(list.Sources) != 1 || !list.Sources[0].Builtin || list.Sources[0].Name != "Kernhaven Essentials" || list.Sources[0].AppCount < 10 ||
+		list.Sources[0].PublicKey != "" || list.Sources[0].ExpiresAt != nil {
+		t.Fatalf("built-in source %+v", list.Sources)
+	}
+	id := itoa(list.Sources[0].ID)
+	if n := auditCount(t, h, "catalog.sync", "success"); n != 1 {
+		t.Fatalf("seeding audited %d times", n)
+	}
+
+	var res struct{ Apps []apps.Listing }
+	viewer.do("GET", "/api/v1/catalog/apps?q=vaultwarden", nil).expect(200).json(&res)
+	if len(res.Apps) != 1 || !res.Apps[0].Builtin {
+		t.Fatalf("search %+v", res.Apps)
+	}
+	var d apps.Detail
+	viewer.do("GET", "/api/v1/catalog/apps/"+id+"/vaultwarden", nil).expect(200).json(&d)
+	if !d.Disclosure.Installable || d.Disclosure.NeedsApproval || d.Expired || !d.Disclosure.Services[0].ImagePinned {
+		t.Fatalf("vaultwarden disclosure %+v", d)
+	}
+
+	// Kernhaven updates it, nobody else.
+	s := newSigner(t)
+	for _, r := range []response{
+		owner.do("POST", "/api/v1/catalog/sources/"+id+"/sync", nil),
+		upload(owner, list.Sources[0].ID, s.sign(t, 99, vpnApp)),
+		owner.do("DELETE", "/api/v1/catalog/sources/"+id, nil),
+	} {
+		if r.Code != 409 {
+			t.Fatalf("change of the built-in catalog: %d %s", r.Code, r.Body)
+		}
+	}
+	if r := admin.do("PUT", "/api/v1/catalog/sources/"+id+"/enabled", map[string]bool{"enabled": false}); r.Code != 403 {
+		t.Fatalf("admin disabled the source: %d", r.Code)
+	}
+	if r := owner.do("PUT", "/api/v1/catalog/sources/"+id+"/enabled", map[string]any{}); r.Code != 422 {
+		t.Fatalf("missing flag: %d", r.Code)
+	}
+
+	// Off: no apps, no detail, no install.
+	var src apps.Source
+	owner.do("PUT", "/api/v1/catalog/sources/"+id+"/enabled", map[string]bool{"enabled": false}).expect(200).json(&src)
+	if !src.Disabled {
+		t.Fatalf("not disabled %+v", src)
+	}
+	viewer.do("GET", "/api/v1/catalog/apps", nil).expect(200).json(&res)
+	if len(res.Apps) != 0 {
+		t.Fatalf("disabled source still offers %+v", res.Apps)
+	}
+	viewer.do("GET", "/api/v1/catalog/apps/"+id+"/vaultwarden", nil).expect(404)
+	if r := owner.do("POST", "/api/v1/apps", map[string]any{"source_id": list.Sources[0].ID, "app_id": "vaultwarden", "name": "vault"}); r.Code != 404 {
+		t.Fatalf("install from a disabled source: %d %s", r.Code, r.Body)
+	}
+	if auditCount(t, h, "catalog.source.disable", "success") != 1 {
+		t.Fatal("disabling is not audited")
+	}
+
+	// A new Kernhaven version with a different catalog replaces it on start,
+	// and the source stays off.
+	if _, err := h.db.Exec(`UPDATE catalog_sources SET payload_sha256 = 'older' WHERE builtin = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.db.Exec(`DELETE FROM catalog_apps WHERE source_id = ?`, list.Sources[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := New(h.db, h.cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), h.opts); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := auditCount(t, h, "catalog.sync", "success"); n != 2 {
+		t.Fatalf("restarts synced %d times, want once more", n)
+	}
+	viewer.do("GET", "/api/v1/catalog/sources", nil).expect(200).json(&list)
+	if len(list.Sources) != 1 || !list.Sources[0].Disabled || list.Sources[0].AppCount < 10 {
+		t.Fatalf("after restart %+v", list.Sources)
+	}
+
+	owner.do("PUT", "/api/v1/catalog/sources/"+id+"/enabled", map[string]bool{"enabled": true}).expect(200)
+	viewer.do("GET", "/api/v1/catalog/apps?q=vaultwarden", nil).expect(200).json(&res)
+	if len(res.Apps) != 1 || auditCount(t, h, "catalog.source.enable", "success") != 1 {
+		t.Fatalf("enabled again %+v", res.Apps)
 	}
 }
 
@@ -207,7 +305,9 @@ func TestCatalogBrowseAndDisclosure(t *testing.T) {
 		Apps       []apps.Listing
 		Categories []string
 	}
-	viewer.do("GET", "/api/v1/catalog/apps", nil).expect(200).json(&res)
+	// Only this source; the built-in catalog is covered by TestBuiltinCatalog.
+	only := "&source=" + itoa(src.ID)
+	viewer.do("GET", "/api/v1/catalog/apps?"+only, nil).expect(200).json(&res)
 	if len(res.Apps) != 3 || strings.Join(res.Categories, ",") != "Network,Productivity,Tools" {
 		t.Fatalf("all apps %+v %v", res.Apps, res.Categories)
 	}
@@ -215,7 +315,7 @@ func TestCatalogBrowseAndDisclosure(t *testing.T) {
 	if len(res.Apps) != 1 || res.Apps[0].AppID != "vpn" {
 		t.Fatalf("search %+v", res.Apps)
 	}
-	viewer.do("GET", "/api/v1/catalog/apps?category=Productivity", nil).expect(200).json(&res)
+	viewer.do("GET", "/api/v1/catalog/apps?category=Productivity"+only, nil).expect(200).json(&res)
 	if len(res.Apps) != 1 || res.Apps[0].AppID != "notes" {
 		t.Fatalf("category %+v", res.Apps)
 	}

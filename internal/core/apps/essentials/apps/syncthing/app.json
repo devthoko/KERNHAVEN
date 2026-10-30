@@ -1,0 +1,38 @@
+{
+  "id": "syncthing",
+  "name": "Syncthing",
+  "version": "2.1.7",
+  "summary": "Keep folders in sync between your devices, without a cloud.",
+  "description": "Continuous peer-to-peer file synchronisation. Devices connect to the sync port; the web interface manages folders and devices. Set a GUI password on first start.",
+  "categories": [
+    "Files"
+  ],
+  "homepage": "https://syncthing.net",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "8384",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "SYNC_PORT",
+      "label": "Sync port",
+      "description": "Port other devices connect to (TCP and UDP).",
+      "type": "number",
+      "default": "22000",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    }
+  ],
+  "web": {
+    "service": "syncthing",
+    "port": 8384
+  },
+  "exceptions": []
+}

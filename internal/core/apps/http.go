@@ -45,7 +45,7 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httpserver.WriteError(w, r, http.StatusUnprocessableEntity, "validation_failed", err.Error())
 	case errors.Is(err, ErrNotFound), errors.Is(err, stacks.ErrNotFound):
 		httpserver.WriteError(w, r, http.StatusNotFound, "not_found", "not found")
-	case errors.Is(err, ErrExists), errors.Is(err, stacks.ErrExists), errors.Is(err, ErrUpToDate):
+	case errors.Is(err, ErrExists), errors.Is(err, stacks.ErrExists), errors.Is(err, ErrUpToDate), errors.Is(err, ErrBuiltin):
 		httpserver.WriteError(w, r, http.StatusConflict, "conflict", err.Error())
 	case errors.Is(err, jobs.ErrDuplicate):
 		httpserver.WriteError(w, r, http.StatusConflict, "conflict", "another operation on this app is queued or running")
@@ -119,6 +119,34 @@ func (s *Service) Register(rt *httpserver.Router, ids *identity.Service) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	})
+
+	rt.HandleFunc("PUT /api/v1/catalog/sources/{id}/enabled", sources, func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if httpserver.DecodeJSON(w, r, &in) != nil {
+			return
+		}
+		if in.Enabled == nil {
+			writeErr(w, r, &ValidationError{"enabled is required"})
+			return
+		}
+		// Which sources are on decides which apps may be installed (AT-F09-04).
+		if err := identity.CheckStepUp(r.Context()); err != nil {
+			writeErr(w, r, err)
+			return
+		}
+		id, ok := sourceID(w, r)
+		if !ok {
+			return
+		}
+		src, err := s.SetEnabled(r.Context(), actorFrom(r), id, *in.Enabled)
+		if err != nil {
+			writeErr(w, r, err)
+			return
+		}
+		httpserver.WriteJSON(w, http.StatusOK, src)
 	})
 
 	rt.HandleFunc("POST /api/v1/catalog/sources/{id}/sync", sources, func(w http.ResponseWriter, r *http.Request) {

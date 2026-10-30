@@ -1,0 +1,35 @@
+{
+  "id": "mealie",
+  "name": "Mealie",
+  "version": "3.29.0",
+  "summary": "Recipe manager and meal planner with shopping lists.",
+  "description": "Import recipes from websites, plan meals for the week and turn them into shopping lists. The first sign-in uses the default account shown in Mealie's documentation; change its password right away.",
+  "categories": [
+    "Productivity"
+  ],
+  "homepage": "https://mealie.io",
+  "fields": [
+    {
+      "name": "PORT",
+      "label": "Port",
+      "description": "Port on this server for the web interface.",
+      "type": "number",
+      "default": "9925",
+      "required": true,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "name": "TZ",
+      "label": "Time zone",
+      "description": "IANA time zone, for example Europe/Berlin.",
+      "type": "text",
+      "default": "UTC"
+    }
+  ],
+  "web": {
+    "service": "mealie",
+    "port": 9000
+  },
+  "exceptions": []
+}

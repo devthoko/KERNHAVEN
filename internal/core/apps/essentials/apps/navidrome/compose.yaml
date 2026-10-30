@@ -1,0 +1,16 @@
+services:
+  navidrome:
+    image: deluan/navidrome:0.64.2@sha256:38dc2727bfcfd5ede290f8ada114fc90368146f265ae4701ddddbcbe2a44ee52
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "${PORT}:4533"
+    environment:
+      ND_SCANSCHEDULE: "1h"
+      TZ: "${TZ}"
+    volumes:
+      - data:/data
+      - music:/music
+volumes:
+  data:
+  music:
