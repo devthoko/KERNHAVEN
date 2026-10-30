@@ -13,12 +13,20 @@ Threats addressed: TH-43, TH-45 (below)
 | Upgrader (snapshot, health check, automatic and manual rollback) | `internal/upgrade`, `cmd/kernhaven-upgrade`, ADR-0032 |
 | Package | `scripts/package.sh`, `packaging/debian/{postinst,prerm,postrm}` |
 | Installer / uninstaller | `packaging/install.sh`, `packaging/uninstall.sh` |
+| One-line installer from GitHub | `packaging/get.sh` (pins the release key; `scripts/check-release-key.sh` keeps it equal to `deploy/release-keys/`) |
 | Grant key creation for the package | `kernhaven-core init-keys` |
 | Lifecycle test on real hosts | `scripts/package-test.sh`, CI job `package` (amd64, arm64) |
 
 ## Procedures
 
-**Install:** `apt-get install minisign`, then as root
+**Install in one line:** `curl -fsSL https://raw.githubusercontent.com/devthoko/KERNHAVEN/main/packaging/get.sh | sudo bash`
+— downloads the release assets (`SHA256SUMS`, `SHA256SUMS.minisig`, the
+package, `install.sh`) from the GitHub release `v<version>`, verifies the
+signature with the key pinned in the script and every file against the
+checksums, then runs `install.sh`. Everything runs from a function called on
+the last line, so a cut-off download executes nothing.
+
+**Install from a release directory:** `apt-get install minisign`, then as root
 `./install.sh --pubkey owner.pub RELEASE_DIR`. Set `public_origin` in
 `/etc/kernhaven/core.toml`; the setup token is in
 `journalctl -u kernhaven-core`.
@@ -48,7 +56,7 @@ database and its key, not the apps' volumes.
 | AT-F15-02 | `TestUpgradeSucceeds` (snapshot before the package, versions recorded, same and older versions need an explicit decision); CI: N-1 → N on a real installation with users and a migration |
 | AT-F15-03 | `TestFailedUpgradeRollsBack` (database and package back, broken package not cached), `TestUpgradeSucceeds` (manual rollback with the earlier database), `TestUpgradeNeedsCachedPackage`; CI: a release whose Core never becomes ready is rolled back (exit 3), then a manual rollback to N-1 |
 | AT-F15-04 | CI job `package` on amd64 and arm64: N-1 is the M15 commit (migrations up to 0013), N this branch; the users created under N-1 sign in after the upgrade and after both rollbacks |
-| AT-F17-01 | CI: `install.sh` with pre-flight checks installs the package and every service runs |
+| AT-F17-01 | CI: `install.sh` with pre-flight checks installs the package and every service runs; `get.sh` piped from curl installs from a signed mirror, refuses a release whose checksum list changed after signing (nothing installed) and refuses while no release key is pinned |
 | AT-F17-02 | CI: a second run repairs a deleted grant key and a stopped agent and keeps the administrator's configuration |
 | AT-F17-03 | CI: removal stops and removes units, users and configuration, keeps a running app and the data; a reinstall uses the kept data; `--remove-data` deletes it |
 | AT-F17-04 | CI: SSH configuration, firewall rules and the package list (except Kernhaven) are identical before and after install, repair, upgrades and rollbacks |
@@ -66,6 +74,10 @@ database and its key, not the apps' volumes.
   covered by backups (M16), not by the upgrade.
 - Caddy and Docker come from the distribution; the installer does not
   install or configure them.
+- The one-line installer needs a GitHub release with the assets named
+  above, signed by the owner (B-3); none exists yet. The script itself comes
+  unsigned from the repository over HTTPS; its pinned key protects
+  everything it downloads.
 
 ## Verification evidence (2026-10-29, branch `m18-installer`)
 

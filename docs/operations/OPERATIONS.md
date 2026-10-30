@@ -20,6 +20,19 @@ which ports your router forwards.
 
 ## 2. Install
 
+One line (downloads the latest signed release from GitHub, verifies it
+against the key pinned in the script, then runs its `install.sh`):
+
+    apt-get install caddy docker.io
+    curl -fsSL https://raw.githubusercontent.com/devthoko/KERNHAVEN/main/packaging/get.sh | sudo bash
+
+Settings: `KERNHAVEN_VERSION=1.0.0` (a given version),
+`KERNHAVEN_ALLOW_UNSUPPORTED=1` (a development host other than Debian 13),
+`KERNHAVEN_RELEASE_URL` (a mirror; the signature check still applies).
+`minisign` is installed if missing. Without a release key the script refuses.
+
+From a downloaded release directory instead:
+
     apt-get install minisign caddy docker.io
     ./install.sh --pubkey owner.pub RELEASE_DIR
 

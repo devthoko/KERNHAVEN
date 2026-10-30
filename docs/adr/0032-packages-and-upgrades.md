@@ -21,6 +21,9 @@ to replace binaries; host security settings must not change.
   with `--allow-unsupported`), architecture, systemd, ports, disk space and
   Docker, verifies the signed release (ADR-0013) and installs the package
   with apt (dependencies only). Running it again repairs.
+- **One-line install:** `packaging/get.sh`, fetched from the repository,
+  pins the owner's release key, downloads the GitHub release, verifies it
+  and runs its `install.sh`.
 - **Upgrades:** `kernhaven-upgrade` runs as root from the command line; the
   web interface cannot start it. It verifies the release, stops the Core,
   copies the database and the secret key, installs the package and waits

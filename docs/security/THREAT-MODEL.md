@@ -170,3 +170,4 @@ unchecked.
 | 2026-10-29 | M6b | New TH-25 (exec console) and TH-26 (long-lived streams), mitigated; TH-20 still holds: the console starts only sh or bash, never a command from the API (ADR-0031) |
 | 2026-10-29 | M18 | TH-43 partially mitigated (verification in place, key ceremony open, B-3); new TH-45 (installer side effects), mitigated |
 | 2026-10-29 | M19 | Review for 1.0 (section 6): all other threats mitigated; TH-06, TH-14, TH-41, TH-52 proposed for acceptance, TH-21 needs work or acceptance, TH-43 and TH-53 blocked by B-3 and B-2 — owner decision pending |
+| 2026-10-30 | M18 (one-line installer) | TH-43: `get.sh` pins the release key and verifies before running anything; the script itself is trusted through GitHub's HTTPS (documented; reading it first is offered) |

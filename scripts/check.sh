@@ -54,4 +54,7 @@ if git grep -nE -- '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' -- . ':!scripts/check
   echo "private key material found"; exit 1
 fi
 
+echo "== release key pinned in get.sh"
+scripts/check-release-key.sh
+
 echo "All checks passed."

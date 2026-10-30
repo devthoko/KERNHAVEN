@@ -57,6 +57,8 @@ jobs:
           if git grep -nE -- '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' -- . ':!scripts/check.sh' ':!.github/workflows/ci.yml'; then
             echo "private key material found"; exit 1
           fi
+      - name: release key pinned in get.sh matches deploy/release-keys
+        run: scripts/check-release-key.sh
 
   test:
     name: test (${{ matrix.arch }})
@@ -436,6 +438,8 @@ jobs:
           echo "::notice::signed releases verified by kernhaven-upgrade"
       - name: install, repair, upgrade N-1 → N, failed upgrade, rollback, removal (AT-F15-01..04, AT-F17-01..04)
         run: sudo scripts/package-test.sh "$RUNNER_TEMP/rel" "$RUNNER_TEMP/test.pub" 0.15.0 0.18.0 0.18.1
+      - name: one-line installer (get.sh) piped from curl against a local signed mirror
+        run: sudo scripts/get-test.sh "$RUNNER_TEMP/rel/0.18.0" 0.18.0 "$RUNNER_TEMP/test.pub"
 
   reproducible:
     name: reproducible build (two builds, identical binaries and packages)

@@ -7,10 +7,33 @@ servers in the homelab: containers, Compose stacks, an app store, storage,
 files, reverse proxy, TLS, monitoring, encrypted backups and safe upgrades —
 without giving the web application root on your host.
 
-> **Status: early development.** Identity, jobs and the web shell exist;
-> container, storage, network and backup features do not yet.
-> Version 1.0 will only be released when every gate in
-> [docs/release/QUALITY-GATES.md](docs/release/QUALITY-GATES.md) passes.
+> **Status: release candidate in review — no release yet.** All 1.0
+> capabilities are implemented and tested in CI on stacked branches awaiting
+> the owner's review. Version 1.0 will only be released when every gate in
+> [docs/release/QUALITY-GATES.md](docs/release/QUALITY-GATES.md) passes
+> ([current status](docs/release/1.0-GATE.md)).
+
+## Install
+
+On Debian 13 (amd64 or arm64), as soon as a signed release exists:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devthoko/KERNHAVEN/main/packaging/get.sh | sudo bash
+```
+
+The script downloads the latest release, verifies it against the release
+key pinned in the script, and runs the release's installer with its
+pre-flight checks. To read it before running it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/devthoko/KERNHAVEN/main/packaging/get.sh
+less get.sh
+sudo bash get.sh
+```
+
+`KERNHAVEN_VERSION=1.0.0` installs a given version. Until the release key
+exists, the script stops with a message instead of installing. Setup, upgrades
+and removal: [operator guide](docs/operations/OPERATIONS.md).
 
 ## Documentation
 
