@@ -41,3 +41,4 @@ ADR that supersedes the old one.
 | [0033](0033-web-ui-information-architecture.md) | Web UI: areas with tabs, apps-first home, own icon set | Proposed |
 | [0034](0034-built-in-essentials-catalog.md) | Built-in Kernhaven Essentials catalog, trusted through the release | Proposed |
 | [0035](0035-desktop-home-and-top-bar.md) | One shell with top bar, command palette and design rules | Proposed |
+| [0036](0036-smb-backup-target.md) | SMB file shares as backup targets (own client, signing required) | Proposed |

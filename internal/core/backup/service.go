@@ -28,6 +28,7 @@ const (
 	TargetLocal = "local"
 	TargetSFTP  = "sftp"
 	TargetS3    = "s3"
+	TargetSMB   = "smb"
 )
 
 // Errors of the backup API.
@@ -150,7 +151,7 @@ func (s *Service) recordFailure(ctx context.Context, a Actor, action, target str
 
 // TargetSecret holds a target's credentials; it is write-only in the API.
 type TargetSecret struct {
-	Password        string `json:"password,omitempty"`          // SFTP
+	Password        string `json:"password,omitempty"`          // SFTP, SMB
 	SecretAccessKey string `json:"secret_access_key,omitempty"` // S3
 }
 
@@ -202,8 +203,20 @@ func (s *Service) normalizeConfig(kind string, raw json.RawMessage) (json.RawMes
 			return nil, err
 		}
 		v = c
+	case TargetSMB:
+		var c SMBConfig
+		if err := strictJSON(raw, &c); err != nil {
+			return nil, err
+		}
+		if err := c.validate(); err != nil {
+			return nil, err
+		}
+		if err := s.literalAllowed(c.Host); err != nil {
+			return nil, err
+		}
+		v = c
 	default:
-		return nil, invalid("kind must be local, sftp or s3")
+		return nil, invalid("kind must be local, sftp, s3 or smb")
 	}
 	b, _ := json.Marshal(v)
 	return b, nil
@@ -244,6 +257,10 @@ func (s *Service) openTarget(ctx context.Context, kind string, raw json.RawMessa
 			auth = k
 		}
 		return OpenSFTP(ctx, s.cfg.Guard, c, auth)
+	case TargetSMB:
+		var c SMBConfig
+		_ = json.Unmarshal(cfg, &c)
+		return OpenSMB(ctx, s.cfg.Guard, c, sec.Password)
 	default:
 		var c S3Config
 		_ = json.Unmarshal(cfg, &c)

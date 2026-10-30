@@ -809,7 +809,7 @@ export interface Delivery {
 
 // ---- M16: backups ----
 
-export type BackupTargetKind = "local" | "sftp" | "s3";
+export type BackupTargetKind = "local" | "sftp" | "s3" | "smb";
 
 export interface BackupTargetConfig {
   path?: string;
@@ -823,6 +823,8 @@ export interface BackupTargetConfig {
   prefix?: string;
   access_key_id?: string;
   path_style?: boolean;
+  share?: string;
+  domain?: string;
 }
 
 export interface BackupRepository {

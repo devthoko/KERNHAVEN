@@ -19,7 +19,7 @@ sign-out.
 | Apps → Installed / App store / Catalog sources | Install, update (with data snapshot and rollback), remove apps from the built-in Kernhaven Essentials and from signed catalogs you add; turn sources off | read: Viewer+, install: Admin+, sources: Owner |
 | Files | File manager with uploads, previews, trash | per role and root |
 | Storage | Disks, SMART, formatting and mounts | read: Operator+, change: Admin+ |
-| Backups | Repositories, plans, snapshots, restores | read and run: Operator+, change and restore: Admin+ |
+| Backups | Repositories (local disk, network share (SMB), SFTP, S3), plans, snapshots, restores | read and run: Operator+, change and restore: Admin+ |
 | Monitoring → Overview | Host and container metrics for 1 hour to 7 days, services, platform versions | Operator+ |
 | Monitoring → Alerts | Current and past alerts; channels (e-mail, webhook, ntfy, Gotify); rules | read: Operator+, change: Admin+ |
 | Docker → Containers / Stacks / Images / Volumes / Networks | Docker objects and Compose stacks; logs follow live; a console for admins | read: Viewer+, operate: Operator+, console and change: Admin+ |

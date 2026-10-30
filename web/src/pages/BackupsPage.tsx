@@ -8,7 +8,7 @@ import { useSession } from "../lib/session";
 import type { BackupPlan, BackupRepository, BackupRetention, BackupSnapshot, BackupTargetConfig, BackupTargetKind, Stack } from "../lib/types";
 import { useData } from "../lib/useData";
 
-const kindLabel: Record<BackupTargetKind, string> = { local: "Local disk", sftp: "SFTP", s3: "S3-compatible" };
+const kindLabel: Record<BackupTargetKind, string> = { local: "Local disk", smb: "Network share (SMB)", sftp: "SFTP", s3: "S3-compatible" };
 
 type Notice = { kind: "success" | "error"; text: string };
 
@@ -16,6 +16,7 @@ function destination(r: BackupRepository): string {
   const c = r.config;
   if (r.kind === "local") return c.path ?? "";
   if (r.kind === "sftp") return `${c.user}@${c.host}:${c.port ?? 22}${c.path}`;
+  if (r.kind === "smb") return `\\\\${c.host}\\${c.share}${c.path ? `\\${c.path.replaceAll("/", "\\")}` : ""}`;
   return `${c.endpoint}/${c.bucket}/${c.prefix ?? ""}`;
 }
 
@@ -44,6 +45,7 @@ function RepositoryDialog({ open, onClose, onSaved }: { open: boolean; onClose: 
   const config = (): BackupTargetConfig => {
     if (kind === "local") return { path: cfg.path };
     if (kind === "sftp") return { host: cfg.host, port: Number(cfg.port ?? 22), user: cfg.user, path: cfg.path, host_key: scan?.host_key ?? "" };
+    if (kind === "smb") return { host: cfg.host, port: Number(cfg.port ?? 445), share: cfg.share, path: cfg.path || "", user: cfg.user, domain: cfg.domain || "" };
     return { endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket, prefix: cfg.prefix || undefined, access_key_id: cfg.access_key_id, path_style: !!cfg.path_style };
   };
   const save = async () => {
@@ -53,7 +55,7 @@ function RepositoryDialog({ open, onClose, onSaved }: { open: boolean; onClose: 
       return;
     }
     setBusy(true);
-    const sec = kind === "sftp" ? (secret ? { password: secret } : undefined) : kind === "s3" ? { secret_access_key: secret } : undefined;
+    const sec = kind === "sftp" ? (secret ? { password: secret } : undefined) : kind === "smb" ? { password: secret } : kind === "s3" ? { secret_access_key: secret } : undefined;
     try {
       await api.post("/backup/repositories", { name, kind, config: config(), secret: sec, passphrase: pass, connect });
       onSaved(connect ? `Connected to ${name}.` : `${name} is ready. Keep the passphrase somewhere safe: without it no backup can be restored on another host.`);
@@ -74,7 +76,17 @@ function RepositoryDialog({ open, onClose, onSaved }: { open: boolean; onClose: 
         {error && <Alert>{error}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
-          <SelectField label="Where" value={kind} onChange={(e) => setKind(e.target.value as BackupTargetKind)}>
+          <SelectField
+            label="Where"
+            value={kind}
+            onChange={(e) => {
+              const k = e.target.value as BackupTargetKind;
+              setKind(k);
+              // Each protocol has its own default port.
+              if (k === "smb" && (cfg.port === 22 || !cfg.port)) set({ port: 445 });
+              if (k === "sftp" && (cfg.port === 445 || !cfg.port)) set({ port: 22 });
+            }}
+          >
             {(Object.keys(kindLabel) as BackupTargetKind[]).map((k) => (
               <option key={k} value={k}>
                 {kindLabel[k]}
@@ -143,6 +155,31 @@ function RepositoryDialog({ open, onClose, onSaved }: { open: boolean; onClose: 
                 )}
               </div>
             )}
+          </div>
+        )}
+        {kind === "smb" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <p className="text-sm text-slate-600 sm:col-span-2 dark:text-slate-400">
+              A shared folder on a NAS, a Windows PC or a Samba server. Kernhaven signs in with the account below and requires signed SMB 2 or 3; SMB 1 is not supported. The
+              folder must exist.
+            </p>
+            <TextField label="Server" hint="Host name or IP address, for example nas.home.arpa" required autoCapitalize="none" spellCheck={false} value={cfg.host ?? ""} onChange={(e) => set({ host: e.target.value })} />
+            <TextField label="Port" type="number" min={1} max={65535} value={String(cfg.port ?? 445)} onChange={(e) => set({ port: Number(e.target.value) })} />
+            <TextField label="Share" hint="The share's name, for example backup" required autoCapitalize="none" spellCheck={false} value={cfg.share ?? ""} onChange={(e) => set({ share: e.target.value })} />
+            <TextField label="Folder in the share (optional)" hint="For example kernhaven or homelab/kernhaven" autoCapitalize="none" spellCheck={false} value={cfg.path ?? ""} onChange={(e) => set({ path: e.target.value })} />
+            <TextField label="User" required autoCapitalize="none" autoComplete="off" spellCheck={false} value={cfg.user ?? ""} onChange={(e) => set({ user: e.target.value })} />
+            <TextField label="Domain or workgroup (optional)" autoCapitalize="none" spellCheck={false} value={cfg.domain ?? ""} onChange={(e) => set({ domain: e.target.value })} />
+            <div className="sm:col-span-2">
+              <TextField
+                label="Share password"
+                type="password"
+                required
+                autoComplete="new-password"
+                hint="Stored encrypted on this server; it cannot be read back."
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+              />
+            </div>
           </div>
         )}
         {kind === "s3" && (
@@ -468,13 +505,13 @@ export function BackupsPage() {
 
   return (
     <>
-      <PageHeader title="Backups" description="Encrypted copies of the platform and your apps' data, on a disk, an SFTP server or S3." />
+      <PageHeader title="Backups" description="Encrypted copies of the platform and your apps' data, on a disk, a network share (SMB), an SFTP server or S3." />
       <div className="space-y-4">
         {notice && <Alert kind={notice.kind}>{notice.text}</Alert>}
         {plans.data.plans.length === 0 && (
           <GettingStarted
             steps={[
-              { title: "Add a repository", detail: "Where backups go: a local disk, an SFTP server or S3. You choose a passphrase that encrypts everything.", done: repoList.length > 0 },
+              { title: "Add a repository", detail: "Where backups go: a local disk, a network share (SMB), an SFTP server or S3. You choose a passphrase that encrypts everything.", done: repoList.length > 0 },
               { title: "Add a plan", detail: "What to back up (the platform, app data) and when; old snapshots are thinned out automatically.", done: false },
               { title: "Run it once", detail: "Start the plan by hand to check that it works, then keep the passphrase somewhere safe outside this server.", done: false },
             ]}

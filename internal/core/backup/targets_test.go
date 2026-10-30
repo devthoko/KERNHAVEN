@@ -253,6 +253,68 @@ func TestSFTPTarget(t *testing.T) {
 	}
 }
 
+// ADR-0036: SMB settings are checked before anything is dialled, and the
+// address guard applies. Operations against a real server are covered by
+// TestSMBRealServer (integration, Samba in CI).
+func TestSMBTargetSettings(t *testing.T) {
+	ctx := context.Background()
+	ok := SMBConfig{Host: "nas.home.arpa", Share: "backup", Path: "kernhaven/main", User: "kh"}
+	c := ok
+	if err := c.validate(); err != nil || c.Port != 445 {
+		t.Fatalf("valid settings: %v (port %d)", err, c.Port)
+	}
+	c = ok
+	c.Path = "/kernhaven/"
+	if err := c.validate(); err != nil || c.Path != "kernhaven" {
+		t.Fatalf("slashes are trimmed: %q %v", c.Path, err)
+	}
+	for name, bad := range map[string]SMBConfig{
+		"host with slash":   {Host: "nas/x", Share: "backup", User: "kh"},
+		"share with slash":  {Host: "nas", Share: "backup/x", User: "kh"},
+		"share with \\":     {Host: "nas", Share: `a\b`, User: "kh"},
+		"empty share":       {Host: "nas", Share: "", User: "kh"},
+		"parent path":       {Host: "nas", Share: "backup", Path: "../etc", User: "kh"},
+		"inner parent":      {Host: "nas", Share: "backup", Path: "a/../../b", User: "kh"},
+		"backslash in path": {Host: "nas", Share: "backup", Path: `a\b`, User: "kh"},
+		"unclean path":      {Host: "nas", Share: "backup", Path: "a//b", User: "kh"},
+		"no user":           {Host: "nas", Share: "backup"},
+		"user with slash":   {Host: "nas", Share: "backup", User: "dom/kh"},
+		"domain with colon": {Host: "nas", Share: "backup", User: "kh", Domain: "a:b"},
+		"port out of range": {Host: "nas", Port: 70000, Share: "backup", User: "kh"},
+	} {
+		if err := bad.validate(); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	if _, err := OpenSMB(ctx, loopback, ok, ""); err == nil || !strings.Contains(err.Error(), "password") {
+		t.Fatalf("empty password: %v", err)
+	}
+	local := SMBConfig{Host: "127.0.0.1", Port: 1, Share: "backup", User: "kh"}
+	if _, err := OpenSMB(ctx, netguard.Guard{}, local, "x"); !errors.Is(err, netguard.ErrForbiddenAddress) {
+		t.Fatalf("guard: %v", err)
+	}
+	// A server that does not speak SMB fails cleanly.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
+			conn.Close()
+		}
+	}()
+	addr := ln.Addr().(*net.TCPAddr)
+	if _, err := OpenSMB(ctx, loopback, SMBConfig{Host: "127.0.0.1", Port: addr.Port, Share: "backup", User: "kh"}, "x"); err == nil {
+		t.Fatal("a non-SMB server was accepted")
+	}
+}
+
 // Signature examples from the Amazon S3 SigV4 documentation.
 func TestSignV4(t *testing.T) {
 	now := time.Date(2013, 5, 24, 0, 0, 0, 0, time.UTC)

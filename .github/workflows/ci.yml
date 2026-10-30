@@ -250,6 +250,20 @@ jobs:
           KH_S3_SECRET_KEY: khsecret-for-tests
           KH_S3_BUCKET: kh-test
         run: scripts/go-test-ci.sh -count=1 -race -tags integration -v -run '^TestS3RealServer$' ./internal/core/backup/
+      - name: SMB test server (Samba 4.23, test tool only, pinned by digest; ADR-0036)
+        run: |
+          docker run -d --name kh-smb -p 127.0.0.1:14450:445 -e NAME=khtest -e USER=khbackup -e PASS=kh-smb-test-password \
+            dockurr/samba@sha256:2a0452a12b7a244a22f18d0f233101bb8d4952b5500ae263905e3b9dad3bf2ae
+          # docker-proxy accepts TCP before smbd listens; wait for the image's health check.
+          for i in $(seq 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' kh-smb)" = healthy ] && break; sleep 2; done
+          docker inspect -f '{{.State.Health.Status}}' kh-smb
+      - name: backup targets against a real SMB server (AT-F14-02)
+        env:
+          KH_SMB_ADDR: 127.0.0.1:14450
+          KH_SMB_SHARE: khtest
+          KH_SMB_USER: khbackup
+          KH_SMB_PASSWORD: kh-smb-test-password
+        run: scripts/go-test-ci.sh -count=1 -race -tags integration -v -run '^TestSMBRealServer$' ./internal/core/backup/
       - name: Caddy binary from the distribution archive (not started as a service)
         run: |
           sudo apt-get update -qq

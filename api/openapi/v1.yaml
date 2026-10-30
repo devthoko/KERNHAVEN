@@ -1671,8 +1671,8 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        kind: { type: string, enum: [local, sftp, s3] }
-        config: { type: object, description: "local: {path}; sftp: {host, port, user, path, host_key}; s3: {endpoint, region, bucket, prefix, access_key_id, path_style}" }
+        kind: { type: string, enum: [local, sftp, s3, smb] }
+        config: { type: object, description: "local: {path}; sftp: {host, port, user, path, host_key}; s3: {endpoint, region, bucket, prefix, access_key_id, path_style}; smb: {host, port, share, path, user, domain} (ADR-0036)" }
         has_secret: { type: boolean }
         repo_id: { type: string }
         verify_schedule: { type: string }
@@ -1689,9 +1689,9 @@ components:
       required: [name]
       properties:
         name: { type: string, maxLength: 64 }
-        kind: { type: string, enum: [local, sftp, s3] }
+        kind: { type: string, enum: [local, sftp, s3, smb] }
         config: { type: object }
-        secret: { type: object, description: "Write-only. sftp: {password} (omit to use Kernhaven's key); s3: {secret_access_key}", properties: { password: { type: string }, secret_access_key: { type: string } } }
+        secret: { type: object, description: "Write-only. sftp: {password} (omit to use Kernhaven's key); s3: {secret_access_key}; smb: {password} (required)", properties: { password: { type: string }, secret_access_key: { type: string } } }
         passphrase: { type: string, minLength: 12, description: Encrypts the repository key on the target; never stored. Needed again to restore on another host. }
         connect: { type: boolean }
         verify_schedule: { type: string }
