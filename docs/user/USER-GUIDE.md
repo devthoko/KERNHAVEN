@@ -4,10 +4,9 @@ What each page does and who may use it. Roles: **Owner** (everything),
 **Admin** (everything except owner management and policy downgrades),
 **Operator** (start/stop, logs, trigger backups), **Viewer** (read only).
 
-Home is your desktop: your apps, the state of the server and what needs a
-look; the dock at the bottom leads to all areas. Elsewhere the sidebar
-groups the pages into areas, and pages of one area are tabs at the top (for
-example Docker → Containers, Stacks, Images, Volumes, Networks).
+Home shows your apps, the state of the server and what needs a look. The
+sidebar groups the pages into areas, and pages of one area are tabs at the
+top (for example Docker → Containers, Stacks, Images, Volumes, Networks).
 
 The top bar is on every page: press Ctrl+K (⌘K on a Mac) or click the
 search field to jump to any page, app or action; the bell lists what needs

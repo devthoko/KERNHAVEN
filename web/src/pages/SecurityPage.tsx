@@ -1,4 +1,4 @@
-import { Alert, Badge, Card, PageHeader, Spinner, Table, td, th } from "../components/ui";
+import { Alert, Badge, Card, PageHeader, Spinner, Table, capitalize, link, td, th } from "../components/ui";
 import { api } from "../lib/api";
 import { formatDateTime, formatRelative, roleLabel } from "../lib/format";
 import type { SecurityOverview } from "../lib/types";
@@ -9,7 +9,7 @@ const tone = { critical: "red", warning: "amber", info: "blue" } as const;
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
+    <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
       <div className="text-xs text-slate-600 dark:text-slate-400">{label}</div>
       <div className="text-xl font-semibold">{value}</div>
       {note && <div className="text-xs text-slate-600 dark:text-slate-400">{note}</div>}
@@ -42,9 +42,9 @@ export function SecurityPage() {
             <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800" aria-label="Findings">
               {data.findings.map((f, i) => (
                 <li key={i} className="flex flex-wrap items-center gap-2 py-2">
-                  <Badge tone={tone[f.severity]}>{f.severity}</Badge>
+                  <Badge tone={tone[f.severity]}>{capitalize(f.severity)}</Badge>
                   <span>{f.title}</span>
-                  <Link to={f.link} className="font-medium text-brand-700 underline dark:text-brand-500">
+                  <Link to={f.link} className={link}>
                     Open <span className="sr-only">{f.title}</span>
                   </Link>
                 </li>
@@ -74,7 +74,7 @@ export function SecurityPage() {
                     {u.passkeys > 0 || u.totp ? (
                       <Badge tone="green">{[u.passkeys > 0 ? `${u.passkeys} passkey${u.passkeys > 1 ? "s" : ""}` : "", u.totp ? "app" : ""].filter(Boolean).join(" + ")}</Badge>
                     ) : (
-                      <Badge tone={u.role === "owner" || u.role === "admin" || u.required ? "red" : "gray"}>none</Badge>
+                      <Badge tone={u.role === "owner" || u.role === "admin" || u.required ? "red" : "gray"}>None</Badge>
                     )}
                   </td>
                 </tr>
@@ -102,7 +102,7 @@ export function SecurityPage() {
                     </td>
                     <td className={td}>
                       {r.unprotected ? (
-                        <Badge tone="amber">open to anyone</Badge>
+                        <Badge tone="amber">Open to anyone</Badge>
                       ) : (
                         [r.sign_in && "Kernhaven sign-in", r.lan_only && "LAN only", r.allow_list && "address list"].filter(Boolean).join(", ")
                       )}

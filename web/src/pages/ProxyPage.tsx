@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, Dialog, DotBadge, PageHeader, SelectField, Spinner, Table, TextField, inputClass, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime, roleLabel } from "../lib/format";
 import { Link } from "../lib/router";
@@ -7,7 +7,6 @@ import { useSession } from "../lib/session";
 import type { NetworkOverview, ProxyRoute, ProxyRouteInput, ProxyState, Role } from "../lib/types";
 import { useData } from "../lib/useData";
 
-const link = "font-medium text-brand-700 underline dark:text-brand-500";
 const roles: Role[] = ["viewer", "operator", "admin", "owner"];
 
 function emptyInput(): ProxyRouteInput {
@@ -24,7 +23,7 @@ function Access({ r }: { r: ProxyRoute }) {
   if (r.lan_only) parts.push(<Badge key="lan" tone="blue">LAN only</Badge>);
   if (r.allow_cidrs.length > 0) parts.push(<Badge key="ip" tone="blue">{r.allow_cidrs.length === 1 ? r.allow_cidrs[0] : `${r.allow_cidrs.length} networks`}</Badge>);
   if (r.sso) parts.push(<Badge key="sso" tone="green">Kernhaven sign-in ({roleLabel(r.sso_min_role)}+)</Badge>);
-  if (parts.length === 0) parts.push(<Badge key="open" tone="amber">open to everyone who reaches it</Badge>);
+  if (parts.length === 0) parts.push(<Badge key="open" tone="amber">Open to everyone who reaches it</Badge>);
   return <span className="flex flex-wrap gap-1">{parts}</span>;
 }
 
@@ -68,8 +67,8 @@ function StatusCard({ st, manage, onApplied }: { st: ProxyState; manage: boolean
       <div className="space-y-3 text-sm">
         {notice && <Alert kind={notice.kind}>{notice.text}</Alert>}
         <p className="flex flex-wrap items-center gap-2">
-          {st.reachable ? <Badge tone="green">running</Badge> : <Badge tone="red">not reachable</Badge>}
-          {st.reachable && (st.in_sync ? <Badge tone="green">configuration in sync</Badge> : <Badge tone="amber">configuration differs — apply again</Badge>)}
+          {st.reachable ? <DotBadge tone="green">Running</DotBadge> : <DotBadge tone="red">Not reachable</DotBadge>}
+          {st.reachable && (st.in_sync ? <Badge tone="green">Configuration in sync</Badge> : <Badge tone="amber">Configuration differs — apply again</Badge>)}
           {st.applied_at && <span>Last applied {formatDateTime(st.applied_at)}</span>}
         </p>
         {st.error && (
@@ -171,7 +170,7 @@ function RouteDialog({ route, open, onClose, onSaved }: { route: ProxyRoute | nu
               id={cidrId}
               rows={3}
               aria-describedby={`${cidrId}-hint`}
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              className={`${inputClass} font-mono`}
               placeholder={"192.168.1.0/24\n2001:db8::/32"}
               spellCheck={false}
               value={cidrs}
@@ -222,7 +221,7 @@ function Overview() {
                 {i.name}
                 {i.mac && <div className="font-mono text-xs text-slate-600 dark:text-slate-400">{i.mac}</div>}
               </td>
-              <td className={td}>{i.up ? <Badge tone="green">up</Badge> : <Badge>down</Badge>}</td>
+              <td className={td}>{i.up ? <DotBadge tone="green">Up</DotBadge> : <DotBadge tone="gray">Down</DotBadge>}</td>
               <td className={`${td} font-mono text-xs`}>
                 {i.addresses.map((a) => (
                   <div key={a}>{a}</div>
@@ -347,7 +346,7 @@ export function ProxyPage() {
                         <Button variant="ghost" onClick={() => setEditing(r)}>
                           Edit <span className="sr-only">{`${r.host}${r.path_prefix}`}</span>
                         </Button>
-                        <Button variant="ghost" className="text-red-700 dark:text-red-400" onClick={() => setDeleting(r)}>
+                        <Button variant="ghost-danger" onClick={() => setDeleting(r)}>
                           Delete <span className="sr-only">{`${r.host}${r.path_prefix}`}</span>
                         </Button>
                       </span>

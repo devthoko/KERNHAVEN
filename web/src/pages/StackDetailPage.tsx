@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { StateBadge } from "../components/DockerBits";
 import { StackEditor, toInput, toRows, type VariableRow } from "../components/StackEditor";
-import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner, StatusBadge, Table, TextField, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
 import { useSession } from "../lib/session";
 import type { StackDetail, StackEvaluation, StackException, StackRevision } from "../lib/types";
 import { useData } from "../lib/useData";
-import { statusTone } from "./StacksPage";
 
 export function StackDetailPage({ name }: { name: string }) {
   const { can } = useSession();
@@ -80,7 +79,7 @@ export function StackDetailPage({ name }: { name: string }) {
                 </Button>
               )}
               {st.deployed_revision === 0 && st.status !== "deploying" && (
-                <Button variant="ghost" className="text-red-700 dark:text-red-400" onClick={() => run(async () => { await api.del(`/stacks/${name}`); navigate("/stacks"); }, "Deleted.")}>
+                <Button variant="ghost-danger" onClick={() => run(async () => { await api.del(`/stacks/${name}`); navigate("/stacks"); }, "Deleted.")}>
                   Delete
                 </Button>
               )}
@@ -149,7 +148,7 @@ export function StackDetailPage({ name }: { name: string }) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card title="Status">
             <p className="mb-3">
-              <Badge tone={statusTone[st.status]}>{st.status}</Badge>
+              <StatusBadge status={st.status} />
             </p>
             {data.services_error && <Alert kind="warning">{data.services_error}</Alert>}
             {data.services && data.services.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-400">No containers are running.</p>}
@@ -158,7 +157,7 @@ export function StackDetailPage({ name }: { name: string }) {
                 {data.services.map((s) => (
                   <tr key={s.container}>
                     <td className={td}>
-                      <Link to={`/containers/${s.container}`} className="text-brand-700 underline dark:text-brand-500">
+                      <Link to={`/containers/${s.container}`} className={link}>
                         {s.service}
                       </Link>
                     </td>
@@ -179,7 +178,7 @@ export function StackDetailPage({ name }: { name: string }) {
                 {data.variables.map((v) => (
                   <li key={v.name} className="flex flex-wrap gap-2">
                     <code>{v.name}</code>
-                    {v.secret ? <Badge tone="amber">secret · set</Badge> : <span className="break-all">{v.value}</span>}
+                    {v.secret ? <Badge tone="amber">Secret · set</Badge> : <span className="break-all">{v.value}</span>}
                   </li>
                 ))}
               </ul>
@@ -191,7 +190,7 @@ export function StackDetailPage({ name }: { name: string }) {
                 {revisions.data.revisions.map((r) => (
                   <tr key={r.number}>
                     <td className={td}>
-                      {r.number} {r.number === st.deployed_revision && <Badge tone="green">deployed</Badge>}
+                      {r.number} {r.number === st.deployed_revision && <Badge tone="green">Deployed</Badge>}
                     </td>
                     <td className={`${td} max-w-64 truncate`} title={r.comment}>{r.comment || "—"}</td>
                     <td className={td}>{r.created_by}</td>
@@ -217,7 +216,7 @@ export function StackDetailPage({ name }: { name: string }) {
             )}
           </Card>
           <Card title={`Compose file (revision ${data.latest.number})`} className="lg:col-span-2">
-            <pre tabIndex={0} aria-label="Latest compose file" className="max-h-96 overflow-auto rounded-md bg-slate-100 p-3 font-mono text-xs dark:bg-slate-950">{data.latest.compose}</pre>
+            <pre tabIndex={0} aria-label="Latest compose file" className="max-h-96 overflow-auto rounded-lg bg-slate-100 p-3 font-mono text-xs dark:bg-slate-950">{data.latest.compose}</pre>
           </Card>
         </div>
       )}

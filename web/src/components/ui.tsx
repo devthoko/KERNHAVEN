@@ -1,8 +1,8 @@
 import { Link } from "../lib/router";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "ghost-danger";
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand-700 text-white shadow-sm hover:bg-brand-800 disabled:bg-brand-700/50",
@@ -10,7 +10,16 @@ const variants: Record<Variant, string> = {
     "border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10",
   danger: "bg-red-700 text-white shadow-sm hover:bg-red-800 disabled:bg-red-700/50",
   ghost: "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5",
+  "ghost-danger": "text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10",
 };
+
+/** buttonClass styles links and file pickers exactly like buttons. */
+export function buttonClass(variant: Variant = "primary", className = ""): string {
+  return `inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed ${variants[variant]} ${className}`;
+}
+
+/** link is the one style for links in content and section headers. */
+export const link = "font-medium text-brand-700 underline dark:text-brand-500";
 
 export function Button({
   variant = "primary",
@@ -23,7 +32,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={buttonClass(variant, className)}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       {...rest}
@@ -34,7 +43,7 @@ export function Button({
   );
 }
 
-const inputClass =
+export const inputClass =
   "block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/25 dark:border-white/15 dark:bg-slate-950 dark:text-slate-100";
 
 export function TextField({
@@ -271,32 +280,6 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
   );
 }
 
-/**
- * IconButton is a compact action for rows and toolbars. The label is its
- * accessible name and tooltip, so lists stay readable without hiding what
- * each button does from assistive technology.
- */
-export function IconButton({
-  icon,
-  label,
-  tone = "default",
-  className = "",
-  ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string; tone?: "default" | "danger" }) {
-  return (
-    <button type="button" aria-label={label} title={label} className={`${iconButtonClass(tone)} ${className}`} {...rest}>
-      <Icon name={icon} className="size-[18px]" />
-    </button>
-  );
-}
-
-export function iconButtonClass(tone: "default" | "danger" = "default"): string {
-  return `inline-flex size-9 shrink-0 items-center justify-center rounded-lg disabled:opacity-50 ${
-    tone === "danger"
-      ? "text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
-      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
-  }`;
-}
 
 const appGradients = [
   "from-teal-500 to-emerald-700",
@@ -325,6 +308,69 @@ export function AppIcon({ name, size = "md" }: { name: string; size?: "sm" | "md
   );
 }
 
-/** Glass is the frosted surface of the home desktop. */
-export const glass =
-  "rounded-2xl border border-white/60 bg-white/70 shadow-lg shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60 dark:shadow-black/20";
+/** Segmented is a small set of mutually exclusive buttons (time range, theme). */
+export function Segmented<T extends string>({ label, options, value, onChange, size = "md" }: { label: string; options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; size?: "sm" | "md" }) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-white/5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-md font-medium ${size === "sm" ? "px-2.5 py-1 text-xs" : "min-h-8 px-3 text-sm"} ${
+            value === o.value ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type Tone = keyof typeof badgeTones;
+const statuses: Record<string, [string, Tone]> = {
+  // Containers (Docker states)
+  running: ["Running", "green"],
+  restarting: ["Restarting", "blue"],
+  paused: ["Paused", "amber"],
+  created: ["Created", "gray"],
+  exited: ["Stopped", "gray"],
+  removing: ["Removing", "blue"],
+  dead: ["Failed", "red"],
+  // Stacks and apps
+  new: ["Not deployed", "gray"],
+  deploying: ["Starting", "blue"],
+  deployed: ["Running", "green"],
+  stopping: ["Stopping", "blue"],
+  stopped: ["Stopped", "gray"],
+  failed: ["Failed", "red"],
+};
+
+/** statusLabel is the one vocabulary for container, stack and app states. */
+export function statusLabel(status: string): string {
+  return statuses[status]?.[0] ?? status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+const dots: Record<Tone, string> = { green: "bg-emerald-500", red: "bg-red-500", amber: "bg-amber-500", blue: "bg-sky-500", gray: "bg-slate-400" };
+
+/** DotBadge is a badge with a coloured dot: the look of every state in the UI. */
+export function DotBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return (
+    <Badge tone={tone}>
+      <span className={`mr-1.5 size-1.5 rounded-full ${dots[tone]}`} aria-hidden="true" />
+      {children}
+    </Badge>
+  );
+}
+
+/** capitalize turns an API word into a label ("pending" → "Pending"). */
+export function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
+}
+
+/** StatusBadge shows a container, stack or app state, worded the same everywhere. */
+export function StatusBadge({ status }: { status: string }) {
+  return <DotBadge tone={statuses[status]?.[1] ?? "gray"}>{statusLabel(status)}</DotBadge>;
+}

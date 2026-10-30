@@ -50,13 +50,17 @@ export function Popover({
       <button
         ref={button}
         type="button"
-        aria-label={label}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
         className={`inline-flex items-center justify-center rounded-full ${className}`}
       >
-        {trigger}
+        {/* The name comes from hidden text, not aria-label: the visible
+            content (initials, a count) is decoration (WCAG 2.5.3). */}
+        <span className="sr-only">{label}</span>
+        <span aria-hidden="true" className="contents">
+          {trigger}
+        </span>
       </button>
       {open && (
         <div

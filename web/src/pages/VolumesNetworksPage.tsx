@@ -75,7 +75,7 @@ export function VolumesPage() {
                 <td className={td}>{formatDateTime(v.created_at)}</td>
                 {can("containers.manage") && (
                   <td className={`${td} text-right`}>
-                    <Button variant="ghost" className="text-red-700 dark:text-red-400" aria-label={`Remove volume ${v.name}`} onClick={() => setRemoving(v.name)}>
+                    <Button variant="ghost-danger" aria-label={`Remove volume ${v.name}`} onClick={() => setRemoving(v.name)}>
                       Remove
                     </Button>
                   </td>
@@ -141,12 +141,12 @@ export function NetworksPage() {
                 <td className={td}>{n.driver}</td>
                 <td className={td}>{n.containers}</td>
                 <td className={td}>
-                  {n.built_in ? <Badge tone="gray">built-in</Badge> : n.internal ? <Badge tone="blue">internal</Badge> : <Badge tone="green">bridge</Badge>}
+                  {n.built_in ? <Badge tone="gray">Built-in</Badge> : n.internal ? <Badge tone="blue">Internal</Badge> : <Badge tone="green">Bridge</Badge>}
                 </td>
                 {can("containers.manage") && (
                   <td className={`${td} text-right`}>
                     {!n.built_in && (
-                      <Button variant="ghost" className="text-red-700 dark:text-red-400" aria-label={`Remove network ${n.name}`} onClick={() => setRemoving(n.name)}>
+                      <Button variant="ghost-danger" aria-label={`Remove network ${n.name}`} onClick={() => setRemoving(n.name)}>
                         Remove
                       </Button>
                     )}

@@ -1,12 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
 import { formatValue } from "../components/Chart";
 import { Icon, type IconName } from "../components/Icon";
 import { isHousekeeping, jobTitle, JobStateBadge } from "../components/JobBits";
 import { IssueList } from "../components/Layout";
-import { AppIcon, glass, Meter, Spinner } from "../components/ui";
+import { AppIcon, buttonClass, Card, EmptyState, link, Meter, PageHeader, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { formatBytes, formatRelative } from "../lib/format";
-import { visibleAreas } from "../lib/navigation";
 import { Link } from "../lib/router";
 import { useCurrentSession, useSession } from "../lib/session";
 import { useStatus } from "../lib/status";
@@ -29,103 +27,59 @@ export function largestFileSystem(inv: StorageInventory): FileSystemInfo | null 
   return all.find((f) => f.mountpoints.includes("/")) ?? all.sort((a, b) => b.fs_size_bytes - a.fs_size_bytes)[0] ?? null;
 }
 
-function GlassCard({ title, icon, action, children, className = "" }: { title: string; icon?: IconName; action?: ReactNode; children: ReactNode; className?: string }) {
+function Stat({ icon, label, value, percent, detail }: { icon: IconName; label: string; value: string; percent?: number; detail?: string }) {
   return (
-    <section aria-label={title} className={`${glass} p-4 sm:p-5 ${className}`}>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          {icon && <Icon name={icon} className="size-4 text-slate-500 dark:text-slate-400" />}
-          {title}
-        </h2>
-        {action}
-      </div>
-      {children}
-    </section>
+    <Card className="min-w-0">
+      <p className={`flex items-center gap-2 text-sm font-medium ${muted}`}>
+        <Icon name={icon} className="size-4" />
+        {label}
+      </p>
+      <p className="mt-2 truncate text-2xl font-semibold tabular-nums tracking-tight">{value}</p>
+      {percent !== undefined && <Meter percent={percent} className="mt-3" />}
+      {detail && <p className={`mt-2 truncate text-xs ${muted}`}>{detail}</p>}
+    </Card>
   );
 }
 
-// ---- widgets (left column) ----
-
-function Clock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 15000);
-    return () => window.clearInterval(t);
-  }, []);
-  return (
-    <div className={`${glass} px-5 py-4`}>
-      <p className="text-4xl font-semibold tabular-nums tracking-tight">{now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</p>
-      <p className={`mt-1 text-sm ${muted}`}>{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
-    </div>
-  );
-}
-
-function Reading({ label, value, percent, detail }: { label: string; value: string; percent?: number; detail?: string }) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className={muted}>{label}</span>
-        <span className="font-semibold tabular-nums">{value}</span>
-      </div>
-      {percent !== undefined && <Meter percent={percent} className="mt-1.5" />}
-      {detail && <p className={`mt-1 truncate text-xs ${muted}`}>{detail}</p>}
-    </div>
-  );
-}
-
-function SystemWidgets() {
+function SystemStats() {
   const { can } = useSession();
   const host = useData(() => api.get<HostMetrics>("/metrics/host"), [], { refreshMs: 15000 });
   const storage = useData(() => (can("storage.read") ? api.get<StorageInventory>("/storage") : Promise.resolve(null)), [], { refreshMs: 60000 });
   const h = host.data;
   const fs = storage.data ? largestFileSystem(storage.data) : null;
-  const link = <Link to="/monitoring" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-500">Details</Link>;
+  const grid = "grid grid-cols-2 gap-4 lg:grid-cols-4";
   if (!h) {
+    if (!host.error) return <Spinner label="Reading the system" />;
+    const none = "No reading yet: the monitor service is not reachable.";
     return (
-      <GlassCard title="System" icon="cpu" action={link}>
-        {host.error ? <p className={`text-sm ${muted}`}>No reading yet: the monitor service is not reachable.</p> : <Spinner label="Reading the system" />}
-      </GlassCard>
+      <div className={grid}>
+        <Stat icon="cpu" label="Processor" value="—" detail={none} />
+        <Stat icon="memory" label="Memory" value="—" detail={none} />
+        <Stat icon="disk" label="Storage" value="—" detail={none} />
+        <Stat icon="network" label="Network" value="—" detail={none} />
+      </div>
     );
   }
   const memPct = h.memory.total ? (h.memory_used / h.memory.total) * 100 : 0;
   const rx = h.interfaces.reduce((a, i) => a + i.in, 0);
   const tx = h.interfaces.reduce((a, i) => a + i.out, 0);
   return (
-    <>
-      <GlassCard title="System" icon="cpu" action={link}>
-        <div className="space-y-3">
-          <Reading
-            label="Processor"
-            value={h.cpu_percent === null ? "—" : formatValue(h.cpu_percent, "percent")}
-            percent={h.cpu_percent ?? 0}
-            detail={`${h.cpus} cores · load ${h.load[0].toFixed(2)}`}
-          />
-          <Reading label="Memory" value={`${memPct.toFixed(0)} %`} percent={memPct} detail={`${formatBytes(h.memory_used)} of ${formatBytes(h.memory.total)}`} />
-        </div>
-      </GlassCard>
-      {fs && (
-        <GlassCard title="Storage" icon="disk">
-          <Reading
-            label={fs.mountpoints.includes("/") ? "System disk" : fs.mount_name || fs.name}
-            value={`${Math.round((fs.fs_used_bytes / fs.fs_size_bytes) * 100)} %`}
-            percent={(fs.fs_used_bytes / fs.fs_size_bytes) * 100}
-            detail={`${formatBytes(fs.fs_available_bytes)} free of ${formatBytes(fs.fs_size_bytes)}`}
-          />
-        </GlassCard>
+    <section aria-label="System" className={grid}>
+      <Stat icon="cpu" label="Processor" value={h.cpu_percent === null ? "—" : formatValue(h.cpu_percent, "percent")} percent={h.cpu_percent ?? 0} detail={`${h.cpus} cores · load ${h.load[0].toFixed(2)}`} />
+      <Stat icon="memory" label="Memory" value={`${memPct.toFixed(0)} %`} percent={memPct} detail={`${formatBytes(h.memory_used)} of ${formatBytes(h.memory.total)}`} />
+      {fs ? (
+        <Stat
+          icon="disk"
+          label="Storage"
+          value={`${Math.round((fs.fs_used_bytes / fs.fs_size_bytes) * 100)} %`}
+          percent={(fs.fs_used_bytes / fs.fs_size_bytes) * 100}
+          detail={`${formatBytes(fs.fs_available_bytes)} free of ${formatBytes(fs.fs_size_bytes)}`}
+        />
+      ) : (
+        <Stat icon="disk" label="Storage" value="—" detail={can("storage.read") ? "No file system reported" : "Needs storage access"} />
       )}
-      <GlassCard title="Network" icon="network">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className={muted}>Download</p>
-            <p className="font-semibold tabular-nums">{formatValue(rx, "bytes/s")}</p>
-          </div>
-          <div>
-            <p className={muted}>Upload</p>
-            <p className="font-semibold tabular-nums">{formatValue(tx, "bytes/s")}</p>
-          </div>
-        </div>
-      </GlassCard>
-    </>
+      <Stat icon="network" label="Network" value={`↓ ${formatValue(rx, "bytes/s")}`} detail={`↑ ${formatValue(tx, "bytes/s")} sent`} />
+    </section>
   );
 }
 
@@ -162,15 +116,18 @@ function AppLauncher({ app }: { app: InstalledApp }) {
     </>
   );
   const tile =
-    "flex flex-col items-center rounded-2xl px-2 pb-3 pt-4 text-center transition hover:bg-white/60 motion-reduce:transition-none dark:hover:bg-white/5";
+    "flex flex-col items-center rounded-xl px-2 pb-3 pt-4 text-center transition hover:bg-slate-50 motion-reduce:transition-none dark:hover:bg-white/5";
   return (
     <li className="group relative">
       {url ? (
-        <a href={url} target="_blank" rel="noopener noreferrer" className={tile} aria-label={`Open ${app.name} (new tab), ${st.label}`}>
+        // Named by its visible text (WCAG 2.5.3); the hidden words add the action.
+        <a href={url} target="_blank" rel="noopener noreferrer" className={tile}>
+          <span className="sr-only">Open </span>
           {body}
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       ) : (
-        <Link to={`/apps/${app.name}`} className={tile} aria-label={`${app.name}: ${st.label}`}>
+        <Link to={`/apps/${app.name}`} className={tile}>
           {body}
         </Link>
       )}
@@ -190,35 +147,34 @@ function Apps() {
   const { can } = useSession();
   const { apps, appsError } = useStatus();
   return (
-    <section aria-labelledby="apps-heading">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 id="apps-heading" className="text-base font-semibold">
-          Your apps
-        </h2>
-        <Link to="/apps" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500">
+    <Card
+      title="Your apps"
+      actions={
+        <Link to="/apps" className={`text-sm ${link}`}>
           Manage apps
         </Link>
-      </div>
+      }
+    >
       {!apps && (appsError ? <p className={`text-sm ${muted}`}>{appsError}</p> : <Spinner />)}
       {apps && apps.length === 0 && (
-        <div className={`${glass} flex flex-col items-center px-6 py-10 text-center`}>
-          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-500" aria-hidden="true">
-            <Icon name="store" className="size-7" />
-          </span>
-          <p className="mt-4 font-semibold">No apps yet</p>
-          <p className={`mt-1 max-w-sm text-sm ${muted}`}>Start with Kernhaven Essentials: passwords, media, file sync and more, each showing what it may access before you install it.</p>
-          <Link to="/apps/store" className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-800">
-            Browse the app store
-          </Link>
-        </div>
+        <EmptyState
+          title="No apps yet"
+          action={
+            <Link to="/apps/store" className={buttonClass("primary")}>
+              Browse the app store
+            </Link>
+          }
+        >
+          Start with Kernhaven Essentials: passwords, media, file sync and more, each showing what it may access before you install it.
+        </EmptyState>
       )}
       {apps && apps.length > 0 && (
-        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <ul className="-mx-2 grid grid-cols-3 gap-1 sm:grid-cols-4 lg:grid-cols-6">
           {apps.map((a) => (
             <AppLauncher key={a.name} app={a} />
           ))}
           <li>
-            <Link to="/apps/store" className="flex flex-col items-center rounded-2xl px-2 pb-3 pt-4 text-center text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-white/5">
+            <Link to="/apps/store" className="flex flex-col items-center rounded-xl px-2 pb-3 pt-4 text-center text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5">
               <span
                 className="inline-flex size-16 items-center justify-center rounded-[20px] border-2 border-dashed border-slate-300 sm:size-[72px] sm:rounded-[22px] dark:border-white/20"
                 aria-hidden="true"
@@ -231,7 +187,7 @@ function Apps() {
           </li>
         </ul>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -240,7 +196,7 @@ function Apps() {
 function Attention() {
   const { issues, loaded } = useStatus();
   return (
-    <GlassCard title="Needs attention" icon="bell">
+    <Card title="Needs attention">
       {!loaded && <Spinner />}
       {loaded && issues.length === 0 && (
         <div className="flex items-center gap-3 text-sm">
@@ -254,7 +210,7 @@ function Attention() {
         </div>
       )}
       {loaded && issues.length > 0 && <IssueList issues={issues} />}
-    </GlassCard>
+    </Card>
   );
 }
 
@@ -262,11 +218,10 @@ function Activity() {
   const { jobs: all } = useStatus();
   const jobs = all.filter((j) => !isHousekeeping(j.kind)).slice(0, 5);
   return (
-    <GlassCard
+    <Card
       title="Recent activity"
-      icon="jobs"
-      action={
-        <Link to="/jobs" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-500">
+      actions={
+        <Link to="/jobs" className={`text-sm ${link}`}>
           All jobs
         </Link>
       }
@@ -274,7 +229,7 @@ function Activity() {
       {jobs.length === 0 ? (
         <p className={`text-sm ${muted}`}>No deployments, backups or other tasks yet.</p>
       ) : (
-        <ul className="divide-y divide-slate-200/60 dark:divide-white/5">
+        <ul className="divide-y divide-slate-100 dark:divide-white/5">
           {jobs.map((j) => (
             <li key={j.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span className="min-w-0">
@@ -290,73 +245,46 @@ function Activity() {
           ))}
         </ul>
       )}
-    </GlassCard>
+    </Card>
   );
 }
 
-/** Launcher is the dock of management areas on the desktop (the main navigation there). */
-function Launcher() {
-  const { can } = useSession();
-  const areas = visibleAreas(can).filter((a) => a.label !== "Home");
-  return (
-    <nav aria-label="Main" className={`${glass} hidden p-2 md:block`}>
-      <ul className="grid grid-cols-5 gap-1 lg:grid-cols-10">
-        {areas.map((a) => (
-          <li key={a.label}>
-            <Link
-              to={a.tabs[0]?.to ?? "/"}
-              className="flex flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 text-xs font-medium text-slate-700 hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
-            >
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-slate-900/5 text-slate-700 dark:bg-white/10 dark:text-slate-200" aria-hidden="true">
-                <Icon name={a.icon} />
-              </span>
-              {a.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
-/** HomePage is the desktop: widgets, apps, what needs a look, and the way into management (ADR-0035). */
+/** HomePage shows the server at a glance, the apps as a launcher, and what needs a look (ADR-0035). */
 export function HomePage() {
   const session = useCurrentSession();
   const { can } = useSession();
   const { loaded, issues, problems } = useStatus();
   const name = session.user.display_name || session.user.username;
+  const now = new Date();
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_1fr] lg:gap-8">
-      <div className="order-2 space-y-4 lg:order-1">
-        <Clock />
-        {can("system.read") && <SystemWidgets />}
-      </div>
-      <div className="order-1 min-w-0 space-y-6 lg:order-2">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {greeting(new Date().getHours())}, {name}
-          </h1>
-          {loaded && (
+    <>
+      <PageHeader
+        title={`${greeting(now.getHours())}, ${name}`}
+        description={now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        actions={
+          loaded && (
             <Link
               to={problems > 0 ? issues[0]!.to : "/monitoring"}
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium shadow-sm ring-1 ring-inset backdrop-blur ${
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-inset ${
                 problems > 0
-                  ? "bg-amber-50/90 text-amber-900 ring-amber-600/25 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25"
-                  : "bg-emerald-50/90 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                  ? "bg-amber-50 text-amber-900 ring-amber-600/25 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25"
+                  : "bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
               }`}
             >
               <span className={`size-2 rounded-full ${problems > 0 ? "bg-amber-500" : "bg-emerald-500"}`} aria-hidden="true" />
               {problems > 0 ? `${problems} ${problems === 1 ? "issue needs" : "issues need"} attention` : "All systems normal"}
             </Link>
-          )}
-        </header>
+          )
+        }
+      />
+      <div className="space-y-6">
+        {can("system.read") && <SystemStats />}
         {can("apps.read") && <Apps />}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Attention />
           {can("jobs.read") && <Activity />}
         </div>
-        <Launcher />
       </div>
-    </div>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Button, Card, DotBadge, PageHeader, SelectField, Spinner, Table, TextField, buttonClass, capitalize, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import type { AuditEvent, VerifyResult } from "../lib/types";
@@ -76,7 +76,7 @@ export function AuditPage() {
         actions={
           <span className="flex gap-2">
             <a
-              className="inline-flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              className={buttonClass("secondary")}
               href={`/api/v1/audit/export?${query(applied)}`}
               download
             >
@@ -146,7 +146,7 @@ export function AuditPage() {
                 <td className={`${td} font-mono text-xs`}>{e.action}</td>
                 <td className={td}>{e.target}</td>
                 <td className={td}>
-                  <Badge tone={e.result === "success" ? "green" : e.result === "denied" ? "amber" : "red"}>{e.result}</Badge>
+                  <DotBadge tone={e.result === "success" ? "green" : e.result === "denied" ? "amber" : "red"}>{capitalize(e.result)}</DotBadge>
                 </td>
                 <td className={td}>{e.ip}</td>
                 <td className={`${td} font-mono text-xs`}>

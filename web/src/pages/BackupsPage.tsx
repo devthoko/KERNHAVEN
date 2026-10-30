@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "../components/Icon";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { JobStateBadge } from "../components/JobBits";
+import { Alert, Badge, Button, Card, Dialog, DotBadge, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatBytes, formatDateTime, formatRelative } from "../lib/format";
 import { useSession } from "../lib/session";
@@ -8,7 +9,6 @@ import type { BackupPlan, BackupRepository, BackupRetention, BackupSnapshot, Bac
 import { useData } from "../lib/useData";
 
 const kindLabel: Record<BackupTargetKind, string> = { local: "Local disk", sftp: "SFTP", s3: "S3-compatible" };
-const stateTone: Record<string, "green" | "red" | "blue" | "amber" | "gray"> = { succeeded: "green", failed: "red", running: "blue", queued: "blue", compensating: "amber", cancelled: "gray" };
 
 type Notice = { kind: "success" | "error"; text: string };
 
@@ -20,10 +20,10 @@ function destination(r: BackupRepository): string {
 }
 
 function VerifyBadge({ ok, at, message }: { ok?: boolean; at?: string; message: string }) {
-  if (ok === undefined) return <Badge tone="gray">not checked</Badge>;
+  if (ok === undefined) return <Badge tone="gray">Not checked</Badge>;
   return (
     <span title={message}>
-      <Badge tone={ok ? "green" : "red"}>{ok ? "intact" : "damaged"}</Badge> <span className="text-xs text-slate-600 dark:text-slate-400">{formatRelative(at)}</span>
+      <DotBadge tone={ok ? "green" : "red"}>{ok ? "Intact" : "Damaged"}</DotBadge> <span className="text-xs text-slate-600 dark:text-slate-400">{formatRelative(at)}</span>
     </span>
   );
 }
@@ -159,7 +159,7 @@ function RepositoryDialog({ open, onClose, onSaved }: { open: boolean; onClose: 
             </label>
           </div>
         )}
-        <fieldset className="space-y-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
+        <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <legend className="px-1 text-sm font-medium">Encryption</legend>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="size-4" checked={connect} onChange={(e) => setConnect(e.target.checked)} />
@@ -541,8 +541,7 @@ export function BackupsPage() {
                       )}
                       {manage && (
                         <Button
-                          variant="ghost"
-                          className="text-red-700 dark:text-red-400"
+                          variant="ghost-danger"
                           onClick={() =>
                             act(`del-${r.id}`, async () => {
                               await api.del(`/backup/repositories/${r.id}`);
@@ -591,7 +590,7 @@ export function BackupsPage() {
               {plans.data.plans.map((p) => (
                 <tr key={p.id}>
                   <td className={td}>
-                    {p.name} {!p.enabled && <Badge tone="gray">disabled</Badge>}
+                    {p.name} {!p.enabled && <Badge tone="gray">Disabled</Badge>}
                     <div className="text-xs text-slate-600 dark:text-slate-400">→ {repoList.find((r) => r.id === p.repo)?.name}</div>
                   </td>
                   <td className={td}>{[p.platform ? "platform" : "", p.stacks.join() === "*" ? "all stacks" : p.stacks.join(", ")].filter(Boolean).join(" + ")}</td>
@@ -600,7 +599,7 @@ export function BackupsPage() {
                     {p.next && p.enabled && <div className="text-xs text-slate-600 dark:text-slate-400">next {formatDateTime(p.next)}</div>}
                   </td>
                   <td className={td}>
-                    {p.last_state ? <Badge tone={stateTone[p.last_state] ?? "gray"}>{p.last_state}</Badge> : <span className="text-slate-600 dark:text-slate-400">never</span>}{" "}
+                    {p.last_state ? <JobStateBadge state={p.last_state} /> : <span className="text-slate-600 dark:text-slate-400">never</span>}{" "}
                     {p.last_at && <span className="text-xs text-slate-600 dark:text-slate-400">{formatRelative(p.last_at)}</span>}
                   </td>
                   <td className={td}>
@@ -625,8 +624,7 @@ export function BackupsPage() {
                             Edit <span className="sr-only">{p.name}</span>
                           </Button>
                           <Button
-                            variant="ghost"
-                            className="text-red-700 dark:text-red-400"
+                            variant="ghost-danger"
                             onClick={() =>
                               act(`delp-${p.id}`, async () => {
                                 await api.del(`/backup/plans/${p.id}`);

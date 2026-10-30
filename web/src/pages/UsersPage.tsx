@@ -263,7 +263,7 @@ export function UsersPage() {
                               >
                                 Reset MFA
                               </Button>
-                              <Button variant="ghost" className="text-red-700 dark:text-red-400" aria-label={`Delete ${u.username}`} onClick={() => setDialog({ kind: "delete", user: u })}>
+                              <Button variant="ghost-danger" aria-label={`Delete ${u.username}`} onClick={() => setDialog({ kind: "delete", user: u })}>
                                 Delete
                               </Button>
                             </>

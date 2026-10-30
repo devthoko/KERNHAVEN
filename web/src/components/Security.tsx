@@ -5,7 +5,7 @@ import { useSession } from "../lib/session";
 import type { Ceremony, MFAStatus } from "../lib/types";
 import { useData } from "../lib/useData";
 import { createPasskey, passkeysSupported } from "../lib/webauthn";
-import { Alert, Badge, Button, Card, TextField } from "./ui";
+import { Alert, Badge, Button, Card, TextField, link } from "./ui";
 
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   return (
@@ -61,7 +61,7 @@ export function SecurityCard() {
 
         <section aria-labelledby="totp-heading" className="space-y-2">
           <h3 id="totp-heading" className="text-sm font-semibold">
-            Authenticator app {data.totp && <Badge tone="green">on</Badge>}
+            Authenticator app {data.totp && <Badge tone="green">On</Badge>}
           </h3>
           {!data.totp && !totp && (
             <Button variant="secondary" busy={busy} onClick={() => run(async () => setTotp(await api.post("/auth/mfa/totp")))}>
@@ -86,7 +86,7 @@ export function SecurityCard() {
                 {totp.secret.replace(/(.{4})/g, "$1 ").trim()}
               </p>
               <p className="text-xs">
-                <a href={totp.otpauth_url} className="text-brand-700 underline dark:text-brand-500">
+                <a href={totp.otpauth_url} className={link}>
                   Open in an authenticator app on this device
                 </a>
               </p>
@@ -107,7 +107,7 @@ export function SecurityCard() {
               <Button variant="secondary" busy={busy} onClick={() => run(async () => setCodes((await api.post<{ recovery_codes: string[] }>("/auth/mfa/recovery-codes")).recovery_codes))}>
                 New recovery codes
               </Button>
-              <Button variant="ghost" className="text-red-700 dark:text-red-400" busy={busy} onClick={() => run(() => api.del("/auth/mfa/totp"), "The authenticator app was removed.")}>
+              <Button variant="ghost-danger" busy={busy} onClick={() => run(() => api.del("/auth/mfa/totp"), "The authenticator app was removed.")}>
                 Remove authenticator app
               </Button>
             </div>
@@ -124,7 +124,7 @@ export function SecurityCard() {
               <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-medium">{p.name}</span>
                 <span className="text-slate-600 dark:text-slate-400">added {formatDateTime(p.created_at)}{p.last_used_at ? `, last used ${formatDateTime(p.last_used_at)}` : ""}</span>
-                <Button variant="ghost" className="text-red-700 dark:text-red-400" busy={busy} onClick={() => run(() => api.del(`/auth/passkeys/${p.id}`), `${p.name} was removed.`)}>
+                <Button variant="ghost-danger" busy={busy} onClick={() => run(() => api.del(`/auth/passkeys/${p.id}`), `${p.name} was removed.`)}>
                   Remove <span className="sr-only">{p.name}</span>
                 </Button>
               </li>
@@ -158,7 +158,7 @@ export function SecurityCard() {
         {data.passkeys.length > 0 && (
           <section aria-labelledby="password-heading" className="space-y-2">
             <h3 id="password-heading" className="text-sm font-semibold">
-              Password sign-in {data.password_login ? <Badge>on</Badge> : <Badge tone="blue">off — passkeys only</Badge>}
+              Password sign-in {data.password_login ? <Badge>On</Badge> : <Badge tone="blue">Off — passkeys only</Badge>}
             </h3>
             <Button variant="secondary" busy={busy} onClick={() => run(() => api.put("/auth/password-login", { enabled: !data.password_login }), data.password_login ? "Password sign-in is off." : "Password sign-in is on.")}>
               {data.password_login ? "Sign in with passkeys only" : "Allow password sign-in again"}

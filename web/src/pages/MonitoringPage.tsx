@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Chart, formatValue, type Line } from "../components/Chart";
-import { Alert, Badge, Card, PageHeader, Spinner, Table, td, th } from "../components/ui";
+import { Alert, Badge, Card, DotBadge, PageHeader, Segmented, Spinner, Table, link, td, th } from "../components/ui";
 import { api } from "../lib/api";
 import { formatBytes, formatDateTime } from "../lib/format";
 import { useSession } from "../lib/session";
@@ -44,7 +44,7 @@ export function ServiceList() {
           <span className="font-medium">{s.label}</span>
           <span className="flex flex-wrap items-center justify-end gap-2">
             {s.detail && <span className="text-xs text-slate-600 dark:text-slate-400">{s.detail}</span>}
-            {s.status === "ok" ? <Badge tone="green">running</Badge> : s.status === "down" ? <Badge tone="red">down</Badge> : <Badge>not configured</Badge>}
+            {s.status === "ok" ? <DotBadge tone="green">Running</DotBadge> : s.status === "down" ? <DotBadge tone="red">Down</DotBadge> : <DotBadge tone="gray">Not configured</DotBadge>}
           </span>
         </li>
       ))}
@@ -166,19 +166,7 @@ export function MonitoringPage() {
         title="Monitoring"
         description="Host and container metrics. History is kept for 7 days."
         actions={
-          <div role="group" aria-label="Time range" className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-white/5">
-            {ranges.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                aria-pressed={range === r.value}
-                onClick={() => setRange(r.value)}
-                className={`min-h-8 rounded-md px-3 text-sm font-medium ${range === r.value ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"}`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+          <Segmented label="Time range" options={ranges} value={range} onChange={setRange} />
         }
       />
       <div className="space-y-4">
@@ -237,7 +225,7 @@ export function MonitoringPage() {
                 {containers.data.containers.map((c) => (
                   <tr key={c.id}>
                     <td className={td}>
-                      <button type="button" className="font-medium text-brand-700 underline dark:text-brand-500" aria-expanded={selected === c.name} onClick={() => setSelected(selected === c.name ? null : c.name)}>
+                      <button type="button" className={link} aria-expanded={selected === c.name} onClick={() => setSelected(selected === c.name ? null : c.name)}>
                         {c.name}
                       </button>
                     </td>

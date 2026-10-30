@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Alert, BackLink, Badge, Button, Card, PageHeader, SelectField, TextField } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, PageHeader, SelectField, TextField, inputClass } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { useRouter } from "../lib/router";
 import { useSession } from "../lib/session";
@@ -211,7 +211,7 @@ export function CreateContainerPage() {
               {evaluation && !evaluation.valid && evaluation.errors.map((e) => <Alert key={e}>{e}</Alert>)}
               {evaluation?.valid && evaluation.violations.length === 0 && <Alert kind="success">No policy violations.</Alert>}
               {rules.map((v) => (
-                <div key={v.rule} className="rounded-md border border-red-300 p-3 dark:border-red-800">
+                <div key={v.rule} className="rounded-lg border border-red-300 p-3 dark:border-red-800">
                   <p className="font-medium text-red-800 dark:text-red-300">
                     Violation: {v.rule}
                   </p>
@@ -233,7 +233,7 @@ export function CreateContainerPage() {
               ))}
               {evaluation?.warnings.map((w) => (
                 <p key={w.rule + w.message} className="flex gap-2">
-                  <Badge tone="amber">warning</Badge>
+                  <Badge tone="amber">Warning</Badge>
                   <span>{w.message}</span>
                 </p>
               ))}
@@ -270,7 +270,7 @@ function TextAreaField({ label, value, onChange, placeholder }: { label: string;
         id={id}
         rows={4}
         spellCheck={false}
-        className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+        className={`${inputClass} font-mono text-xs`}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}

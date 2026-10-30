@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, errorMessage, setStepUpHandler } from "../lib/api";
 import type { Ceremony, MFAStatus } from "../lib/types";
 import { getPasskey, passkeysSupported } from "../lib/webauthn";
-import { Alert, Button, Dialog, TextField } from "./ui";
+import { Alert, Button, Dialog, TextField, link } from "./ui";
 
 /**
  * StepUpDialog confirms the user when an action needs a recent strong
@@ -88,7 +88,7 @@ export function StepUpDialog() {
                 <TextField label="Authenticator code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
               ))}
             {status.totp && status.recovery_codes_left > 0 && (
-              <button type="button" className="text-sm text-brand-700 underline dark:text-brand-500" onClick={() => (setRecovery(!recovery), setCode(""))}>
+              <button type="button" className={`text-sm ${link}`} onClick={() => (setRecovery(!recovery), setCode(""))}>
                 {recovery ? "Use the authenticator app" : "Use a recovery code"}
               </button>
             )}

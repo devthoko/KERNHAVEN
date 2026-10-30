@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Card, PageHeader, Spinner } from "../components/ui";
+import { Alert, Card, PageHeader, Spinner, link } from "../components/ui";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { Link, useRouter } from "../lib/router";
 
@@ -41,7 +41,7 @@ export function GatePage() {
           <div className="space-y-3">
             <Alert>{error}</Alert>
             <p className="text-sm">
-              <Link to="/" className="font-medium text-brand-700 underline dark:text-brand-500">
+              <Link to="/" className={link}>
                 Back to the dashboard
               </Link>
             </p>

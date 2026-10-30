@@ -163,7 +163,7 @@ export function StackEditor({ stackName, compose, onCompose, variables, onVariab
                 requestAnimationFrame(() => el.setSelectionRange(s + 2, s + 2));
               }
             }}
-            className="mt-1 block w-full overflow-auto rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs leading-5 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-1 block w-full overflow-auto rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs leading-5 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
           <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
             Line {cursor.line}, column {cursor.col} · Tab inserts two spaces; press Escape, then Tab to leave the editor.
@@ -218,7 +218,7 @@ export function StackEditor({ stackName, compose, onCompose, variables, onVariab
           )}
           {evaluation?.valid && evaluation.deployable && <Alert kind="success">Valid and allowed by the container policy.</Alert>}
           {evaluation?.services.map((s) => (
-            <div key={s.service} className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
+            <div key={s.service} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <p className="font-medium">
                 {s.service} <span className="font-normal text-slate-600 dark:text-slate-400">· {s.image}</span>
               </p>
@@ -244,7 +244,7 @@ export function StackEditor({ stackName, compose, onCompose, variables, onVariab
               })}
               {s.warnings.map((w) => (
                 <p key={w.rule + w.message} className="mt-1 flex gap-2">
-                  <Badge tone="amber">warning</Badge>
+                  <Badge tone="amber">Warning</Badge>
                   <span>{w.message}</span>
                 </p>
               ))}

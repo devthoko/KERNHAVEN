@@ -7,13 +7,13 @@ import { useCurrentSession, useSession } from "../lib/session";
 import { StatusProvider, useStatus, type Issue } from "../lib/status";
 import type { Theme } from "../lib/types";
 import { CommandPalette } from "./CommandPalette";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { Popover } from "./Popover";
-import { Avatar } from "./ui";
+import { Avatar, link, Segmented } from "./ui";
 
 function Brand() {
   return (
-    <Link to="/" className="flex items-center gap-2.5 rounded-md text-[15px] font-semibold tracking-tight">
+    <Link to="/" className="flex items-center gap-2.5 rounded-lg text-[15px] font-semibold tracking-tight">
       <img src="/favicon.svg" alt="" className="size-8" />
       <span>Kernhaven</span>
     </Link>
@@ -59,10 +59,10 @@ export function AreaList({ areas, current, onNavigate }: { areas: Area[]; curren
   );
 }
 
-const themes: { value: Theme; label: string; icon: IconName }[] = [
-  { value: "light", label: "Light", icon: "sun" },
-  { value: "dark", label: "Dark", icon: "moon" },
-  { value: "system", label: "System", icon: "settings" },
+const themes: { value: Theme; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ];
 
 function useSignOut() {
@@ -104,25 +104,10 @@ function AccountMenu() {
             Account
           </Link>
           <div className="px-3 py-2">
-            <p id="theme-label" className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+            <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400" aria-hidden="true">
               Theme
             </p>
-            <div role="group" aria-labelledby="theme-label" className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-white/5">
-              {themes.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  aria-pressed={theme === t.value}
-                  onClick={() => void setTheme(t.value)}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium ${
-                    theme === t.value ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                  }`}
-                >
-                  <Icon name={t.icon} className="size-3.5" />
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <Segmented label="Theme" size="sm" options={themes} value={theme} onChange={(t) => void setTheme(t)} />
           </div>
           <div className="my-1 border-t border-slate-100 dark:border-white/10" />
           <button type="button" className={`${item} text-red-700 dark:text-red-400`} onClick={signOut} disabled={busy} aria-busy={busy || undefined}>
@@ -196,7 +181,7 @@ function Notifications() {
           {loaded && issues.length > 0 && <IssueList issues={issues} onNavigate={close} max={8} />}
           {can("alerts.read") && (
             <div className="mt-1 border-t border-slate-100 px-2 pt-2 dark:border-white/10">
-              <Link to="/alerts" onClick={close} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500">
+              <Link to="/alerts" onClick={close} className={`text-sm ${link}`}>
                 Alerts and notification channels
               </Link>
             </div>
@@ -218,7 +203,7 @@ function SearchButton({ onOpen }: { onOpen: () => void }) {
       >
         <Icon name="search" className="size-4" />
         <span className="flex-1 text-left">Search or jump to…</span>
-        <kbd className="rounded-md border border-slate-200 bg-white px-1.5 font-sans text-[11px] text-slate-500 dark:border-white/15 dark:bg-transparent">{mac ? "⌘K" : "Ctrl K"}</kbd>
+        <kbd className="rounded-lg border border-slate-200 bg-white px-1.5 font-sans text-[11px] text-slate-500 dark:border-white/15 dark:bg-transparent">{mac ? "⌘K" : "Ctrl K"}</kbd>
       </button>
       <button
         type="button"
@@ -286,10 +271,8 @@ function AreaTabs({ area, current }: { area: Area; current: string }) {
 }
 
 /**
- * Layout is the app shell (ADR-0035). Every page has the top bar with
- * search, notifications and the account menu. Home is a desktop over a
- * coloured background and brings its own area launcher; the other pages
- * are the management view with the sidebar and area tabs.
+ * Layout is the one app shell for every page (ADR-0035): sidebar of areas,
+ * top bar with search, notifications and the account menu, area tabs.
  */
 export function Layout({ children }: { children: ReactNode }) {
   return (
@@ -319,35 +302,27 @@ function Shell({ children }: { children: ReactNode }) {
 
   const areas = visibleAreas(can);
   const here = currentTab(areas, path);
-  const home = path === "/";
 
   return (
-    <div className={`min-h-screen ${home ? "" : "md:flex"}`}>
-      {home && <div className="kh-wallpaper fixed inset-0 -z-10" aria-hidden="true" />}
+    <div className="min-h-screen md:flex">
       <StepUpDialog />
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 dark:focus:bg-slate-900">
         Skip to content
       </a>
 
-      {!home && (
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-slate-50 md:flex dark:border-white/10 dark:bg-slate-950">
-          <div className="px-5 pb-5 pt-4">
-            <Brand />
-          </div>
-          <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-            <AreaList areas={areas} current={here?.area ?? null} />
-          </nav>
-        </aside>
-      )}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-slate-50 md:flex dark:border-white/10 dark:bg-slate-950">
+        <div className="flex h-16 items-center px-5">
+          <Brand />
+        </div>
+        <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+          <AreaList areas={areas} current={here?.area ?? null} />
+        </nav>
+      </aside>
 
       <div className="min-w-0 flex-1">
-        <header
-          className={`sticky top-0 z-30 flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8 ${
-            home ? "bg-transparent" : "border-b border-slate-200 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-slate-900/80"
-          }`}
-        >
-          <div className={home ? "" : "md:hidden"}>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8 dark:border-white/10 dark:bg-slate-900/80">
+          <div className="md:hidden">
             <Brand />
           </div>
           <div className="flex flex-1 justify-end sm:justify-center">
@@ -380,9 +355,9 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
         )}
 
-        <main id="main" className={`min-w-0 px-4 sm:px-6 lg:px-8 ${home ? "pb-10 pt-2" : "py-6 lg:py-8"}`}>
+        <main id="main" className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto max-w-7xl">
-            {!home && here && <AreaTabs area={here.area} current={here.tab.to} />}
+            {here && <AreaTabs area={here.area} current={here.tab.to} />}
             {children}
           </div>
         </main>

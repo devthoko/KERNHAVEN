@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { appStatusTone, changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
-import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, td, th } from "../components/ui";
+import { changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
+import { Alert, BackLink, Badge, Button, Card, Dialog, DotBadge, PageHeader, Spinner, StatusBadge, Table, buttonClass, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -9,7 +9,6 @@ import type { InstalledAppDetail } from "../lib/types";
 import { useData } from "../lib/useData";
 import { webURL } from "./AppsPage";
 
-const link = "text-brand-700 underline dark:text-brand-500";
 
 export function AppDetailPage({ name }: { name: string }) {
   const { can } = useSession();
@@ -71,7 +70,7 @@ export function AppDetailPage({ name }: { name: string }) {
         actions={
           <>
             {(data.url || data.web_port > 0) && data.status === "deployed" && (
-              <a href={data.url || webURL(data.web_port)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+              <a href={data.url || webURL(data.web_port)} target="_blank" rel="noopener noreferrer" className={buttonClass("primary")}>
                 Open {data.app_name}
               </a>
             )}
@@ -105,7 +104,7 @@ export function AppDetailPage({ name }: { name: string }) {
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
             <dt className="text-slate-600 dark:text-slate-400">State</dt>
             <dd>
-              <Badge tone={appStatusTone[data.status]}>{data.status}</Badge>
+              <StatusBadge status={data.status} />
             </dd>
             <dt className="text-slate-600 dark:text-slate-400">Version</dt>
             <dd>{data.version || "not running yet"}</dd>
@@ -145,7 +144,7 @@ export function AppDetailPage({ name }: { name: string }) {
               {data.config.map((v) => (
                 <div key={v.name} className="contents">
                   <dt className="text-slate-600 dark:text-slate-400">{data.fields.find((f) => f.name === v.name)?.label ?? v.name}</dt>
-                  <dd className="break-all">{v.secret ? <Badge>secret</Badge> : v.value}</dd>
+                  <dd className="break-all">{v.secret ? <Badge>Secret</Badge> : v.value}</dd>
                 </div>
               ))}
             </dl>
@@ -219,7 +218,7 @@ export function AppDetailPage({ name }: { name: string }) {
             {data.versions.map((v) => (
               <tr key={v.revision}>
                 <td className={td}>
-                  {v.revision} {v.deployed && <Badge tone="green">running</Badge>}
+                  {v.revision} {v.deployed && <DotBadge tone="green">Running</DotBadge>}
                 </td>
                 <td className={td}>{v.version}</td>
                 <td className={td}>{v.comment}</td>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StackEditor, toInput, type VariableRow } from "../components/StackEditor";
-import { Alert, BackLink, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, BackLink, Button, Card, PageHeader, Spinner, StatusBadge, Table, TextField, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -8,7 +8,6 @@ import { useSession } from "../lib/session";
 import type { Stack, StackEvaluation, StackException } from "../lib/types";
 import { useData } from "../lib/useData";
 
-export const statusTone = { new: "gray", deploying: "blue", deployed: "green", failed: "red", stopping: "blue", stopped: "gray" } as const;
 
 export function StacksPage() {
   const { can } = useSession();
@@ -41,12 +40,12 @@ export function StacksPage() {
             {data.stacks.map((s) => (
               <tr key={s.id}>
                 <td className={td}>
-                  <Link to={`/stacks/${s.name}`} className="font-medium text-brand-700 underline dark:text-brand-500">
+                  <Link to={`/stacks/${s.name}`} className={link}>
                     {s.name}
                   </Link>
                 </td>
                 <td className={td}>
-                  <Badge tone={statusTone[s.status]}>{s.status}</Badge>
+                  <StatusBadge status={s.status} />
                 </td>
                 <td className={td}>{s.deployed_revision ? `revision ${s.deployed_revision}` : "—"}</td>
                 <td className={td}>revision {s.latest_revision}</td>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, Dialog, DotBadge, PageHeader, SelectField, Spinner, Table, TextField, capitalize, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime, formatRelative } from "../lib/format";
 import { useSession } from "../lib/session";
@@ -24,7 +24,7 @@ export function AlertList({ alerts, empty }: { alerts: AlertItem[]; empty: strin
       {alerts.map((a) => (
         <li key={a.id} className="space-y-1 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={a.state === "resolved" ? "green" : a.severity === "critical" ? "red" : "amber"}>{a.state === "resolved" ? "resolved" : a.severity}</Badge>
+            <Badge tone={a.state === "resolved" ? "green" : a.severity === "critical" ? "red" : "amber"}>{capitalize(a.state === "resolved" ? "resolved" : a.severity)}</Badge>
             <span className="font-medium">{a.title}</span>
             <span className="text-xs text-slate-600 dark:text-slate-400" title={formatDateTime(a.fired_at)}>
               {formatRelative(a.fired_at)}
@@ -274,8 +274,7 @@ export function AlertsPage() {
                           Edit <span className="sr-only">{c.name}</span>
                         </Button>
                         <Button
-                          variant="ghost"
-                          className="text-red-700 dark:text-red-400"
+                          variant="ghost-danger"
                           onClick={async () => {
                             try {
                               await api.del(`/notify/channels/${c.id}`);
@@ -337,7 +336,7 @@ export function AlertsPage() {
                   </td>
                   <td className={td}>{d.channel}</td>
                   <td className={td}>
-                    <Badge tone={deliveryTone[d.status]}>{d.status}</Badge> {d.attempts > 1 && <span className="text-xs">({d.attempts} attempts)</span>}
+                    <DotBadge tone={deliveryTone[d.status]}>{capitalize(d.status)}</DotBadge> {d.attempts > 1 && <span className="text-xs">({d.attempts} attempts)</span>}
                     {d.status === "pending" && d.next_at && <span className="text-xs"> next {formatRelative(d.next_at)}</span>}
                     {d.last_error && <div className="max-w-md whitespace-normal text-xs text-red-700 dark:text-red-400">{d.last_error}</div>}
                   </td>

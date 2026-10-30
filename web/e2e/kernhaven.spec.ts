@@ -192,14 +192,14 @@ test("AT-F02-02, AT-F02-03: create, inspect, read logs, stop and start a contain
   await page.getByRole("button", { name: "Create container" }).click();
   // Creating checks the image and starts the container; slow runners need more than 5 s.
   await expect(page.getByRole("heading", { name: "e2e-web" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/created by owner/)).toBeVisible();
   await expect(page.getByLabel("Container log output")).toContainText("e2e-hello", { timeout: 15_000 });
   await expectAccessible(page, "container detail");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(page.getByText("exited", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Stopped", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  await expect(page.getByText("running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Running", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
 
   await page.goto("/containers");
   await expect(page.getByRole("link", { name: "e2e-web" })).toBeVisible();
@@ -227,11 +227,11 @@ test("AT-F02-07, AT-F01-05: a console in the container; status changes arrive li
   const list = await page.context().newPage();
   await list.goto("/containers");
   const row = list.getByRole("row", { name: /e2e-web/ });
-  await expect(row).toContainText("running");
+  await expect(row).toContainText("Running");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(row).toContainText("exited", { timeout: 25_000 });
+  await expect(row).toContainText("Stopped", { timeout: 25_000 });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  await expect(row).toContainText("running", { timeout: 25_000 });
+  await expect(row).toContainText("Running", { timeout: 25_000 });
   await list.close();
 });
 
@@ -251,7 +251,7 @@ test("AT-F02-06: volumes and networks", async () => {
   await page.getByLabel("New network name").fill("e2e-net");
   await page.getByLabel(/Internal/).check();
   await page.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(page.getByRole("row", { name: /e2e-net/ })).toContainText("internal");
+  await expect(page.getByRole("row", { name: /e2e-net/ })).toContainText("Internal");
   await expectAccessible(page, "networks");
   await page.getByRole("button", { name: "Remove network e2e-net" }).click();
   await page.getByLabel('Type "e2e-net" to confirm').fill("e2e-net");
@@ -311,7 +311,7 @@ test("AT-F03-05, AT-F03-06: create and deploy a stack with a variable", async ()
   await expect(page.getByText("Valid and allowed by the container policy.")).toBeVisible();
   await page.getByRole("button", { name: "Create and deploy" }).click();
   await expect(page.getByRole("heading", { name: "e2e-stack" })).toBeVisible();
-  await waitStackStatus(page, "deployed");
+  await waitStackStatus(page, "Running");
   await expect(page.getByRole("table", { name: "Services" }).getByText("running")).toHaveCount(2, { timeout: 30_000 });
   await expectAccessible(page, "stack detail");
 });
@@ -341,7 +341,7 @@ test("AT-F03-05: take the stack down", async () => {
   test.skip(!docker, "needs the agent with Docker");
   await page.getByRole("button", { name: "Take down" }).click();
   await page.getByRole("dialog", { name: "Take down this stack?" }).getByRole("button", { name: "Take down" }).click();
-  await waitStackStatus(page, "stopped");
+  await waitStackStatus(page, "Stopped");
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("heading", { name: "Stacks", exact: true })).toBeVisible();
 });
@@ -436,9 +436,9 @@ test("AT-F04-02, AT-F04-04, AT-F05-01: browse, review the disclosure and install
   await page.getByLabel("Title").fill("hello");
   await page.getByRole("button", { name: "Install" }).click();
   await expect(page.getByRole("heading", { name: "e2e-app" })).toBeVisible();
-  await expect(page.getByText("deployed", { exact: true })).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText("Running", { exact: true }).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByRole("link", { name: "Open E2E Notes" })).toBeVisible();
-  await expect(page.getByText("secret", { exact: true })).toBeVisible();
+  await expect(page.getByText("Secret", { exact: true })).toBeVisible();
   await expectAccessible(page, "installed app");
 });
 
@@ -467,7 +467,7 @@ test("AT-F05-03: remove the app and its data (step-up, still fresh after sign-in
 test("AT-F06-01, TH-32: the storage page shows the real disks and finds the system disk", async () => {
   await page.goto("/storage");
   await expect(page.getByRole("heading", { name: "Storage", exact: true })).toBeVisible();
-  await expect(page.getByText("system disk", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("System disk", { exact: true }).first()).toBeVisible();
   // Without root the storage service only reports; nothing can be formatted or mounted.
   await expect(page.getByText(/does not run as root/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Format…" })).toHaveCount(0);
@@ -564,7 +564,9 @@ test("AT-F01-01 (UI): the command palette finds pages and the bell lists what ne
 
 test("AT-F01-03: theme preference is stored per user", async () => {
   await page.goto("/account");
-  await page.getByLabel("Dark", { exact: true }).check();
+  const theme = page.getByRole("main").getByRole("group", { name: "Theme" });
+  await theme.getByRole("button", { name: "Dark" }).click();
+  await expect(theme.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("html")).toHaveClass(/dark/);
   await expectAccessible(page, "account (dark)");
   await signOut(page);
@@ -574,7 +576,7 @@ test("AT-F01-03: theme preference is stored per user", async () => {
   await login(page, OWNER);
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.goto("/account");
-  await page.getByLabel("System", { exact: true }).check();
+  await page.getByRole("main").getByRole("group", { name: "Theme" }).getByRole("button", { name: "System" }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
 });
 
@@ -669,7 +671,7 @@ test("AT-F16-01..03: a webhook channel, a test message and a rule", async () => 
   await expect(page.getByText("e2e hook was saved.")).toBeVisible();
   await page.getByRole("button", { name: "Send test to e2e hook" }).click();
   await expect(page.getByText("Test message sent to e2e hook.")).toBeVisible();
-  await expect(page.getByRole("table", { name: "Delivery log" }).getByText("sent", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("table", { name: "Delivery log" }).getByText("Sent", { exact: true }).first()).toBeVisible();
 
   const rule = page.getByRole("listitem").filter({ hasText: "A job failed" });
   await rule.getByLabel("e2e hook").check();
@@ -743,7 +745,7 @@ test("AT-F11-01..04, AT-F05-01: publish a route with Kernhaven sign-in through r
   test.skip(!proxy, "needs Caddy (KH_E2E_CADDY)");
   await page.goto("/proxy");
   await expect(page.getByRole("heading", { name: "Reverse proxy" })).toBeVisible();
-  await expect(page.getByText("running", { exact: true })).toBeVisible();
+  await expect(page.getByText("Running", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("table", { name: "Network interfaces" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Listening ports" }).getByRole("cell", { name: "18443", exact: true }).first()).toBeVisible();
   await expectAccessible(page, "reverse proxy");

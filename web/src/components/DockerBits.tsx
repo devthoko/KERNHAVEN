@@ -1,18 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Alert, Badge, Button, Dialog, TextField } from "./ui";
-
-const stateTone: Record<string, "green" | "red" | "amber" | "blue" | "gray"> = {
-  running: "green",
-  paused: "amber",
-  restarting: "blue",
-  created: "gray",
-  exited: "gray",
-  dead: "red",
-  removing: "amber",
-};
+import { Alert, Button, Dialog, StatusBadge, TextField } from "./ui";
 
 export function StateBadge({ state }: { state: string }) {
-  return <Badge tone={stateTone[state] ?? "gray"}>{state}</Badge>;
+  return <StatusBadge status={state} />;
 }
 
 /** AgentError explains why Docker data is missing instead of showing an empty page. */

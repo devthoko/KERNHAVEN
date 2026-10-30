@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { Icon } from "../components/Icon";
-import { appStatusTone, changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
-import { Alert, Avatar, BackLink, Badge, Button, Card, Dialog, EmptyState, PageHeader, Spinner, TextField } from "../components/ui";
+import { changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
+import { Alert, AppIcon, BackLink, Badge, Button, Card, Dialog, EmptyState, PageHeader, Spinner, StatusBadge, TextField, buttonClass, link } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -9,7 +9,6 @@ import { useSession } from "../lib/session";
 import type { CatalogAppDetail, CatalogListing, CatalogSource, InstalledApp } from "../lib/types";
 import { useData } from "../lib/useData";
 
-const link = "font-medium text-brand-700 underline dark:text-brand-500";
 
 export function webURL(port: number): string {
   return `${window.location.protocol}//${window.location.hostname}:${port}/`;
@@ -39,7 +38,7 @@ export function AppsPage() {
           {data.apps.map((a) => (
             <li key={a.name} className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
               <div className="flex items-start gap-3">
-                <Avatar name={a.name} className="size-12 text-base" rounded="rounded-xl" />
+                <AppIcon name={a.name} />
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-base font-semibold">
                     <Link to={`/apps/${a.name}`} className="hover:underline">
@@ -50,11 +49,11 @@ export function AppsPage() {
                     {a.app_name} {a.version && `· ${a.version}`}
                   </p>
                 </div>
-                <Badge tone={appStatusTone[a.status]}>{a.status}</Badge>
+                <StatusBadge status={a.status} />
               </div>
               {a.update_available && (
                 <p className="mt-3">
-                  <Badge tone="blue">update {a.latest_version}</Badge>
+                  <Badge tone="blue">Update {a.latest_version}</Badge>
                 </p>
               )}
               <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
@@ -63,7 +62,7 @@ export function AppsPage() {
                     href={a.url || webURL(a.web_port)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-800"
+                    className={buttonClass("primary")}
                   >
                     <Icon name="external" className="size-4" />
                     Open <span className="sr-only">{a.name}</span>
@@ -71,7 +70,7 @@ export function AppsPage() {
                 )}
                 <Link
                   to={`/apps/${a.name}`}
-                  className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 px-3 text-sm font-medium shadow-sm hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/10"
+                  className={buttonClass("secondary")}
                 >
                   Manage <span className="sr-only">{a.name}</span>
                 </Link>
@@ -145,7 +144,7 @@ export function AppStorePage() {
             <li key={`${a.source_id}/${a.app_id}`}>
               <Card className="relative h-full transition hover:shadow-md motion-reduce:transition-none">
                 <div className="flex items-start gap-3">
-                  <Avatar name={a.name} className="size-12 text-base" rounded="rounded-xl" />
+                  <AppIcon name={a.name} />
                   <div className="min-w-0">
                     <h2 className="text-base font-semibold">
                       {/* The whole card is the link target; the pseudo-element stretches it. */}
@@ -163,7 +162,7 @@ export function AppStorePage() {
                   {a.categories.map((c) => (
                     <Badge key={c}>{c}</Badge>
                   ))}
-                  {a.installed.length > 0 && <Badge tone="green">installed</Badge>}
+                  {a.installed.length > 0 && <Badge tone="green">Installed</Badge>}
                 </div>
               </Card>
             </li>
@@ -412,11 +411,11 @@ export function SourcesPage() {
                         Sync
                       </Button>
                     )}
-                    <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 has-[:focus-visible]:outline-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                    <label className={buttonClass("secondary", "cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-600")}>
                       Upload catalog
                       <input type="file" accept=".json,application/json" className="sr-only" onChange={uploadFile(s)} />
                     </label>
-                    <Button variant="ghost" className="text-red-700 dark:text-red-400" onClick={() => setRemove(s)}>
+                    <Button variant="ghost-danger" onClick={() => setRemove(s)}>
                       Remove
                     </Button>
                   </div>

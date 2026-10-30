@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AgentError, StateBadge } from "../components/DockerBits";
-import { Alert, Button, Card, PageHeader, Spinner, Table, td, th } from "../components/ui";
+import { Alert, Button, Card, PageHeader, Spinner, Table, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { containerName } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -78,7 +78,7 @@ export function ContainersPage() {
               return (
                 <tr key={c.id}>
                   <td className={td}>
-                    <Link to={`/containers/${encodeURIComponent(name)}`} className="font-medium text-brand-700 underline dark:text-brand-500">
+                    <Link to={`/containers/${encodeURIComponent(name)}`} className={link}>
                       {name}
                     </Link>
                     <div className="text-xs text-slate-600 dark:text-slate-400">{c.status}</div>

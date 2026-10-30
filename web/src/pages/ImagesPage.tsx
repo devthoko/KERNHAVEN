@@ -109,7 +109,7 @@ export function ImagesPage() {
                 <td className={td}>{formatDateTime(new Date(i.created * 1000).toISOString())}</td>
                 {can("containers.manage") && (
                   <td className={`${td} text-right`}>
-                    <Button variant="ghost" className="text-red-700 dark:text-red-400" aria-label={`Remove ${imageName(i)}`} onClick={() => setRemoving(i)}>
+                    <Button variant="ghost-danger" aria-label={`Remove ${imageName(i)}`} onClick={() => setRemoving(i)}>
                       Remove
                     </Button>
                   </td>

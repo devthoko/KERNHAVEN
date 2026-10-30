@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AgentError, ConfirmByName, StateBadge } from "../components/DockerBits";
-import { Alert, BackLink, Badge, Button, Card, PageHeader, SelectField, Spinner } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, DotBadge, PageHeader, SelectField, Spinner, capitalize } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { useRouter } from "../lib/router";
@@ -75,7 +75,7 @@ function Logs({ id }: { id: string }) {
         ref={box}
         tabIndex={0}
         aria-label="Container log output"
-        className="max-h-[28rem] overflow-auto rounded-md bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100"
+        className="max-h-[28rem] overflow-auto rounded-lg bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100"
       >
         {lines?.length
           ? lines.map((l, i) => (
@@ -163,7 +163,7 @@ export function ContainerDetailPage({ id }: { id: string }) {
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-600 dark:text-slate-400">State</dt>
             <dd>
-              <StateBadge state={c.status} /> {c.health && <Badge tone={c.health === "healthy" ? "green" : "amber"}>{c.health}</Badge>}
+              <StateBadge state={c.status} /> {c.health && <DotBadge tone={c.health === "healthy" ? "green" : "amber"}>{capitalize(c.health)}</DotBadge>}
             </dd>
             <dt className="text-slate-600 dark:text-slate-400">Started</dt>
             <dd>{c.started_at.startsWith("0001") ? "—" : formatDateTime(c.started_at)}</dd>
@@ -184,7 +184,7 @@ export function ContainerDetailPage({ id }: { id: string }) {
             <dt className="text-slate-600 dark:text-slate-400">User</dt>
             <dd>{c.user || <span className="text-amber-800 dark:text-amber-300">root (image default)</span>}</dd>
             <dt className="text-slate-600 dark:text-slate-400">Privileged</dt>
-            <dd>{c.privileged ? <Badge tone="red">yes</Badge> : "no"}</dd>
+            <dd>{c.privileged ? <Badge tone="red">Yes</Badge> : "no"}</dd>
             <dt className="text-slate-600 dark:text-slate-400">Network</dt>
             <dd>{c.network_mode}</dd>
             <dt className="text-slate-600 dark:text-slate-400">Added capabilities</dt>

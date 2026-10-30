@@ -98,7 +98,7 @@ export function Console({ id, name }: { id: string; name: string }) {
               role="log"
               tabIndex={0}
               aria-label="Console output"
-              className="h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100"
+              className="h-72 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100"
             >
               {output || "Connected. Type a command below."}
             </pre>

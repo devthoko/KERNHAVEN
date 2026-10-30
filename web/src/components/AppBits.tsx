@@ -25,12 +25,12 @@ function ServiceBox({ s }: { s: ServiceDisclosure }) {
   if (s.privileged) flags.push("privileged mode");
   if (s.host_network) flags.push("host network");
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
+    <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="font-medium">{s.service}</span>
         <span className="min-w-0 break-all font-mono text-xs text-slate-600 dark:text-slate-400">{s.image}</span>
-        {!s.image_pinned && <Badge tone="amber">image not pinned</Badge>}
-        {(s.user === "" || s.user === "0" || s.user === "root") && <Badge tone="amber">may run as root</Badge>}
+        {!s.image_pinned && <Badge tone="amber">Image not pinned</Badge>}
+        {(s.user === "" || s.user === "0" || s.user === "root") && <Badge tone="amber">May run as root</Badge>}
       </div>
       <dl className="grid gap-2 sm:grid-cols-2">
         <List label="Published ports" items={s.ports} />
@@ -44,7 +44,7 @@ function ServiceBox({ s }: { s: ServiceDisclosure }) {
         <ul className="mt-2 space-y-1 text-sm">
           {s.exceptions.map((e) => (
             <li key={e.rule}>
-              <Badge tone="red">needs exception: {e.rule}</Badge> <span className="text-slate-700 dark:text-slate-300">{e.reason}</span>
+              <Badge tone="red">Needs exception: {e.rule}</Badge> <span className="text-slate-700 dark:text-slate-300">{e.reason}</span>
             </li>
           ))}
         </ul>
@@ -147,4 +147,3 @@ export function changedValues(values: Record<string, string>): Record<string, st
   return out;
 }
 
-export const appStatusTone = { new: "gray", deploying: "blue", deployed: "green", failed: "red", stopping: "blue", stopped: "gray" } as const;

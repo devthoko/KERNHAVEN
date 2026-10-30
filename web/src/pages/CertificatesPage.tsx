@@ -1,5 +1,5 @@
 import { useId, useState, type ChangeEvent } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, buttonClass, inputClass, link, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link } from "../lib/router";
@@ -7,7 +7,6 @@ import { useSession } from "../lib/session";
 import type { HostTLS, StoredCertificate, TLSMode, TLSOverview, TLSSettings } from "../lib/types";
 import { useData } from "../lib/useData";
 
-const link = "font-medium text-brand-700 underline dark:text-brand-500";
 const DAY = 24 * 60 * 60 * 1000;
 
 const modeLabel: Record<TLSMode, string> = {
@@ -19,7 +18,7 @@ const modeLabel: Record<TLSMode, string> = {
 
 function Expiry({ notAfter }: { notAfter: string }) {
   const days = Math.floor((new Date(notAfter).getTime() - Date.now()) / DAY);
-  if (days < 0) return <Badge tone="red">expired</Badge>;
+  if (days < 0) return <Badge tone="red">Expired</Badge>;
   if (days < 30) return <Badge tone="amber">{days} days left</Badge>;
   return <span>{formatDateTime(notAfter)}</span>;
 }
@@ -33,7 +32,7 @@ export function RootCard({ sha256 }: { sha256?: string }) {
           Hosts without a public certificate use Kernhaven's own certificate authority. Install its root certificate on your devices once and the browser warnings
           disappear.
         </p>
-        <a href="/api/v1/tls/root.crt" download className="inline-flex min-h-10 items-center rounded-md bg-brand-700 px-4 py-2 font-medium text-white hover:bg-brand-800">
+        <a href="/api/v1/tls/root.crt" download className={buttonClass("primary", "w-fit")}>
           Download root certificate
         </a>
         {sha256 && (
@@ -191,7 +190,7 @@ function UploadDialog({ open, onClose, onSaved }: { open: boolean; onClose: () =
   const [error, setError] = useState<string | null>(null);
   const certId = useId();
   const keyId = useId();
-  const area = "block w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
+  const area = `${inputClass} font-mono text-xs`;
   const load = (set: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) void f.text().then(set);
@@ -373,7 +372,7 @@ export function CertificatesPage() {
               {data.certificates.map((c) => (
                 <tr key={c.id}>
                   <td className={td}>
-                    {c.names.join(", ")} <Badge>{c.source === "dns" ? "DNS-01" : "uploaded"}</Badge>
+                    {c.names.join(", ")} <Badge>{c.source === "dns" ? "DNS-01" : "Uploaded"}</Badge>
                   </td>
                   <td className={`${td} max-w-xs truncate`} title={c.issuer}>
                     {c.issuer}
@@ -386,8 +385,7 @@ export function CertificatesPage() {
                     <td className={td}>
                       {c.hosts.length === 0 && (
                         <Button
-                          variant="ghost"
-                          className="text-red-700 dark:text-red-400"
+                          variant="ghost-danger"
                           onClick={async () => {
                             try {
                               await api.del(`/tls/certificates/${c.id}`);

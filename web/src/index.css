@@ -33,19 +33,3 @@ body {
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-brand-600;
 }
-
-/* The home desktop's background (ADR-0035): soft colour fields, no image. */
-.kh-wallpaper {
-  background:
-    radial-gradient(60rem 40rem at 0% 0%, rgb(153 246 228 / 0.55), transparent 60%),
-    radial-gradient(50rem 36rem at 100% 0%, rgb(199 210 254 / 0.6), transparent 60%),
-    radial-gradient(48rem 40rem at 70% 100%, rgb(254 215 170 / 0.45), transparent 60%),
-    linear-gradient(180deg, #f8fafc, #eef2f7);
-}
-.dark .kh-wallpaper {
-  background:
-    radial-gradient(60rem 40rem at 0% 0%, rgb(19 78 74 / 0.75), transparent 60%),
-    radial-gradient(50rem 36rem at 100% 0%, rgb(49 46 129 / 0.6), transparent 60%),
-    radial-gradient(48rem 40rem at 70% 100%, rgb(124 45 18 / 0.35), transparent 60%),
-    linear-gradient(180deg, #020617, #0b1120);
-}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Badge, Button, Card, Dialog, DotBadge, PageHeader, SelectField, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatBytes } from "../lib/format";
 import { Link } from "../lib/router";
@@ -7,7 +7,7 @@ import { useSession } from "../lib/session";
 import type { DiskInfo, FileSystemInfo, StorageInventory } from "../lib/types";
 import { useData } from "../lib/useData";
 
-const classLabel = { system: "system disk", in_use: "in use", managed: "Kernhaven mount", free: "free" } as const;
+const classLabel = { system: "System disk", in_use: "In use", managed: "Kernhaven mount", free: "Free" } as const;
 const classTone = { system: "blue", in_use: "amber", managed: "green", free: "gray" } as const;
 
 function Usage({ fs }: { fs: FileSystemInfo }) {
@@ -122,7 +122,7 @@ export function StoragePage() {
                 <span>{d.model || "unknown model"}</span>
                 {d.serial && <span className="font-mono text-xs text-slate-600 dark:text-slate-400">S/N {d.serial}</span>}
                 {d.transport && <Badge>{d.transport}</Badge>}
-                {d.removable && <Badge>removable</Badge>}
+                {d.removable && <Badge>Removable</Badge>}
                 <span className="text-slate-600 dark:text-slate-400">{d.rotational ? "HDD" : "SSD"}</span>
               </div>
               {d.reason && d.class !== "free" && <p className="mb-2 text-sm text-slate-700 dark:text-slate-300">{d.reason}.</p>}
@@ -196,7 +196,7 @@ export function StoragePage() {
                 {data.mounts.map((m) => (
                   <li key={m.name} className="flex flex-wrap items-center gap-2">
                     <span className="font-mono">{m.path}</span>
-                    <Badge tone={m.active ? "green" : "red"}>{m.active ? "mounted" : "not mounted"}</Badge>
+                    <DotBadge tone={m.active ? "green" : "red"}>{m.active ? "Mounted" : "Not mounted"}</DotBadge>
                     <span className="text-slate-600 dark:text-slate-400">
                       {m.fstype} · {m.unit}
                     </span>

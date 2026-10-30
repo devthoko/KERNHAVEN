@@ -1,5 +1,5 @@
 import type { Job, JobState } from "../lib/types";
-import { Badge } from "./ui";
+import { capitalize, DotBadge } from "./ui";
 
 const tones: Record<JobState, "green" | "red" | "amber" | "blue" | "gray"> = {
   queued: "gray",
@@ -19,8 +19,8 @@ const labels: Record<JobState, string> = {
   cancelled: "Cancelled",
 };
 
-export function JobStateBadge({ state }: { state: JobState }) {
-  return <Badge tone={tones[state]}>{labels[state]}</Badge>;
+export function JobStateBadge({ state }: { state: JobState | string }) {
+  return <DotBadge tone={tones[state as JobState] ?? "gray"}>{labels[state as JobState] ?? capitalize(state)}</DotBadge>;
 }
 
 export function JobProgress({ job }: { job: Job }) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { JobProgress, JobStateBadge } from "../components/JobBits";
-import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, Dialog, DotBadge, PageHeader, Spinner, capitalize } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { useSession } from "../lib/session";
@@ -88,7 +88,7 @@ export function JobDetailPage({ id }: { id: string }) {
                 </span>
                 <span className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                   {s.completed_at && formatDateTime(s.completed_at)}
-                  <Badge tone={stepTone[s.state]}>{s.state}</Badge>
+                  <DotBadge tone={stepTone[s.state]}>{capitalize(s.state)}</DotBadge>
                 </span>
               </li>
             ))}

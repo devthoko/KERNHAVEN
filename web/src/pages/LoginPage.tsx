@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { AuthShell } from "../components/AuthShell";
-import { Alert, Button, TextField } from "../components/ui";
+import { Alert, Button, TextField, link } from "../components/ui";
 import { ApiError, errorMessage } from "../lib/api";
 import { useRouter } from "../lib/router";
 import { useSession, type MFAChallenge } from "../lib/session";
@@ -90,7 +90,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 Continue
               </Button>
               {hasTOTP && hasRecovery && (
-                <button type="button" className="text-sm text-brand-700 underline dark:text-brand-500" onClick={() => (setUseRecovery(!useRecovery), setCode(""))}>
+                <button type="button" className={`text-sm ${link}`} onClick={() => (setUseRecovery(!useRecovery), setCode(""))}>
                   {useRecovery ? "Use the authenticator app instead" : "Use a recovery code instead"}
                 </button>
               )}

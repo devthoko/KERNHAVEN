@@ -143,7 +143,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               }}
               className="h-14 w-full bg-transparent text-base outline-none placeholder:text-slate-500"
             />
-            <kbd className="hidden rounded-md border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 sm:inline dark:border-white/15">Esc</kbd>
+            <kbd className="hidden rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 sm:inline dark:border-white/15">Esc</kbd>
           </div>
           {/* Grouped listbox as in the WAI-ARIA practices: group > presentation heading + options. */}
           <div id={listId} role="listbox" aria-label="Results" className="max-h-[50vh] overflow-y-auto p-2">
