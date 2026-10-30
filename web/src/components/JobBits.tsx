@@ -43,3 +43,31 @@ export function JobProgress({ job }: { job: Job }) {
     </div>
   );
 }
+
+const jobTitles: Record<string, string> = {
+  "stacks.deploy": "Deploy stack",
+  "stacks.down": "Stop stack",
+  "images.pull": "Pull image",
+  "storage.format": "Format disk",
+  "files.copy": "Copy files",
+  "files.purge": "Empty trash",
+  "tls.issue": "Issue certificate",
+  "backup.run": "Back up",
+  "backup.verify": "Verify backup",
+  "backup.restore_stack": "Restore app data",
+  "backup.restore_platform": "Restore platform",
+};
+
+/** jobTitle names a job kind in words ("backup.run" → "Back up"); unknown kinds are spelled out. */
+export function jobTitle(kind: string): string {
+  const known = jobTitles[kind];
+  if (known) return known;
+  const last = kind.split(".").pop() ?? kind;
+  const words = last.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** isHousekeeping marks the platform's own scheduled jobs, which are not news for people. */
+export function isHousekeeping(kind: string): boolean {
+  return kind.startsWith("maintenance.");
+}

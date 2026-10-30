@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
+import { Icon } from "../components/Icon";
 import { appStatusTone, changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, Avatar, BackLink, Badge, Button, Card, Dialog, EmptyState, PageHeader, Spinner, TextField } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -16,6 +17,7 @@ export function webURL(port: number): string {
 
 /** AppsPage lists the installed apps. */
 export function AppsPage() {
+  const { can } = useSession();
   const { navigate } = useRouter();
   const { data, error, loading } = useData(() => api.get<{ apps: InstalledApp[] }>("/apps"), [], { refreshMs: 3000, live: ["containers", "jobs"] });
   return (
@@ -23,57 +25,61 @@ export function AppsPage() {
       <PageHeader
         title="Apps"
         description="Applications installed from signed catalogs. Updates keep a snapshot of the data and roll back on failure."
-        actions={<Button onClick={() => navigate("/apps/store")}>App store</Button>}
+        actions={can("apps.manage") && <Button onClick={() => navigate("/apps/store")}>Add an app</Button>}
       />
-      <Card>
-        {loading && !data && <Spinner />}
-        {error && <Alert>{error}</Alert>}
-        {data && data.apps.length === 0 && (
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            No apps installed yet. <Link to="/apps/store" className={link}>Browse the app store</Link>.
-          </p>
-        )}
-        {data && data.apps.length > 0 && (
-          <Table
-            caption="Installed apps"
-            head={
-              <tr>
-                <th className={th}>Name</th>
-                <th className={th}>App</th>
-                <th className={th}>Status</th>
-                <th className={th}>Version</th>
-                <th className={th}>Open</th>
-              </tr>
-            }
-          >
-            {data.apps.map((a) => (
-              <tr key={a.name}>
-                <td className={td}>
-                  <Link to={`/apps/${a.name}`} className={link}>
-                    {a.name}
-                  </Link>
-                </td>
-                <td className={td}>{a.app_name}</td>
-                <td className={td}>
-                  <Badge tone={appStatusTone[a.status]}>{a.status}</Badge>
-                </td>
-                <td className={td}>
-                  {a.version || "—"} {a.update_available && <Badge tone="blue">update {a.latest_version}</Badge>}
-                </td>
-                <td className={td}>
-                  {(a.url || a.web_port > 0) && a.status === "deployed" ? (
-                    <a href={a.url || webURL(a.web_port)} target="_blank" rel="noopener noreferrer" className={link}>
-                      Open <span className="sr-only">{a.name}</span>
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Table>
-        )}
-      </Card>
+      {loading && !data && <Spinner />}
+      {error && <Alert>{error}</Alert>}
+      {data && data.apps.length === 0 && (
+        <EmptyState title="No apps installed yet." action={<Button onClick={() => navigate("/apps/store")}>Browse the app store</Button>}>
+          Apps come from catalogs whose signatures Kernhaven verified. Before you install one, you see which ports, folders and permissions it asks for.
+        </EmptyState>
+      )}
+      {data && data.apps.length > 0 && (
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Installed apps">
+          {data.apps.map((a) => (
+            <li key={a.name} className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+              <div className="flex items-start gap-3">
+                <Avatar name={a.name} className="size-12 text-base" rounded="rounded-xl" />
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-base font-semibold">
+                    <Link to={`/apps/${a.name}`} className="hover:underline">
+                      {a.name}
+                    </Link>
+                  </h2>
+                  <p className="truncate text-sm text-slate-600 dark:text-slate-400">
+                    {a.app_name} {a.version && `· ${a.version}`}
+                  </p>
+                </div>
+                <Badge tone={appStatusTone[a.status]}>{a.status}</Badge>
+              </div>
+              {a.update_available && (
+                <p className="mt-3">
+                  <Badge tone="blue">update {a.latest_version}</Badge>
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
+                {(a.url || a.web_port > 0) && a.status === "deployed" && (
+                  <a
+                    href={a.url || webURL(a.web_port)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-800"
+                  >
+                    <Icon name="external" className="size-4" />
+                    Open <span className="sr-only">{a.name}</span>
+                  </a>
+                )}
+                <Link
+                  to={`/apps/${a.name}`}
+                  className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 px-3 text-sm font-medium shadow-sm hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/10"
+                >
+                  Manage <span className="sr-only">{a.name}</span>
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -96,28 +102,27 @@ export function AppStorePage() {
   };
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/apps" className="text-brand-700 underline dark:text-brand-500">
-          ← Installed apps
-        </Link>
-      </p>
-      <PageHeader
-        title="App store"
-        description="Apps from catalogs whose signatures Kernhaven verified."
-        actions={
-          <Button variant="secondary" onClick={() => navigate("/apps/sources")}>
-            {can("catalog.manage") ? "Manage sources" : "Sources"}
-          </Button>
-        }
-      />
-      <div className="mb-4 space-y-3">
-        <TextField label="Search apps" type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <PageHeader title="App store" description="Apps from catalogs whose signatures Kernhaven verified." />
+      <div className="mb-6 space-y-3">
+        <div className="max-w-md">
+          <TextField label="Search apps" type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
         {data && data.categories.length > 0 && (
           <div role="group" aria-label="Categories" className="flex flex-wrap gap-2">
             {["", ...data.categories].map((c) => (
-              <Button key={c || "all"} variant={c === category ? "primary" : "secondary"} aria-pressed={c === category} onClick={() => setCategory(c)}>
+              <button
+                key={c || "all"}
+                type="button"
+                aria-pressed={c === category}
+                onClick={() => setCategory(c)}
+                className={`min-h-9 rounded-full px-4 text-sm font-medium ring-1 ring-inset ${
+                  c === category
+                    ? "bg-slate-900 text-white ring-slate-900 dark:bg-white dark:text-slate-900 dark:ring-white"
+                    : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50 dark:bg-white/5 dark:text-slate-200 dark:ring-white/15 dark:hover:bg-white/10"
+                }`}
+              >
                 {c || "All"}
-              </Button>
+              </button>
             ))}
           </div>
         )}
@@ -135,14 +140,20 @@ export function AppStorePage() {
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.apps.map((a) => (
             <li key={`${a.source_id}/${a.app_id}`}>
-              <Card className="h-full">
-                <h2 className="text-base font-semibold">
-                  <Link to={`/apps/store/${a.source_id}/${a.app_id}`} className={link}>
-                    {a.name}
-                  </Link>
-                </h2>
-                <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{a.summary}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <Card className="relative h-full transition hover:shadow-md motion-reduce:transition-none">
+                <div className="flex items-start gap-3">
+                  <Avatar name={a.name} className="size-12 text-base" rounded="rounded-xl" />
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold">
+                      {/* The whole card is the link target; the pseudo-element stretches it. */}
+                      <Link to={`/apps/store/${a.source_id}/${a.app_id}`} className="after:absolute after:inset-0 after:rounded-xl hover:underline">
+                        {a.name}
+                      </Link>
+                    </h2>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">{a.summary}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                   <span>v{a.version}</span>
                   <span aria-hidden="true">·</span>
                   <span>{a.source_name}</span>
@@ -201,11 +212,7 @@ export function StoreAppPage({ source, app }: { source: string; app: string }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/apps/store" className="text-brand-700 underline dark:text-brand-500">
-          ← App store
-        </Link>
-      </p>
+      <BackLink to="/apps/store">App store</BackLink>
       <PageHeader title={a.name} description={`${a.summary} · version ${a.version} · from ${data.source.name}`} />
       {data.expired && (
         <div className="mb-4">
@@ -337,11 +344,6 @@ export function SourcesPage() {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/apps/store" className="text-brand-700 underline dark:text-brand-500">
-          ← App store
-        </Link>
-      </p>
       <PageHeader
         title="Catalog sources"
         description="Each source has its own signing key. Catalogs whose signature does not match are rejected."

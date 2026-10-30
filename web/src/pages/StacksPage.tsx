@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StackEditor, toInput, type VariableRow } from "../components/StackEditor";
-import { Alert, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -96,11 +96,7 @@ export function NewStackPage() {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/stacks" className="text-brand-700 underline dark:text-brand-500">
-          ← All stacks
-        </Link>
-      </p>
+      <BackLink to="/stacks">All stacks</BackLink>
       <PageHeader title="New stack" description="Paste, upload or import a Compose file. Unsupported options are reported with their line." />
       <Card className="mb-4">
         <div className="max-w-sm">

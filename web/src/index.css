@@ -20,6 +20,7 @@ html.dark {
 }
 body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  font-feature-settings: "cv11", "ss01";
 }
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-brand-600;

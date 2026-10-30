@@ -42,7 +42,7 @@ async function login(p: Page, user: { username: string; password: string }) {
   await p.getByLabel("Username").fill(user.username);
   await p.getByLabel("Password").fill(user.password);
   await p.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(p.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(p.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), / })).toBeVisible();
 }
 
 async function freshLogin(browser: Browser, user: { username: string; password: string }) {
@@ -86,7 +86,7 @@ test("AT-F08-01, AT-F01-04: first-run setup works by keyboard and is accessible"
   await page.keyboard.type(OWNER.password);
   await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), / })).toBeVisible();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
   await expect(page.getByRole("term").filter({ hasText: "Host agent" })).toBeVisible();
   await expect(page.getByText(docker ? "Connected" : "Unavailable", { exact: true })).toBeVisible();
@@ -390,7 +390,7 @@ test("AT-F04-01, AT-F04-03: the owner adds a source and uploads a signed catalog
   test.skip(!docker, "needs the agent with Docker");
   await page.goto("/apps/store");
   await expect(page.getByText("No apps found.")).toBeVisible();
-  await page.getByRole("button", { name: "Manage sources" }).click();
+  await page.getByRole("navigation", { name: "Apps pages" }).getByRole("link", { name: "Catalog sources" }).click();
   await page.getByRole("button", { name: "Add source" }).click();
   const dialog = page.getByRole("dialog", { name: "Add catalog source" });
   await dialog.getByLabel("Name").fill("E2E catalog");
@@ -560,9 +560,8 @@ test("AT-F09-01 (UI): a viewer only sees what the role allows", async ({ browser
   // M9: viewers do not see disks.
   await expect(nav.getByRole("link", { name: "Storage" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Files" })).toHaveCount(0);
-  // M12/M13: viewers do not see the reverse proxy or certificates.
-  await expect(nav.getByRole("link", { name: "Reverse proxy" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "Certificates" })).toHaveCount(0);
+  // M12/M13: viewers do not see the reverse proxy or certificates (the Network area).
+  await expect(nav.getByRole("link", { name: "Network" })).toHaveCount(0);
   // M8: viewers browse the store but cannot install or manage sources.
   await viewer.goto("/apps/sources");
   await expect(viewer.getByRole("heading", { name: "Catalog sources" })).toBeVisible();
@@ -585,7 +584,7 @@ function totp(secret: string): string {
 }
 
 test("AT-F13-01..04: host and container metrics, history and service health", async () => {
-  await page.goto("/");
+  await page.goto("/monitoring");
   const services = page.getByRole("list", { name: "Services" });
   await expect(services.getByRole("listitem").filter({ hasText: "Kernhaven Core" }).getByText("running")).toBeVisible();
   await expect(services.getByRole("listitem").filter({ hasText: "Monitor service" }).getByText("running")).toBeVisible();
@@ -595,6 +594,11 @@ test("AT-F13-01..04: host and container metrics, history and service health", as
     await page.reload();
     await expect(page.getByText(/^CPU \(\d+\)$/)).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 40_000 });
+  // The home page shows the same reading as widgets.
+  await page.goto("/");
+  await expect(page.getByText(/^\d+ cores · load /)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Needs attention" })).toBeVisible();
+  await expectAccessible(page, "home");
 
   await page.goto("/monitoring");
   await expect(page.getByRole("heading", { name: "Monitoring" })).toBeVisible();

@@ -15,7 +15,7 @@ import { ImagesPage } from "./pages/ImagesPage";
 import { NetworksPage, VolumesPage } from "./pages/VolumesNetworksPage";
 import { StackDetailPage } from "./pages/StackDetailPage";
 import { NewStackPage, StacksPage } from "./pages/StacksPage";
-import { DashboardPage } from "./pages/DashboardPage";
+import { HomePage } from "./pages/HomePage";
 import { JobDetailPage } from "./pages/JobDetailPage";
 import { JobsPage } from "./pages/JobsPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -40,7 +40,7 @@ interface RouteDef {
 }
 
 const routes: RouteDef[] = [
-  { pattern: "/", title: "Dashboard", render: () => <DashboardPage /> },
+  { pattern: "/", title: "Home", render: () => <HomePage /> },
   { pattern: "/monitoring", title: "Monitoring", permission: "system.read", render: () => <MonitoringPage /> },
   { pattern: "/alerts", title: "Alerts", permission: "alerts.read", render: () => <AlertsPage /> },
   { pattern: "/backups", title: "Backups", permission: "backup.read", render: () => <BackupsPage /> },

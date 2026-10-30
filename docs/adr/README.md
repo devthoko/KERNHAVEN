@@ -38,3 +38,4 @@ ADR that supersedes the old one.
 | [0030](0030-backup-targets-and-volume-streams.md) | Backup targets (local, SFTP with pinned host keys, own S3 client) and volume streams through the Docker agent | Accepted |
 | [0031](0031-console-and-live-streams.md) | A line console and live updates over server-sent events | Accepted |
 | [0032](0032-packages-and-upgrades.md) | Debian packages, an idempotent installer and a CLI upgrader with automatic rollback | Accepted |
+| [0033](0033-web-ui-information-architecture.md) | Web UI: areas with tabs, apps-first home, own icon set | Proposed |

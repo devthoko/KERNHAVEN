@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { JobProgress, JobStateBadge } from "../components/JobBits";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
-import { Link } from "../lib/router";
 import { useSession } from "../lib/session";
 import { ACTIVE_JOB_STATES, type Job } from "../lib/types";
 import { useData } from "../lib/useData";
@@ -41,11 +40,7 @@ export function JobDetailPage({ id }: { id: string }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/jobs" className="text-brand-700 underline dark:text-brand-500">
-          ← All jobs
-        </Link>
-      </p>
+      <BackLink to="/jobs">All jobs</BackLink>
       <PageHeader
         title={`Job #${job.id}`}
         description={job.kind}

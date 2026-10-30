@@ -1,6 +1,6 @@
 import type { Theme } from "./types";
 
-const media = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+const media = typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 let listener: (() => void) | null = null;
 
 /** applyTheme sets the "dark" class on <html>, following the OS for "system". */

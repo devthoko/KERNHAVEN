@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AgentError, ConfirmByName, StateBadge } from "../components/DockerBits";
-import { Alert, Badge, Button, Card, PageHeader, SelectField, Spinner } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, PageHeader, SelectField, Spinner } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
-import { Link, useRouter } from "../lib/router";
+import { useRouter } from "../lib/router";
 import { useSession } from "../lib/session";
 import type { ContainerDetail, LogLine } from "../lib/types";
 import { useData } from "../lib/useData";
@@ -117,11 +117,7 @@ export function ContainerDetailPage({ id }: { id: string }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/containers" className="text-brand-700 underline dark:text-brand-500">
-          ← All containers
-        </Link>
-      </p>
+      <BackLink to="/containers">All containers</BackLink>
       <PageHeader
         title={c.name}
         description={c.image}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { appStatusTone, changedValues, DisclosureView, FieldInput, initialValues } from "../components/AppBits";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, td, th } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -64,11 +64,7 @@ export function AppDetailPage({ name }: { name: string }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/apps" className={link}>
-          ← Installed apps
-        </Link>
-      </p>
+      <BackLink to="/apps">Installed apps</BackLink>
       <PageHeader
         title={data.name}
         description={`${data.app_name}${data.version ? ` ${data.version}` : ""} · from ${data.source_name}`}

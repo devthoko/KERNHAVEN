@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { StateBadge } from "../components/DockerBits";
 import { StackEditor, toInput, toRows, type VariableRow } from "../components/StackEditor";
-import { Alert, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, Dialog, PageHeader, Spinner, Table, TextField, td, th } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
@@ -61,11 +61,7 @@ export function StackDetailPage({ name }: { name: string }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/stacks" className="text-brand-700 underline dark:text-brand-500">
-          ← All stacks
-        </Link>
-      </p>
+      <BackLink to="/stacks">All stacks</BackLink>
       <PageHeader
         title={st.name}
         description={`Latest revision ${st.latest_revision}${st.deployed_revision ? ` · deployed revision ${st.deployed_revision}` : " · not deployed"}`}

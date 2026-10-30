@@ -4,7 +4,7 @@ import { Alert, Badge, Card, PageHeader, Spinner, Table, td, th } from "../compo
 import { api } from "../lib/api";
 import { formatBytes, formatDateTime } from "../lib/format";
 import { useSession } from "../lib/session";
-import type { ContainerMetrics, HostMetrics, MetricHistory, ServiceCheck } from "../lib/types";
+import type { AgentStatus, ContainerMetrics, HostMetrics, MetricHistory, ServiceCheck, Version } from "../lib/types";
 import { useData } from "../lib/useData";
 
 type Range = "1h" | "24h" | "7d";
@@ -96,6 +96,56 @@ export function HostSummary({ host }: { host: HostMetrics }) {
   );
 }
 
+/** PlatformCard shows the versions and connections of this instance. */
+function PlatformCard() {
+  const { data, error, loading } = useData(async () => {
+    const [ready, version, agent] = await Promise.all([
+      fetch("/api/v1/health/ready", { credentials: "same-origin" }).then((r) => r.ok),
+      api.get<Version>("/version"),
+      api.get<AgentStatus>("/system/agent"),
+    ]);
+    return { ready, version, agent };
+  }, []);
+  const dt = "text-slate-600 dark:text-slate-400";
+  return (
+    <Card title="Platform">
+      {loading && <Spinner />}
+      {error && <Alert>{error}</Alert>}
+      {data && (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className={dt}>Core</dt>
+          <dd>{data.ready ? <Badge tone="green">Ready</Badge> : <Badge tone="red">Not ready</Badge>}</dd>
+          <dt className={dt}>Host agent</dt>
+          <dd>
+            {data.agent.agent.available ? <Badge tone="green">Connected</Badge> : <Badge tone="amber">Unavailable</Badge>}
+            {data.agent.agent.error && <span className="ml-2 text-xs text-slate-600 dark:text-slate-400">{data.agent.agent.error}</span>}
+          </dd>
+          <dt className={dt}>Docker</dt>
+          <dd>
+            {data.agent.docker.available && data.agent.docker.info ? (
+              <>
+                <Badge tone="green">{data.agent.docker.info.server_version}</Badge>{" "}
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  {data.agent.docker.info.running} running / {data.agent.docker.info.containers} containers
+                  {data.agent.docker.info.rootless ? " · rootless" : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-slate-600 dark:text-slate-400">{data.agent.docker.error ?? "Unavailable"}</span>
+            )}
+          </dd>
+          <dt className={dt}>Version</dt>
+          <dd className="break-all">{data.version.version}</dd>
+          <dt className={dt}>Commit</dt>
+          <dd className="break-all font-mono text-xs">{data.version.commit.slice(0, 12)}</dd>
+          <dt className={dt}>Built</dt>
+          <dd>{formatDateTime(data.version.build_date)}</dd>
+        </dl>
+      )}
+    </Card>
+  );
+}
+
 /** MonitoringPage shows host and container metrics with history (AT-F13-01..04). */
 export function MonitoringPage() {
   const { can } = useSession();
@@ -116,14 +166,14 @@ export function MonitoringPage() {
         title="Monitoring"
         description="Host and container metrics. History is kept for 7 days."
         actions={
-          <div role="group" aria-label="Time range" className="inline-flex rounded-md border border-slate-300 dark:border-slate-600">
+          <div role="group" aria-label="Time range" className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-white/5">
             {ranges.map((r) => (
               <button
                 key={r.value}
                 type="button"
                 aria-pressed={range === r.value}
                 onClick={() => setRange(r.value)}
-                className={`min-h-10 px-3 text-sm ${range === r.value ? "bg-brand-700 text-white" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                className={`min-h-8 rounded-md px-3 text-sm font-medium ${range === r.value ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"}`}
               >
                 {r.label}
               </button>
@@ -210,9 +260,12 @@ export function MonitoringPage() {
             )}
           </Card>
         )}
-        <Card title="Services">
-          <ServiceList />
-        </Card>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card title="Services">
+            <ServiceList />
+          </Card>
+          <PlatformCard />
+        </div>
       </div>
     </>
   );

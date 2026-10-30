@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, PageHeader, SelectField, TextField } from "../components/ui";
+import { Alert, BackLink, Badge, Button, Card, PageHeader, SelectField, TextField } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
-import { Link, useRouter } from "../lib/router";
+import { useRouter } from "../lib/router";
 import { useSession } from "../lib/session";
 import type { ContainerSpec, NetworkSummary, PolicyEvaluation } from "../lib/types";
 import { useData } from "../lib/useData";
@@ -145,11 +145,7 @@ export function CreateContainerPage() {
   const rules = [...new Map(evaluation?.violations.map((v) => [v.rule, v]) ?? []).values()];
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link to="/containers" className="text-brand-700 underline dark:text-brand-500">
-          ← All containers
-        </Link>
-      </p>
+      <BackLink to="/containers">All containers</BackLink>
       <PageHeader title="New container" description="Dangerous settings are rejected unless an owner approves an exception with a reason." />
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 lg:grid-cols-3" noValidate>
         <div className="space-y-4 lg:col-span-2">
